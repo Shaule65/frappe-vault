@@ -1,0 +1,129 @@
+{
+ "charts": [
+  {
+   "chart_name": "Secrets by Type",
+   "label": "Secrets by Type"
+  }
+ ],
+ "content": "[{\"id\":\"UwnwvIPqVV\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Frappe Vault</b></span>\",\"col\":12}},{\"id\":\"H6aqMspxvL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Secret\",\"col\":3}},{\"id\":\"JqP7UZSMQD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Category\",\"col\":3}},{\"id\":\"Y2xhFQQSXB\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Access Log\",\"col\":3}},{\"id\":\"Sw1HqNCXK8\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Vault Secret\",\"col\":3}},{\"id\":\"AbCdEfGhIj\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"KlMnOpQrSt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Quick Stats</b></span>\",\"col\":12}},{\"id\":\"UvWxYzAbCd\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Secrets\",\"col\":4}},{\"id\":\"EfGhIjKlMn\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Favorites\",\"col\":4}},{\"id\":\"OpQrStUvWx\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Weak Passwords\",\"col\":4}},{\"id\":\"YzAbCdEfGh\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"IjKlMnOpQr\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Secrets by Type\",\"col\":12}}]",
+ "creation": "2026-02-12 10:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "lock",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Frappe Vault",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault View",
+   "link_count": 0,
+   "link_to": "vault",
+   "link_type": "Page",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Secrets",
+   "link_count": 0,
+   "link_to": "Vault Secret",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Categories",
+   "link_count": 0,
+   "link_to": "Vault Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Access Logs",
+   "link_count": 0,
+   "link_to": "Vault Access Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 0,
+   "link_to": "Vault Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-02-12 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Vault",
+ "name": "Frappe Vault",
+ "number_cards": [
+  {
+   "number_card_name": "Total Secrets"
+  },
+  {
+   "number_card_name": "Favorites"
+  },
+  {
+   "number_card_name": "Weak Passwords"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 1,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Vault Secret",
+   "link_to": "Vault Secret",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "Tree",
+   "label": "Vault Category",
+   "link_to": "Vault Category",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Vault Access Log",
+   "link_to": "Vault Access Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "New",
+   "label": "New Vault Secret",
+   "link_to": "Vault Secret",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "",
+   "label": "Vault Settings",
+   "link_to": "Vault Settings",
+   "type": "DocType"
+  }
+ ],
+ "title": "Frappe Vault"
+}

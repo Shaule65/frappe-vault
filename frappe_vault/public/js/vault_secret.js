@@ -1,0 +1,224 @@
+// Vault Secret Form Script
+// Follows Frappe Desk UI patterns and guidelines
+
+frappe.ui.form.on("Vault Secret", {
+    setup(frm) {
+        // Set up Link field filters
+        frm.set_query("category", () => ({
+            filters: { is_group: 0 }
+        }));
+    },
+
+    refresh(frm) {
+        // Clear any existing custom buttons
+        frm.clear_custom_buttons();
+        
+        // Set up the form based on document state
+        frappe_vault.setup_vault_secret_form(frm);
+    },
+
+    secret_type(frm) {
+        // Toggle field visibility based on secret type
+        frappe_vault.toggle_secret_fields(frm);
+    },
+
+    validate(frm) {
+        // Client-side validation
+        if (frm.doc.secret_type === "Password" && !frm.doc.password && !frm.is_new()) {
+            // Allow empty password on existing docs
+        }
+    }
+});
+
+// Child table events for shared_with
+frappe.ui.form.on("Vault Secret Share", {
+    user(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (row.user === frappe.session.user) {
+            frappe.model.set_value(cdt, cdn, "user", "");
+            frappe.show_alert({
+                message: __("You cannot share a secret with yourself"),
+                indicator: "orange"
+            });
+        }
+    }
+});
+
+frappe_vault.setup_vault_secret_form = function(frm) {
+    // Add password strength indicator to dashboard
+    if (frm.doc.password_strength) {
+        frappe_vault.add_strength_indicator(frm);
+    }
+
+    // Add favorite toggle button to page actions
+    if (!frm.is_new()) {
+        frappe_vault.add_favorite_toggle(frm);
+    }
+
+    // Toggle secret type specific fields
+    frappe_vault.toggle_secret_fields(frm);
+
+    // Setup buttons based on document state
+    if (!frm.is_new()) {
+        frappe_vault.setup_action_buttons(frm);
+    }
+
+    // Generate Password button (for Password type, both new and existing)
+    if (frm.doc.secret_type === "Password") {
+        frm.add_custom_button(__("Generate Password"), () => {
+            frappe_vault.show_password_generator((password) => {
+                frm.set_value("password", password);
+                frm.refresh_field("password");
+                frappe.show_alert({
+                    message: __("Password generated and set"),
+                    indicator: "green"
+                });
+            });
+        });
+    }
+};
+
+frappe_vault.toggle_secret_fields = function(frm) {
+    // Show/hide fields based on secret type
+    const type = frm.doc.secret_type;
+    
+    // Password fields
+    frm.toggle_display("password", type === "Password");
+    frm.toggle_display("username", ["Password", "API Key"].includes(type));
+    frm.toggle_display("url", ["Password", "API Key"].includes(type));
+    
+    // API Key fields
+    frm.toggle_display("api_key", type === "API Key");
+    frm.toggle_display("api_secret", type === "API Key");
+    
+    // Notes always visible but more prominent for Note type
+    frm.toggle_display("notes", true);
+    frm.set_df_property("notes", "reqd", type === "Note");
+};
+
+frappe_vault.setup_action_buttons = function(frm) {
+    // Copy Username button
+    if (frm.doc.username) {
+        frm.add_custom_button(__("Copy Username"), () => {
+            frappe_vault.copy_to_clipboard(frm.doc.username, __("Username"));
+        }, __("Actions"));
+    }
+
+    // Secret type specific actions
+    if (frm.doc.secret_type === "Password") {
+        frm.add_custom_button(__("Copy Password"), () => {
+            frappe_vault.reveal_password(frm.doc.name, (data) => {
+                if (data.password) {
+                    frappe_vault.copy_to_clipboard(data.password, __("Password"));
+                }
+            });
+        }, __("Actions"));
+
+        frm.add_custom_button(__("Reveal Password"), () => {
+            frappe_vault.reveal_password(frm.doc.name, (data) => {
+                if (data.password) {
+                    frappe_vault.show_revealed_secret(__("Password"), data.password);
+                }
+            });
+        }, __("Actions"));
+    }
+
+    if (frm.doc.secret_type === "API Key") {
+        if (frm.doc.api_key) {
+            frm.add_custom_button(__("Copy API Key"), () => {
+                frappe_vault.copy_to_clipboard(frm.doc.api_key, __("API Key"));
+            }, __("Actions"));
+        }
+
+        frm.add_custom_button(__("Copy API Secret"), () => {
+            frappe_vault.reveal_password(frm.doc.name, (data) => {
+                if (data.api_secret) {
+                    frappe_vault.copy_to_clipboard(data.api_secret, __("API Secret"));
+                }
+            });
+        }, __("Actions"));
+
+        frm.add_custom_button(__("Reveal API Secret"), () => {
+            frappe_vault.reveal_password(frm.doc.name, (data) => {
+                if (data.api_secret) {
+                    frappe_vault.show_revealed_secret(__("API Secret"), data.api_secret);
+                }
+            });
+        }, __("Actions"));
+    }
+
+    // URL actions
+    if (frm.doc.url) {
+        frm.add_custom_button(__("Copy URL"), () => {
+            frappe_vault.copy_to_clipboard(frm.doc.url, __("URL"));
+        }, __("Actions"));
+
+        frm.add_custom_button(__("Open URL"), () => {
+            window.open(frm.doc.url, "_blank");
+        }, __("Actions"));
+    }
+
+    // View Access Log link
+    frm.add_custom_button(__("Access Log"), () => {
+        frappe.route_options = { secret: frm.doc.name };
+        frappe.set_route("List", "Vault Access Log");
+    }, __("View"));
+};
+
+frappe_vault.add_strength_indicator = function(frm) {
+    // Use Frappe's standard indicator colors
+    const indicator_map = {
+        weak: { color: "red", label: __("Weak Password") },
+        fair: { color: "orange", label: __("Fair Password") },
+        good: { color: "yellow", label: __("Good Password") },
+        strong: { color: "green", label: __("Strong Password") },
+        excellent: { color: "blue", label: __("Excellent Password") }
+    };
+    
+    const indicator = indicator_map[frm.doc.password_strength];
+    if (indicator) {
+        frm.dashboard.add_indicator(indicator.label, indicator.color);
+    }
+};
+
+frappe_vault.add_favorite_toggle = function(frm) {
+    // Use Frappe's standard action icon pattern
+    const is_favorite = frm.doc.is_favorite;
+    
+    frm.page.add_action_icon(
+        is_favorite ? "es-solid-star" : "es-line-star",
+        async () => {
+            await frm.set_value("is_favorite", !is_favorite);
+            await frm.save();
+            frappe.show_alert({
+                message: is_favorite 
+                    ? __("Removed from favorites") 
+                    : __("Added to favorites"),
+                indicator: is_favorite ? "grey" : "yellow"
+            });
+        },
+        is_favorite ? __("Remove from Favorites") : __("Add to Favorites")
+    );
+};
+
+frappe_vault.show_revealed_secret = function(label, value) {
+    // Use Frappe's standard dialog for revealing secrets
+    const d = new frappe.ui.Dialog({
+        title: label,
+        fields: [
+            {
+                fieldname: "value",
+                fieldtype: "Code",
+                label: label,
+                read_only: 1,
+                default: value
+            }
+        ],
+        primary_action_label: __("Copy"),
+        primary_action: () => {
+            frappe_vault.copy_to_clipboard(value, label);
+            d.hide();
+        }
+    });
+    d.show();
+};
