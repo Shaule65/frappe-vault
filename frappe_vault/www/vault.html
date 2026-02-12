@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/frappe_vault/images/vault-icon.svg">
+    <link rel="stylesheet" href="/assets/frappe_vault/frontend/assets/index.css">
+    <script>
+      // Frappe context for frontend
+      window.frappe = window.frappe || {};
+      window.frappe.boot = {
+        csrf_token: "{{ csrf_token }}"
+      };
+      window.csrf_token = "{{ csrf_token }}";
+    </script>
+  </head>
+  <body class="antialiased">
+    <div id="app"></div>
+    <script type="module" src="/assets/frappe_vault/frontend/assets/index.js"></script>
+  </body>
+</html>

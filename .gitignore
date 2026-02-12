@@ -75,3 +75,6 @@ Thumbs.db
 node_modules/
 .bench/
 sites/
+
+# Frontend build output (generated from frontend/ source)
+frappe_vault/public/frontend/

@@ -11,15 +11,14 @@ app_license = "MIT"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "frappe_vault",
-# 		"logo": "/assets/frappe_vault/logo.png",
-# 		"title": "Frappe Vault",
-# 		"route": "/frappe_vault",
-# 		"has_permission": "frappe_vault.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "frappe_vault",
+		"logo": "/assets/frappe_vault/images/vault-logo.svg",
+		"title": "Frappe Vault",
+		"route": "/vault",
+	}
+]
 
 # Includes in <head>
 # ------------------
@@ -83,6 +82,13 @@ fixtures = ["Role"]
 
 # automatically create page for each record of this doctype
 # website_generators = ["Web Page"]
+
+# Website Route Rules
+# --------------------
+# Route all /vault/* paths to the vault SPA
+website_route_rules = [
+	{"from_route": "/vault/<path:app_path>", "to_route": "vault"},
+]
 
 # Jinja
 # ----------
