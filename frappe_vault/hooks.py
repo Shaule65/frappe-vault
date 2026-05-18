@@ -4,6 +4,7 @@ app_publisher = "Frappe Vault"
 app_description = "Password and secrets management for the Frappe ecosystem"
 app_email = "hello@example.com"
 app_license = "MIT"
+required_apps = ["frappe"]
 
 # Apps Screen
 add_to_apps_screen = [
