@@ -1,0 +1,123 @@
+{
+ "creation": "2024-05-13 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "lock",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Vault",
+ "link_type": "DocType",
+ "link_to": "Vault Secret",
+ "module": "Vault",
+ "name": "Vault",
+ "parent_page": "",
+ "public": 1,
+ "sequence_id": 1.0,
+ "title": "Vault",
+ "content": "[{\"id\":\"4z6G1f\",\"type\":\"header\",\"data\":{\"text\":\"Vault Management\",\"level\":2}},{\"id\":\"J8bX7E\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Secrets\",\"col\":4}},{\"id\":\"M9cY8F\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Folders\",\"col\":4}},{\"id\":\"K0dZ9G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Audit Log\",\"col\":4}},{\"id\":\"5a7H2g\",\"type\":\"header\",\"data\":{\"text\":\"Settings & Policies\",\"level\":2}},{\"id\":\"L1eA0H\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Policies\",\"col\":4}},{\"id\":\"N2fB1I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Settings\",\"col\":4}}]",
+ "custom_blocks": [],
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault Secret",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault Folder",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault Share",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault One Time Link",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault Audit Log",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault Policy",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vault Settings",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "format": "",
+   "label": "Vault Secrets",
+   "link_to": "Vault Secret",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "format": "",
+   "label": "Vault Folders",
+   "link_to": "Vault Folder",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "format": "",
+   "label": "Vault Audit Log",
+   "link_to": "Vault Audit Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "format": "",
+   "label": "Vault Policies",
+   "link_to": "Vault Policy",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "format": "",
+   "label": "Vault Settings",
+   "link_to": "Vault Settings",
+   "type": "DocType"
+  }
+ ]
+}

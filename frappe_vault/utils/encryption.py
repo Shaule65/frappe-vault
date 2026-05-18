@@ -1,55 +1,55 @@
-"""Encryption utilities for Frappe Vault.
-
-Uses Frappe's built-in encryption capabilities to securely store sensitive data.
-"""
+"""Encryption utilities for Frappe Vault."""
 
 import frappe
-from frappe.utils.password import get_decrypted_password, set_encrypted_password
-
-# Field name used for storing encrypted passwords
-PASSWORD_FIELD = "password"
+from frappe.utils.password import get_decrypted_password
 
 
-def encrypt_secret(doctype: str, docname: str, fieldname: str, value: str) -> None:
-    """Encrypt and store a secret value.
-    
-    Uses Frappe's built-in encryption which relies on the site's encryption key.
-    
+def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
+    """Decrypt a password field value.
+
     Args:
-        doctype: The DocType name
-        docname: The document name
-        fieldname: The field to encrypt
-        value: The plaintext value to encrypt
+        doctype: DocType name
+        name: Document name
+        fieldname: The password field to decrypt
+
+    Returns:
+        Decrypted string or empty string
     """
-    set_encrypted_password(doctype, docname, value, fieldname)
+    return get_decrypted_password(doctype, name, fieldname) or ""
 
 
-def decrypt_secret(doctype: str, docname: str, fieldname: str) -> str:
-    """Decrypt and retrieve a secret value.
-    
+def get_decrypted_secret_data(secret_name: str) -> dict:
+    """Get all decrypted fields for a Vault Secret based on its type.
+
     Args:
-        doctype: The DocType name
-        docname: The document name
-        fieldname: The field to decrypt
-        
-    Returns:
-        The decrypted plaintext value
-    """
-    return get_decrypted_password(doctype, docname, fieldname) or ""
+        secret_name: Vault Secret document name
 
-
-def get_encryption_key() -> str:
-    """Get the current encryption key (for verification purposes only).
-    
     Returns:
-        A masked version of the encryption key status
+        dict with decrypted field values
     """
-    from frappe.utils.password import get_encryption_key as frappe_get_key
-    
-    try:
-        key = frappe_get_key()
-        if key:
-            return "Encryption key is configured"
-        return "No encryption key found"
-    except Exception:
-        return "Encryption key error"
+    doc = frappe.get_doc("Vault Secret", secret_name)
+    result = {}
+
+    if doc.secret_type == "Password":
+        result["password"] = decrypt_secret_field("Vault Secret", secret_name, "password")
+    elif doc.secret_type == "API Key":
+        result["api_key"] = doc.api_key
+        result["api_secret"] = decrypt_secret_field("Vault Secret", secret_name, "api_secret")
+    elif doc.secret_type == "Credit Card":
+        result["card_number"] = decrypt_secret_field("Vault Secret", secret_name, "card_number")
+        result["card_cvv"] = decrypt_secret_field("Vault Secret", secret_name, "card_cvv")
+        result["card_holder"] = doc.card_holder
+        result["card_expiry"] = doc.card_expiry
+    elif doc.secret_type == "Database":
+        result["db_host"] = doc.db_host
+        result["db_port"] = doc.db_port
+        result["db_name"] = doc.db_name
+        result["username"] = doc.username
+        result["db_password"] = decrypt_secret_field("Vault Secret", secret_name, "db_password")
+    elif doc.secret_type == "SSH Key":
+        result["username"] = doc.username
+        result["ssh_private_key"] = doc.ssh_private_key  # Code field, not encrypted by Frappe
+    elif doc.secret_type == "Certificate":
+        result["certificate"] = doc.certificate
+
+    return result

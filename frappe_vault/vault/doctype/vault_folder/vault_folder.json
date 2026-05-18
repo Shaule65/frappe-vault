@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:folder_name",
+ "creation": "2026-05-13 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "folder_name",
+  "description",
+  "column_break_1",
+  "icon",
+  "color",
+  "is_group",
+  "parent_vault_folder",
+  "lft",
+  "rgt",
+  "old_parent"
+ ],
+ "fields": [
+  {
+   "fieldname": "folder_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Folder Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Color",
+   "label": "Color"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "parent_vault_folder",
+   "fieldtype": "Link",
+   "label": "Parent Folder",
+   "options": "Vault Folder"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Old Parent",
+   "options": "Vault Folder"
+  }
+ ],
+ "is_tree": 1,
+ "nsm_parent_field": "parent_vault_folder",
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-13 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vault",
+ "name": "Vault Folder",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1, "delete": 1, "read": 1, "role": "System Manager", "write": 1
+  },
+  {
+   "create": 1, "delete": 1, "read": 1, "role": "Vault Admin", "write": 1
+  },
+  {
+   "create": 1, "read": 1, "role": "Vault Manager", "write": 1
+  },
+  {
+   "read": 1, "role": "Vault User"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "folder_name",
+ "track_changes": 1
+}
