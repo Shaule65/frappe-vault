@@ -41,14 +41,20 @@ export default defineConfig({
   server: {
     port: 8080,
     proxy: {
-      '^/(api|app|assets|files|private)': {
-        target: 'http://frappe-vault.localhost',
+      '^/(api|app|files|private)': {
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         ws: true,
       },
     },
   },
   optimizeDeps: {
-    include: ['frappe-ui > feather-icons', 'showdown', 'engine.io-client'],
+    include: [
+      'frappe-ui > feather-icons',
+      'highlight.js',
+      'highlight.js/lib/core',
+      'interactjs',
+      'debug'
+    ],
   },
 })
