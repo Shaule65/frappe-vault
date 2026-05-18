@@ -1,21 +1,20 @@
-"""Vault frontend page context."""
-
 import frappe
 
 no_cache = 1
-
+login_required = True
 
 def get_context(context):
-    """Set up context for the vault frontend page."""
     csrf_token = frappe.sessions.get_csrf_token()
-    frappe.db.commit()
+    frappe.db.commit()  
     
-    context.title = "Frappe Vault"
     context.csrf_token = csrf_token
+    context.boot = frappe._dict(
+        user=frappe.session.user,
+        site_name=frappe.local.site
+    )
     
-    # Check if user is logged in
-    if frappe.session.user == "Guest":
-        frappe.local.flags.redirect_location = "/login?redirect-to=/vault"
-        raise frappe.Redirect
+    # Check if we should use the dev server or built assets.
+    # If developer_mode is 1, Frappe defaults to dev server for UI.
+    context.is_dev_mode = getattr(frappe.conf, "developer_mode", 0)
     
     return context
