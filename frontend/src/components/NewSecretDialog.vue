@@ -1,192 +1,101 @@
 <template>
-  <Dialog
-    :modelValue="modelValue"
-    @update:modelValue="$emit('update:modelValue', $event)"
-    :options="{ title: 'Add New Secret', size: 'lg' }"
-  >
+  <Dialog v-model="show" :options="{ title: 'Add Secret', size: 'lg' }">
     <template #body-content>
-      <form @submit.prevent="handleSubmit" class="space-y-4">
-        <FormControl
-          v-model="form.title"
-          label="Title"
-          placeholder="e.g., GitHub Account"
-          :required="true"
-        />
+      <div class="space-y-4">
+        <FormControl label="Title" v-model="form.title" :required="true" placeholder="e.g. Gmail, AWS Console" />
 
-        <FormControl
-          v-model="form.secret_type"
-          label="Secret Type"
-          type="select"
-          :options="secretTypeOptions"
-        />
+        <FormControl label="Secret Type" type="select" v-model="form.secret_type"
+          :options="['Password', 'API Key', 'Note', 'SSH Key', 'Certificate', 'Credit Card', 'Database', 'Other']" />
 
-        <FormControl
-          v-model="form.category"
-          label="Category"
-          type="select"
-          :options="categoryOptions"
-        />
+        <div class="grid grid-cols-2 gap-4">
+          <FormControl label="Folder" type="select" v-model="form.folder" :options="folderOptions" />
+          <FormControl label="URL" v-model="form.url" placeholder="https://..." />
+        </div>
 
-        <FormControl
-          v-model="form.url"
-          label="URL"
-          placeholder="https://example.com"
-        />
-
-        <FormControl
-          v-model="form.username"
-          label="Username"
-          placeholder="your@email.com"
-        />
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">Password</label>
-          <div class="flex gap-2">
-            <div class="flex-1 relative">
-              <input
-                v-model="form.password"
-                :type="showPassword ? 'text' : 'password'"
-                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-vault-500 focus:border-vault-500"
-                placeholder="Enter password"
-              />
-              <button
-                type="button"
-                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-                @click="showPassword = !showPassword"
-              >
-                <FeatherIcon :name="showPassword ? 'eye-off' : 'eye'" class="w-4 h-4" />
-              </button>
-            </div>
-            <Button type="button" variant="outline" @click="generatePassword">
-              <FeatherIcon name="refresh-cw" class="w-4 h-4" />
-            </Button>
+        <!-- Password fields -->
+        <template v-if="form.secret_type === 'Password'">
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl label="Username" v-model="form.username" />
+            <FormControl label="Email" v-model="form.email" type="email" />
           </div>
-          <PasswordStrengthBar v-if="form.password" :password="form.password" />
-        </div>
+          <FormControl label="Password" v-model="form.password" type="password" />
+        </template>
 
-        <FormControl
-          v-model="form.notes"
-          label="Notes"
-          type="textarea"
-          :rows="3"
-          placeholder="Additional notes..."
-        />
+        <!-- API Key fields -->
+        <template v-if="form.secret_type === 'API Key'">
+          <FormControl label="API Key" v-model="form.api_key" />
+          <FormControl label="API Secret" v-model="form.api_secret" type="password" />
+        </template>
 
-        <div class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="is_favorite"
-            v-model="form.is_favorite"
-            class="rounded border-gray-300 text-vault-600 focus:ring-vault-500"
-          />
-          <label for="is_favorite" class="text-sm text-gray-700">Add to favorites</label>
-        </div>
-      </form>
+        <!-- Credit Card fields -->
+        <template v-if="form.secret_type === 'Credit Card'">
+          <FormControl label="Card Holder" v-model="form.card_holder" />
+          <div class="grid grid-cols-3 gap-4">
+            <FormControl label="Card Number" v-model="form.card_number" type="password" class="col-span-2" />
+            <FormControl label="CVV" v-model="form.card_cvv" type="password" />
+          </div>
+          <FormControl label="Expiry (MM/YY)" v-model="form.card_expiry" placeholder="12/28" />
+        </template>
+
+        <!-- Database fields -->
+        <template v-if="form.secret_type === 'Database'">
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl label="Host" v-model="form.db_host" />
+            <FormControl label="Port" v-model="form.db_port" type="number" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <FormControl label="Database Name" v-model="form.db_name" />
+            <FormControl label="Username" v-model="form.username" />
+          </div>
+          <FormControl label="Password" v-model="form.db_password" type="password" />
+        </template>
+
+        <FormControl label="Notes" type="textarea" v-model="form.notes" :rows="3" />
+      </div>
     </template>
 
     <template #actions>
-      <Button variant="outline" @click="$emit('update:modelValue', false)">
-        Cancel
-      </Button>
-      <Button
-        variant="solid"
-        theme="green"
-        @click="handleSubmit"
-        :loading="createSecret.loading"
-      >
-        Create Secret
-      </Button>
+      <Button variant="solid" @click="handleCreate" :loading="createResource.loading">Create</Button>
     </template>
   </Dialog>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { Button, Dialog, FormControl, FeatherIcon } from 'frappe-ui'
-import { useCreateSecret, useCategories, usePasswordGenerator } from '@/data/vault'
-import PasswordStrengthBar from './PasswordStrengthBar.vue'
+import { ref, computed, watch } from 'vue'
+import { Button, Dialog, FormControl } from 'frappe-ui'
+import { useCreateSecret, useFolders } from '../composables/vault'
 
-const props = defineProps({
-  modelValue: Boolean,
-})
-
+const props = defineProps({ modelValue: Boolean })
 const emit = defineEmits(['update:modelValue', 'created'])
 
-const createSecret = useCreateSecret()
-const categories = useCategories()
-const passwordGenerator = usePasswordGenerator()
-
-const showPassword = ref(false)
-
-const form = reactive({
-  title: '',
-  secret_type: 'Password',
-  category: '',
-  url: '',
-  username: '',
-  password: '',
-  notes: '',
-  is_favorite: false,
+const show = computed({
+  get: () => props.modelValue,
+  set: (v) => emit('update:modelValue', v),
 })
 
-const secretTypeOptions = [
-  { label: 'Password', value: 'Password' },
-  { label: 'API Key', value: 'API Key' },
-  { label: 'Note', value: 'Note' },
-  { label: 'Card', value: 'Card' },
-  { label: 'SSH Key', value: 'SSH Key' },
-]
+const createResource = useCreateSecret()
+const foldersResource = useFolders()
 
-const categoryOptions = computed(() => {
+const folderOptions = computed(() => {
   const opts = [{ label: 'None', value: '' }]
-  for (const cat of categories.data || []) {
-    opts.push({
-      label: cat.category_name,
-      value: cat.name,
-    })
+  for (const f of foldersResource.data || []) {
+    opts.push({ label: f.folder_name, value: f.name })
   }
   return opts
 })
 
-async function generatePassword() {
-  const result = await passwordGenerator.submit({
-    length: 20,
-    use_uppercase: true,
-    use_lowercase: true,
-    use_digits: true,
-    use_special: true,
-  })
-  if (result?.password) {
-    form.password = result.password
-    showPassword.value = true
-  }
-}
+const defaultForm = () => ({
+  title: '', secret_type: 'Password', folder: '', url: '', username: '', email: '',
+  password: '', api_key: '', api_secret: '', notes: '', card_holder: '', card_number: '',
+  card_expiry: '', card_cvv: '', db_host: '', db_port: '', db_name: '', db_password: '',
+})
 
-async function handleSubmit() {
-  const result = await createSecret.submit({
-    title: form.title,
-    secret_type: form.secret_type,
-    category: form.category || null,
-    url: form.url || null,
-    username: form.username || null,
-    password: form.password || null,
-    notes: form.notes || null,
-    is_favorite: form.is_favorite,
-  })
+const form = ref(defaultForm())
 
-  if (result?.name) {
-    // Reset form
-    Object.assign(form, {
-      title: '',
-      secret_type: 'Password',
-      category: '',
-      url: '',
-      username: '',
-      password: '',
-      notes: '',
-      is_favorite: false,
-    })
-    emit('created', result)
-  }
+watch(show, (v) => { if (v) form.value = defaultForm() })
+
+async function handleCreate() {
+  const result = await createResource.submit(form.value)
+  emit('created', result)
 }
 </script>

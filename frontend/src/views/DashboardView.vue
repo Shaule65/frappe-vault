@@ -1,150 +1,89 @@
 <template>
   <div class="flex-1 overflow-auto p-6">
-    <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-      <p class="text-gray-500 mt-1">Overview of your vault</p>
-    </div>
+    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
 
-    <!-- Stats cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <StatCard
-        title="Total Secrets"
-        :value="stats.data?.total_secrets || 0"
-        icon="key"
-        color="blue"
-      />
-      <StatCard
-        title="Favorites"
-        :value="stats.data?.favorites_count || 0"
-        icon="star"
-        color="yellow"
-      />
-      <StatCard
-        title="Categories"
-        :value="stats.data?.categories_count || 0"
-        icon="folder"
-        color="purple"
-      />
-      <StatCard
-        title="Security Score"
-        :value="securityScore.data?.score || 0"
-        suffix="%"
-        icon="shield"
-        :color="getScoreColor(securityScore.data?.score)"
-      />
-    </div>
-
-    <!-- Security Overview -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- Security breakdown -->
-      <div class="vault-card p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Overview</h3>
-        <div v-if="securityScore.data" class="space-y-4">
-          <SecurityMetric
-            label="Strong Passwords"
-            :value="securityScore.data?.strong_passwords || 0"
-            :total="stats.data?.total_secrets || 0"
-            color="green"
-          />
-          <SecurityMetric
-            label="Weak Passwords"
-            :value="securityScore.data?.weak_passwords || 0"
-            :total="stats.data?.total_secrets || 0"
-            color="red"
-          />
-          <SecurityMetric
-            label="Old Passwords (90+ days)"
-            :value="securityScore.data?.old_passwords || 0"
-            :total="stats.data?.total_secrets || 0"
-            color="orange"
-          />
-          <SecurityMetric
-            label="Reused Passwords"
-            :value="securityScore.data?.reused_passwords || 0"
-            :total="stats.data?.total_secrets || 0"
-            color="yellow"
-          />
+    <!-- Stat cards -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div v-for="stat in statCards" :key="stat.label"
+           class="bg-white rounded-xl border p-5 hover:shadow-md transition-shadow">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="stat.bgColor">
+            <FeatherIcon :name="stat.icon" class="w-5 h-5" :class="stat.iconColor" />
+          </div>
         </div>
-        <LoadingText v-else />
+        <p class="text-2xl font-bold text-gray-900">{{ stat.value }}</p>
+        <p class="text-sm text-gray-500">{{ stat.label }}</p>
       </div>
+    </div>
 
-      <!-- Recent activity -->
-      <div class="vault-card p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Recently Accessed</h3>
-        <div v-if="recentSecrets.length" class="space-y-3">
-          <router-link
-            v-for="secret in recentSecrets"
-            :key="secret.name"
-            :to="`/secrets/${secret.name}`"
-            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <SecretTypeIcon :type="secret.secret_type" />
-            <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-900 truncate">{{ secret.title }}</p>
-              <p class="text-sm text-gray-500">{{ formatDate(secret.last_accessed) }}</p>
-            </div>
-          </router-link>
+    <!-- Security Score -->
+    <div class="bg-white rounded-xl border p-6 mb-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Security Score</h2>
+      <div class="flex items-center gap-6">
+        <div class="relative w-24 h-24">
+          <svg class="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="42" stroke="#e5e7eb" stroke-width="8" fill="none" />
+            <circle cx="50" cy="50" r="42" :stroke="scoreColor" stroke-width="8" fill="none"
+                    stroke-linecap="round" :stroke-dasharray="`${(securityScore?.score || 0) * 2.64} 264`" />
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-2xl font-bold">{{ securityScore?.score || 0 }}</span>
+          </div>
         </div>
-        <div v-else class="text-center py-8 text-gray-500">
-          <FeatherIcon name="clock" class="w-8 h-8 mx-auto mb-2 text-gray-300" />
-          <p>No recent activity</p>
+        <div class="flex-1">
+          <div v-for="s in securityScore?.suggestions || []" :key="s" class="flex items-center gap-2 mb-2">
+            <FeatherIcon name="alert-circle" class="w-4 h-4 text-yellow-500" />
+            <p class="text-sm text-gray-600">{{ s }}</p>
+          </div>
+          <p v-if="!securityScore?.suggestions?.length" class="text-sm text-green-600">
+            <FeatherIcon name="check-circle" class="w-4 h-4 inline" /> Your vault is in great shape!
+          </p>
         </div>
       </div>
     </div>
 
-    <!-- Quick actions -->
-    <div class="vault-card p-6">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-      <div class="flex flex-wrap gap-3">
-        <Button variant="subtle" @click="$router.push('/secrets?new=1')">
-          <template #prefix><FeatherIcon name="plus" class="w-4 h-4" /></template>
-          Add Secret
-        </Button>
-        <Button variant="subtle" @click="$router.push('/generator')">
-          <template #prefix><FeatherIcon name="refresh-cw" class="w-4 h-4" /></template>
-          Generate Password
-        </Button>
-        <Button variant="subtle" @click="$router.push('/categories')">
-          <template #prefix><FeatherIcon name="folder-plus" class="w-4 h-4" /></template>
-          Manage Categories
-        </Button>
+    <!-- Recent Secrets -->
+    <div class="bg-white rounded-xl border p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Recently Accessed</h2>
+      <div v-if="recentSecrets.length" class="divide-y">
+        <router-link v-for="s in recentSecrets" :key="s.name" :to="`/secrets?secret=${s.name}`"
+                     class="flex items-center py-3 hover:bg-gray-50 rounded px-2 -mx-2 transition-colors">
+          <FeatherIcon :name="typeIcons[s.secret_type] || 'file'" class="w-4 h-4 text-gray-400 mr-3" />
+          <span class="flex-1 text-sm font-medium">{{ s.title }}</span>
+          <span class="text-xs text-gray-400">{{ s.secret_type }}</span>
+        </router-link>
       </div>
+      <EmptyState v-else icon="clock" title="No recent activity" description="Access a secret to see it here" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Button, FeatherIcon, LoadingText } from 'frappe-ui'
-import { useStats, useSecurityScore, useSecrets } from '@/data/vault'
-import StatCard from '@/components/StatCard.vue'
-import SecurityMetric from '@/components/SecurityMetric.vue'
-import SecretTypeIcon from '@/components/SecretTypeIcon.vue'
+import { FeatherIcon } from 'frappe-ui'
+import { useVaultStats, useSecurityScore } from '../composables/vault'
+import EmptyState from '../components/EmptyState.vue'
 
-const stats = useStats()
-const securityScore = useSecurityScore()
-const secretsResource = useSecrets({ limit: 5 })
+const stats = useVaultStats()
+const score = useSecurityScore()
 
-const recentSecrets = computed(() => {
-  return (secretsResource.data?.secrets || []).slice(0, 5)
+const securityScore = computed(() => score.data)
+const recentSecrets = computed(() => stats.data?.recent_secrets || [])
+
+const statCards = computed(() => [
+  { label: 'Total Secrets', value: stats.data?.total_secrets || 0, icon: 'key', bgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
+  { label: 'Favorites', value: stats.data?.favorites || 0, icon: 'star', bgColor: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+  { label: 'Weak Passwords', value: stats.data?.weak_passwords || 0, icon: 'alert-triangle', bgColor: 'bg-red-100', iconColor: 'text-red-600' },
+  { label: 'Types', value: Object.keys(stats.data?.secrets_by_type || {}).length, icon: 'layers', bgColor: 'bg-purple-100', iconColor: 'text-purple-600' },
+])
+
+const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH Key': 'terminal', Certificate: 'shield', 'Credit Card': 'credit-card', Database: 'database' }
+
+const scoreColor = computed(() => {
+  const s = securityScore.value?.score || 0
+  if (s >= 80) return '#10b981'
+  if (s >= 60) return '#3b82f6'
+  if (s >= 40) return '#f59e0b'
+  return '#ef4444'
 })
-
-function getScoreColor(score) {
-  if (!score) return 'gray'
-  if (score >= 80) return 'green'
-  if (score >= 60) return 'yellow'
-  if (score >= 40) return 'orange'
-  return 'red'
-}
-
-function formatDate(date) {
-  if (!date) return 'Never'
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 </script>
