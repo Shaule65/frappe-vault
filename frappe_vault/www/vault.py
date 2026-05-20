@@ -1,7 +1,7 @@
 import frappe
 
 no_cache = 1
-login_required = True
+login_required = False
 
 def get_context(context):
     csrf_token = frappe.sessions.get_csrf_token()

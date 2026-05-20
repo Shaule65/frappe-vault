@@ -106,6 +106,12 @@ export function useCreateOneTimeLink() {
   })
 }
 
+export function useConsumeOneTimeLink() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.consume_link',
+  })
+}
+
 // --- Generator ---
 export function useGeneratePassword() {
   return createResource({

@@ -22,6 +22,12 @@ const routes = [
     component: () => import('./views/SharedWithMeView.vue'),
   },
   {
+    path: '/shared/:token',
+    name: 'SharedLink',
+    component: () => import('./views/SharedLinkView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/generator',
     name: 'Generator',
     component: () => import('./views/PasswordGeneratorView.vue'),

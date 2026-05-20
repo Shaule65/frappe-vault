@@ -133,10 +133,12 @@ def create_one_time_link(
 
 def consume_one_time_link(token: str, passphrase: str = None) -> dict:
     """Consume a one-time link and return the secret data."""
-    link = frappe.get_doc("Vault One Time Link", {"token": token})
+    link_name = frappe.db.get_value("Vault One Time Link", {"token": token}, "name")
 
-    if not link:
+    if not link_name:
         frappe.throw(_("Link not found"), frappe.DoesNotExistError)
+
+    link = frappe.get_doc("Vault One Time Link", link_name)
 
     if not link.is_valid():
         frappe.throw(_("This link has expired or been consumed"))
