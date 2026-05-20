@@ -4,25 +4,53 @@ import frappe
 
 
 def after_install():
-    """Create default roles and settings after app installation."""
+    """Run after app install."""
+
+    # Ensure module exists first
+    ensure_module()
+
+    frappe.clear_cache()
+
     create_roles()
     create_default_settings()
     create_default_folders()
     create_default_policy()
 
+    frappe.db.commit()
+
+
+def ensure_module():
+    """Create Vault module if missing."""
+    if not frappe.db.exists("Module Def", "Vault"):
+        frappe.get_doc({
+            "doctype": "Module Def",
+            "module_name": "Vault",
+            "app_name": "frappe_vault"
+        }).insert(ignore_permissions=True)
+
 
 def create_roles():
     """Create vault-specific roles."""
-    for role_name in ["Vault User", "Vault Manager", "Vault Admin"]:
+    for role_name in [
+        "Vault User",
+        "Vault Manager",
+        "Vault Admin"
+    ]:
         if not frappe.db.exists("Role", role_name):
-            frappe.get_doc({"doctype": "Role", "role_name": role_name, "desk_access": 1}).insert(ignore_permissions=True)
+            frappe.get_doc({
+                "doctype": "Role",
+                "role_name": role_name,
+                "desk_access": 1
+            }).insert(ignore_permissions=True)
 
 
 def create_default_settings():
     """Initialize Vault Settings singleton."""
-    if not frappe.db.exists("Vault Settings"):
-        doc = frappe.get_doc({"doctype": "Vault Settings"})
-        doc.insert(ignore_permissions=True)
+    if frappe.db.exists("DocType", "Vault Settings"):
+        if not frappe.db.exists("Vault Settings"):
+            frappe.get_doc({
+                "doctype": "Vault Settings"
+            }).insert(ignore_permissions=True)
 
 
 def create_default_folders():
@@ -33,24 +61,36 @@ def create_default_folders():
         {"folder_name": "Finance", "icon": "credit-card", "color": "#F59E0B"},
         {"folder_name": "Servers", "icon": "server", "color": "#8B5CF6"},
     ]
-    for f in folders:
-        if not frappe.db.exists("Vault Folder", f["folder_name"]):
-            frappe.get_doc({"doctype": "Vault Folder", **f}).insert(ignore_permissions=True)
+
+    if frappe.db.exists("DocType", "Vault Folder"):
+        for folder in folders:
+            if not frappe.db.exists(
+                "Vault Folder",
+                folder["folder_name"]
+            ):
+                frappe.get_doc({
+                    "doctype": "Vault Folder",
+                    **folder
+                }).insert(ignore_permissions=True)
 
 
 def create_default_policy():
-    """Create a default password policy."""
-    if not frappe.db.exists("Vault Policy", {"is_default": 1}):
-        frappe.get_doc({
-            "doctype": "Vault Policy",
-            "policy_name": "Default Policy",
-            "is_default": 1,
-            "min_password_length": 12,
-            "require_uppercase": 1,
-            "require_lowercase": 1,
-            "require_digits": 1,
-            "require_special": 1,
-            "max_password_age_days": 90,
-            "prevent_reuse_count": 3,
-            "auto_lock_timeout_mins": 30,
-        }).insert(ignore_permissions=True)
+    """Create default password policy."""
+    if frappe.db.exists("DocType", "Vault Policy"):
+        if not frappe.db.exists(
+            "Vault Policy",
+            {"is_default": 1}
+        ):
+            frappe.get_doc({
+                "doctype": "Vault Policy",
+                "policy_name": "Default Policy",
+                "is_default": 1,
+                "min_password_length": 12,
+                "require_uppercase": 1,
+                "require_lowercase": 1,
+                "require_digits": 1,
+                "require_special": 1,
+                "max_password_age_days": 90,
+                "prevent_reuse_count": 3,
+                "auto_lock_timeout_mins": 30,
+            }).insert(ignore_permissions=True)
