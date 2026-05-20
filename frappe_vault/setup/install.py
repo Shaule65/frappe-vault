@@ -15,6 +15,7 @@ def after_install():
     create_default_settings()
     create_default_folders()
     create_default_policy()
+    create_desktop_icon()
 
     frappe.db.commit()
 
@@ -94,3 +95,18 @@ def create_default_policy():
                 "prevent_reuse_count": 3,
                 "auto_lock_timeout_mins": 30,
             }).insert(ignore_permissions=True)
+
+
+def create_desktop_icon():
+    """Create Desk desktop icon for the Vault app."""
+    try:
+        from frappe.desk.doctype.desktop_icon.desktop_icon import (
+            create_desktop_icons_from_installed_apps,
+        )
+
+        create_desktop_icons_from_installed_apps()
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Frappe Vault Desktop Icon Creation Failed",
+        )

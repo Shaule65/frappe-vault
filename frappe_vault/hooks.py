@@ -4,15 +4,17 @@ app_publisher = "Frappe Vault"
 app_description = "Password and secrets management for the Frappe ecosystem"
 app_email = "hello@example.com"
 app_license = "MIT"
+app_logo_url = "/assets/frappe_vault/images/vault-logo.svg"
+app_home = "/vault"
 required_apps = ["frappe"]
 
 # Apps Screen
 add_to_apps_screen = [
 	{
 		"name": "frappe_vault",
-		"logo": "/assets/frappe_vault/images/vault-logo.svg",
+		"logo": app_logo_url,
 		"title": "Frappe Vault",
-		"route": "/vault",
+		"route": app_home,
 	}
 ]
 
