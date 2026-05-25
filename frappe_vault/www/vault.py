@@ -8,8 +8,14 @@ def get_context(context):
     frappe.db.commit()  
     
     context.csrf_token = csrf_token
+    
+    user_info = frappe.db.get_value("User", frappe.session.user, ["full_name", "user_image"], as_dict=True) or {}
     context.boot = frappe._dict(
-        user=frappe.session.user,
+        user=frappe._dict(
+            name=frappe.session.user,
+            full_name=user_info.get("full_name") or frappe.session.user,
+            image=user_info.get("user_image")
+        ),
         site_name=frappe.local.site
     )
     

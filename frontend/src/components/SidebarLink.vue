@@ -16,8 +16,14 @@
       <div class="flex items-center truncate">
         <Tooltip :text="label" placement="right" :disabled="!isCollapsed">
           <slot name="icon">
+            <component
+              v-if="icon && typeof icon !== 'string'"
+              :is="icon"
+              class="w-4 h-4 flex-shrink-0 transition-colors"
+              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7'"
+            />
             <FeatherIcon
-              v-if="icon"
+              v-else-if="icon"
               :name="icon"
               class="w-4 h-4 flex-shrink-0 transition-colors"
               :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7'"
@@ -62,10 +68,15 @@
       <div class="flex items-center truncate">
         <Tooltip :text="label" placement="right" :disabled="!isCollapsed">
           <slot name="icon">
+            <component
+              v-if="icon && typeof icon !== 'string'"
+              :is="icon"
+              class="w-4 h-4 flex-shrink-0 text-ink-gray-8 transition-colors"
+            />
             <FeatherIcon
-              v-if="icon"
+              v-else-if="icon"
               :name="icon"
-              class="w-4 h-4 flex-shrink-0 transition-colors text-ink-gray-8"
+              class="w-4 h-4 flex-shrink-0 text-ink-gray-8 transition-colors"
             />
           </slot>
         </Tooltip>
@@ -98,7 +109,7 @@ import { useRoute } from 'vue-router'
 import { Tooltip, FeatherIcon } from 'frappe-ui'
 
 const props = defineProps({
-  icon: { type: String, default: null },
+  icon: { type: [Object, String, Function], default: null },
   label: { type: String, default: '' },
   to: { type: [Object, String], default: null },
   isCollapsed: { type: Boolean, default: false },
@@ -110,14 +121,28 @@ const route = useRoute()
 
 const isActive = computed(() => {
   if (!props.to) return false
+  
   if (typeof props.to === 'string') {
+    // Handle folders and categories links containing query params
     if (props.to.includes('?')) {
       const [path, queryString] = props.to.split('?')
       const fullPath = route.path + (window.location.search || '')
       return route.path === path && fullPath.includes(queryString)
     }
-    if (props.to === '/') return route.path === '/'
-    return route.path.startsWith(props.to)
+    
+    // Dashboard should only be active when route path is exactly '/'
+    if (props.to === '/') {
+      return route.path === '/'
+    }
+    
+    // All Secrets (/secrets) should not show as active if a specific folder or category is filtered
+    if (props.to === '/secrets') {
+      if (route.query.folder || route.query.category) {
+        return false
+      }
+    }
+    
+    return route.path === props.to || route.path.startsWith(props.to + '/')
   }
   return false
 })
