@@ -1,64 +1,133 @@
 <template>
-  <aside class="w-60 bg-white border-r flex flex-col h-full">
-    <!-- App Header -->
-    <div class="p-4 border-b">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center">
-          <FeatherIcon name="lock" class="w-5 h-5 text-white" />
-        </div>
-        <span class="font-semibold text-gray-900 text-base">Frappe Vault</span>
+  <aside
+    class="h-full border-r bg-surface-menu-bar flex flex-col justify-between transition-all duration-300 ease-in-out select-none shrink-0"
+    :class="isSidebarCollapsed ? 'w-12' : 'w-[220px]'"
+  >
+    <!-- Brand Header -->
+    <div class="p-2 border-b border-gray-100/50">
+      <div
+        class="flex items-center gap-3 duration-300 ease-in-out"
+        :class="isSidebarCollapsed ? 'justify-center py-1' : 'px-2 py-1.5'"
+      >
+        <Tooltip text="Frappe Vault" placement="right" :disabled="!isSidebarCollapsed">
+          <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shrink-0 shadow-sm border border-blue-700/10">
+            <FeatherIcon name="lock" class="w-4 h-4 text-white" />
+          </div>
+        </Tooltip>
+        <span
+          v-if="!isSidebarCollapsed"
+          class="font-semibold text-ink-gray-9 text-base truncate transition-all duration-300"
+        >
+          Frappe Vault
+        </span>
       </div>
     </div>
 
     <!-- Primary Navigation -->
-    <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
-      <router-link
+    <nav class="flex-1 py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
+      <SidebarLink
         v-for="item in navItems"
         :key="item.name"
         :to="item.to"
-        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
-        :class="isActive(item.to)
-          ? 'bg-blue-50 text-blue-700 font-medium'
-          : 'text-gray-700 hover:bg-gray-100'"
+        :icon="item.icon"
+        :label="item.label"
+        :isCollapsed="isSidebarCollapsed"
       >
-        <FeatherIcon :name="item.icon" class="w-4 h-4" />
-        <span class="flex-1">{{ item.label }}</span>
-        <Badge v-if="item.count" :label="String(item.count)" variant="subtle" theme="gray" />
-      </router-link>
+        <template #right v-if="item.count && !isSidebarCollapsed">
+          <Badge :label="String(item.count)" variant="subtle" theme="gray" />
+        </template>
+      </SidebarLink>
 
       <!-- Folders Section -->
-      <div class="pt-4 mt-4 border-t">
-        <div class="flex items-center justify-between px-3 mb-2">
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Folders</p>
-          <Button variant="ghost" size="sm" @click="$emit('create-folder')">
-            <FeatherIcon name="plus" class="w-3 h-3" />
+      <div class="pt-3 mt-3 border-t border-gray-100/50">
+        <div class="flex items-center justify-between px-4 mb-2" v-if="!isSidebarCollapsed">
+          <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider pl-1">Folders</p>
+          <Button variant="ghost" size="sm" class="h-6 w-6 p-0 hover:bg-surface-gray-2 rounded" @click="$emit('create-folder')">
+            <FeatherIcon name="plus" class="w-3.5 h-3.5 text-ink-gray-7" />
           </Button>
         </div>
-        <router-link
+        <div class="flex flex-col items-center mb-2" v-else>
+          <div class="w-full border-b border-gray-100/50 my-1" />
+          <Tooltip text="Create Folder" placement="right">
+            <Button variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-surface-gray-2 rounded" @click="$emit('create-folder')">
+              <FeatherIcon name="plus" class="w-4 h-4 text-ink-gray-7" />
+            </Button>
+          </Tooltip>
+        </div>
+
+        <SidebarLink
           v-for="folder in folders"
           :key="folder.name"
           :to="`/secrets?folder=${folder.name}`"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          :label="folder.folder_name"
+          :isCollapsed="isSidebarCollapsed"
         >
-          <div class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: folder.color || '#6b7280' }" />
-          <span>{{ folder.folder_name }}</span>
-        </router-link>
+          <template #icon>
+            <div class="flex items-center justify-center w-4 h-4">
+              <div
+                class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5"
+                :style="{ backgroundColor: folder.color || '#6b7280' }"
+              />
+            </div>
+          </template>
+        </SidebarLink>
       </div>
     </nav>
 
-    <!-- User Menu -->
-    <div class="p-3 border-t">
+    <!-- Bottom Controls & User Menu -->
+    <div class="m-2 flex flex-col gap-1">
+      <!-- Collapse toggle button -->
+      <SidebarLink
+        :label="isSidebarCollapsed ? 'Expand' : 'Collapse'"
+        :isCollapsed="isSidebarCollapsed"
+        :icon="isSidebarCollapsed ? 'chevrons-right' : 'chevrons-left'"
+        class="text-ink-gray-7 hover:text-ink-gray-9 hover:bg-surface-gray-2"
+        @click="isSidebarCollapsed = !isSidebarCollapsed"
+      />
+
+      <!-- User profile selector -->
       <Dropdown :options="userMenuOptions">
         <template #default="{ open }">
           <button
-            class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            :class="{ 'bg-gray-100': open }"
+            class="flex h-12 items-center rounded-md py-2 duration-200 ease-in-out w-full focus:outline-none"
+            :class="
+              isSidebarCollapsed
+                ? 'w-auto px-0 justify-center mx-auto'
+                : open
+                  ? 'px-2 bg-surface-white shadow-sm border border-gray-100/30'
+                  : 'px-2 hover:bg-surface-gray-3'
+            "
           >
-            <Avatar :label="userName" size="sm" />
-            <div class="flex-1 text-left min-w-0">
-              <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
+            <Avatar :label="userName" size="sm" class="shrink-0 border border-gray-200/50 shadow-sm" />
+            <div
+              class="flex flex-1 flex-col text-left duration-200 ease-in-out truncate"
+              :class="
+                isSidebarCollapsed
+                  ? 'ml-0 w-0 overflow-hidden opacity-0'
+                  : 'ml-2 w-auto opacity-100'
+              "
+            >
+              <div class="text-sm font-medium leading-none text-ink-gray-9 truncate">
+                {{ userName }}
+              </div>
+              <div class="mt-1.5 text-xs leading-none text-ink-gray-7 truncate">
+                Secret Manager
+              </div>
             </div>
-            <FeatherIcon name="chevron-up" class="w-4 h-4 text-gray-400" />
+            <div
+              class="duration-200 ease-in-out"
+              :class="
+                isSidebarCollapsed
+                  ? 'ml-0 w-0 overflow-hidden opacity-0'
+                  : 'ml-2 w-auto opacity-100'
+              "
+            >
+              <FeatherIcon
+                name="chevron-up"
+                class="w-4 h-4 text-ink-gray-5"
+                aria-hidden="true"
+              />
+            </div>
           </button>
         </template>
       </Dropdown>
@@ -67,14 +136,23 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Avatar, Badge, Button, Dropdown, FeatherIcon } from 'frappe-ui'
+import { Avatar, Badge, Button, Dropdown, FeatherIcon, Tooltip } from 'frappe-ui'
 import { useVaultStats, useFolders } from '../composables/vault'
+import SidebarLink from './SidebarLink.vue'
 
 const route = useRoute()
 const stats = useVaultStats()
 const foldersResource = useFolders()
+
+defineEmits(['create-folder'])
+
+// LocalStorage collapsed state syncing
+const isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
+watch(isSidebarCollapsed, (val) => {
+  localStorage.setItem('isSidebarCollapsed', String(val))
+})
 
 const folders = computed(() => foldersResource.data || [])
 const userName = computed(() => {
@@ -99,9 +177,4 @@ const userMenuOptions = [
     } 
   },
 ]
-
-function isActive(path) {
-  if (path === '/') return route.path === '/'
-  return route.path.startsWith(path)
-}
 </script>
