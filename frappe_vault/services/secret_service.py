@@ -8,6 +8,8 @@ from frappe_vault.services.audit_service import log_secret_viewed, log_secret_co
 
 def get_secrets(
     search: str = None,
+    title: str = None,
+    username: str = None,
     secret_type: str = None,
     folder: str = None,
     favorites_only: bool = False,
@@ -29,6 +31,10 @@ def get_secrets(
         filters["folder"] = folder
     if favorites_only:
         filters["is_favorite"] = 1
+    if title:
+        filters["title"] = ["like", f"%{title}%"]
+    if username:
+        filters["username"] = ["like", f"%{username}%"]
 
     or_filters = None
     if search:
