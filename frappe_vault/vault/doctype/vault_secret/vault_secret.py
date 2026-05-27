@@ -40,5 +40,13 @@ class VaultSecret(Document):
 
     def update_access_metadata(self):
         """Update access tracking fields without triggering modified."""
-        self.db_set("last_accessed", now_datetime(), update_modified=False)
-        self.db_set("access_count", (self.access_count or 0) + 1, update_modified=False)
+        # Use direct frappe.db.set_value to avoid document reload deadlocks
+        frappe.db.set_value(
+            "Vault Secret",
+            self.name,
+            {
+                "last_accessed": now_datetime(),
+                "access_count": (self.access_count or 0) + 1,
+            },
+            update_modified=False,
+        )

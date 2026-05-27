@@ -10,7 +10,11 @@
           <FeatherIcon :name="actionIcons[log.action] || 'activity'" class="w-4 h-4" />
         </div>
         <div class="flex-1">
-          <p class="text-sm"><span class="font-medium">{{ log.user }}</span> {{ log.action.toLowerCase() }} <span v-if="log.secret" class="font-medium">{{ log.secret }}</span></p>
+          <p class="text-sm">
+            <span class="font-medium">{{ log.user }}</span>
+            {{ log.action.toLowerCase() }}
+            <span v-if="getSecretLabel(log)" class="font-medium text-gray-900">{{ getSecretLabel(log) }}</span>
+          </p>
           <p class="text-xs text-gray-400">{{ formatTime(log.timestamp) }} · {{ log.ip_address }}</p>
         </div>
       </div>
@@ -24,9 +28,35 @@ import { computed } from 'vue'
 import { FeatherIcon } from 'frappe-ui'
 import { useAuditLogs } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
+
 const logs = useAuditLogs()
 const logList = computed(() => logs.data?.logs || [])
+
 const actionIcons = { Viewed: 'eye', Created: 'plus-circle', Updated: 'edit', Deleted: 'trash-2', Shared: 'share', Copied: 'copy', Generated: 'refresh-cw' }
 const actionColors = { Created: 'bg-green-100', Deleted: 'bg-red-100', Shared: 'bg-blue-100', Viewed: 'bg-gray-100' }
+
+function getSecretLabel(log) {
+  if (log.secret) {
+    return log.secret
+  }
+  if (log.details) {
+    try {
+      const detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details
+      if (detailsObj.title && detailsObj.deleted_secret_name) {
+        return `${detailsObj.title} (${detailsObj.deleted_secret_name})`
+      }
+      if (detailsObj.title) {
+        return detailsObj.title
+      }
+      if (detailsObj.deleted_secret_name) {
+        return detailsObj.deleted_secret_name
+      }
+    } catch (e) {
+      console.error('Failed to parse log details:', e)
+    }
+  }
+  return ''
+}
+
 function formatTime(dt) { return dt ? new Date(dt).toLocaleString() : '' }
 </script>

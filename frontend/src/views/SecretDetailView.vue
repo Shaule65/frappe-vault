@@ -655,17 +655,23 @@
     </div>
 
     <!-- Delete Confirmation Dialog (matching CRM/Frappe UI styles) -->
-    <Dialog v-model="showDeleteDialog">
-      <template #body-title>
-        <h3 class="text-lg font-bold text-gray-900">Delete Secret</h3>
-      </template>
+    <Dialog
+      v-model="showDeleteDialog"
+      :options="{
+        title: 'Delete Secret',
+        size: 'sm',
+      }"
+    >
       <template #body-content>
-        <p class="text-sm text-gray-600 mt-1 leading-normal">
-          Are you sure you want to permanently delete <strong>{{ secretData?.title }}</strong>? This action cannot be undone.
-        </p>
+        <div class="space-y-3">
+          <p class="text-sm text-gray-600 mt-1 leading-normal">
+            Are you sure you want to permanently delete <strong>{{ secretData?.title }}</strong>? This action cannot be undone.
+          </p>
+          <ErrorMessage v-if="deleteError" :message="deleteError" />
+        </div>
       </template>
       <template #actions>
-        <div class="flex items-center justify-end gap-2.5">
+        <div class="flex items-center justify-end gap-2 px-4 pb-4">
           <Button variant="outline" @click="showDeleteDialog = false" class="text-gray-700 hover:bg-gray-100">
             Cancel
           </Button>
@@ -681,7 +687,7 @@
 <script setup>
 import { ref, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Badge, FeatherIcon, TextInput, FormControl, Dialog } from 'frappe-ui'
+import { Button, Badge, FeatherIcon, TextInput, FormControl, Dialog, ErrorMessage, toast } from 'frappe-ui'
 import { useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useFolders } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
@@ -944,7 +950,7 @@ async function toggleEditMode() {
 
 async function handleSave() {
   if (!editForm.title || !editForm.title.trim()) {
-    alert('Please enter a secret title')
+    toast.error('Please enter a secret title')
     return
   }
 
@@ -993,24 +999,25 @@ async function handleSave() {
     decryptResource.submit({ name: props.name })
   } catch (e) {
     console.error('Save failed:', e)
+    toast.error(e.messages?.[0] || e.message || 'Failed to save changes')
   }
 }
 
 const showDeleteDialog = ref(false)
+const deleteError = ref('')
 
-function confirmDelete() {
-  deleteResource.submit(
-    { name: props.name },
-    {
-      onSuccess: () => {
-        showDeleteDialog.value = false
-        router.push('/secrets')
-      },
-      onError: (err) => {
-        alert(err.messages?.[0] || 'Failed to delete secret')
-      }
-    }
-  )
+async function confirmDelete() {
+  deleteError.value = ''
+  try {
+    await deleteResource.submit({ name: props.name })
+    showDeleteDialog.value = false
+    toast.success('Secret deleted successfully')
+    router.push('/secrets')
+  } catch (err) {
+    console.error('Delete failed:', err)
+    deleteError.value = err.messages?.[0] || err.message || 'Failed to delete secret'
+    toast.error(deleteError.value)
+  }
 }
 
 function formatTime(dt) {

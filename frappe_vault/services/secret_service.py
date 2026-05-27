@@ -180,7 +180,22 @@ def delete_secret(name: str) -> dict:
         frappe.throw(_("You don't have permission to delete this secret"), frappe.PermissionError)
 
     title = frappe.db.get_value("Vault Secret", name, "title")
-    frappe.delete_doc("Vault Secret", name)
+
+    # 1. Clean up associated shareable One Time Links
+    one_time_links = frappe.get_all("Vault One Time Link", filters={"secret": name}, pluck="name")
+    for link_name in one_time_links:
+        frappe.delete_doc("Vault One Time Link", link_name, force=True)
+
+    # 2. Clean up associated share settings
+    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
+    for share_name in shares:
+        frappe.delete_doc("Vault Share", share_name, force=True)
+
+    # 3. Finally delete the Vault Secret document itself.
+    # We bypass link verification (force=True) so we can keep the historical
+    # Vault Audit Logs intact and displaying the raw secret ID in list views!
+    frappe.delete_doc("Vault Secret", name, force=True)
+
     return {"name": name, "title": title}
 
 
