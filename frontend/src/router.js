@@ -12,6 +12,12 @@ const routes = [
     component: () => import('./views/SecretsView.vue'),
   },
   {
+    path: '/secrets/:name',
+    name: 'SecretDetail',
+    component: () => import('./views/SecretDetailView.vue'),
+    props: true,
+  },
+  {
     path: '/favorites',
     name: 'Favorites',
     component: () => import('./views/FavoritesView.vue'),
