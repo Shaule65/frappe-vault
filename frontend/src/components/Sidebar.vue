@@ -109,7 +109,9 @@ const userMenuOptions = [
   {
     label: 'Logout',
     icon: 'log-out',
-    onClick: () => session.logout(),
+    onClick: () => {
+      window.location.href = '/logout'
+    },
   },
 ]
 

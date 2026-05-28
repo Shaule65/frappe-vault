@@ -8,9 +8,8 @@ import hashlib
 
 @frappe.whitelist()
 def calculate_security_score(user=None):
-    user = user or frappe.session.user
-    secrets = frappe.get_all("Vault Secret", filters={"owner": user, "secret_type": "Password"},
-                            fields=["name", "password_strength", "password_last_changed", "expires_on"])
+    secrets = frappe.get_list("Vault Secret", filters={"secret_type": "Password"},
+                             fields=["name", "password_strength", "password_last_changed", "expires_on"])
     if not secrets:
         return {"score": 100, "breakdown": {}, "suggestions": []}
 
@@ -50,6 +49,5 @@ def check_password_breach(password):
 
 
 def get_weak_passwords(user=None):
-    user = user or frappe.session.user
-    return frappe.get_all("Vault Secret", filters={"owner": user, "password_strength": ("in", ["weak", "fair"])},
-                          fields=["name", "title", "password_strength", "url", "password_last_changed"])
+    return frappe.get_list("Vault Secret", filters={"password_strength": ("in", ["weak", "fair"])},
+                           fields=["name", "title", "password_strength", "url", "password_last_changed"])
