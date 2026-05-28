@@ -28,7 +28,7 @@ def require_master_password():
     if not verified_at:
         frappe.throw(
             _("Master password verification required"),
-            frappe.AuthenticationError,
+            frappe.ValidationError,
         )
 
     # Check session timeout
@@ -40,7 +40,7 @@ def require_master_password():
         frappe.cache().delete_value(session_key)
         frappe.throw(
             _("Master password session expired"),
-            frappe.AuthenticationError,
+            frappe.ValidationError,
         )
 
 

@@ -441,12 +441,15 @@
                   <div class="flex items-center justify-between py-2 border-b border-gray-100/50 min-h-[36px]">
                     <div class="w-[35%] shrink-0 text-sm text-gray-500 font-medium truncate pr-2">Password</div>
                     <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-sm font-semibold text-gray-805 font-mono tracking-wider truncate mr-2">
+                      <span class="text-sm font-semibold text-gray-850 font-mono tracking-wider truncate mr-2">
                         {{ showPassword ? decryptedData?.password : '••••••••••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="togglePassword" class="text-gray-400 hover:text-gray-650">
+                        <Button variant="ghost" size="sm" @click="togglePassword" class="text-gray-400 hover:text-gray-650" tooltip="Reveal Password">
                           <FeatherIcon :name="showPassword ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" @click="copyPassword" class="text-gray-400 hover:text-gray-650" tooltip="Copy Password">
+                          <FeatherIcon :name="copiedField === 'password' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'password'}" />
                         </Button>
                       </div>
                     </div>
@@ -477,8 +480,11 @@
                         {{ showAPISecret ? decryptedData?.api_secret : '••••••••••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleAPISecret" class="text-gray-400 hover:text-gray-650">
+                        <Button variant="ghost" size="sm" @click="toggleAPISecret" class="text-gray-400 hover:text-gray-650" tooltip="Reveal API Secret">
                           <FeatherIcon :name="showAPISecret ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" @click="copyAPISecret" class="text-gray-400 hover:text-gray-650" tooltip="Copy API Secret">
+                          <FeatherIcon :name="copiedField === 'api_secret' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'api_secret'}" />
                         </Button>
                       </div>
                     </div>
@@ -500,8 +506,11 @@
                         {{ showCardNumber ? decryptedData?.card_number : '•••• •••• •••• ••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleCardNumber" class="text-gray-400 hover:text-gray-650">
+                        <Button variant="ghost" size="sm" @click="toggleCardNumber" class="text-gray-400 hover:text-gray-650" tooltip="Reveal Card Number">
                           <FeatherIcon :name="showCardNumber ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" @click="copyCardNumber" class="text-gray-400 hover:text-gray-650" tooltip="Copy Card Number">
+                          <FeatherIcon :name="copiedField === 'card_number' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'card_number'}" />
                         </Button>
                       </div>
                     </div>
@@ -519,8 +528,11 @@
                         {{ showCardCVV ? decryptedData?.card_cvv : '•••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleCardCVV" class="text-gray-400 hover:text-gray-650">
+                        <Button variant="ghost" size="sm" @click="toggleCardCVV" class="text-gray-400 hover:text-gray-650" tooltip="Reveal CVV">
                           <FeatherIcon :name="showCardCVV ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" @click="copyCardCVV" class="text-gray-400 hover:text-gray-650" tooltip="Copy CVV">
+                          <FeatherIcon :name="copiedField === 'card_cvv' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'card_cvv'}" />
                         </Button>
                       </div>
                     </div>
@@ -554,8 +566,11 @@
                         {{ showDBPassword ? decryptedData?.db_password : '••••••••••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleDBPassword" class="text-gray-400 hover:text-gray-650">
+                        <Button variant="ghost" size="sm" @click="toggleDBPassword" class="text-gray-400 hover:text-gray-650" tooltip="Reveal DB Password">
                           <FeatherIcon :name="showDBPassword ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" @click="copyDBPassword" class="text-gray-400 hover:text-gray-650" tooltip="Copy DB Password">
+                          <FeatherIcon :name="copiedField === 'db_password' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'db_password'}" />
                         </Button>
                       </div>
                     </div>
@@ -681,14 +696,63 @@
         </div>
       </template>
     </Dialog>
+
+    <!-- Unlock Vault Dialog (premium dark accents, lock visual, error state) -->
+    <Dialog
+      v-model="showUnlockDialog"
+      :options="{
+        title: 'Unlock Vault',
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4 py-2">
+          <div class="flex flex-col items-center justify-center text-center space-y-2.5 pb-2">
+            <div class="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0 shadow-sm animate-bounce">
+              <FeatherIcon name="lock" class="w-5.5 h-5.5" />
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900">Verification Required</p>
+              <p class="text-xs text-gray-500 mt-1 leading-normal">
+                Enter your master password to unlock and access sensitive secrets.
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Master Password</label>
+            <TextInput
+              type="password"
+              v-model="unlockPassword"
+              placeholder="Enter master password"
+              class="w-full text-sm"
+              @keyup.enter="handleUnlock"
+            />
+          </div>
+
+          <ErrorMessage v-if="unlockError" :message="unlockError" />
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex items-center justify-end gap-2 px-4 pb-4">
+          <Button variant="outline" @click="showUnlockDialog = false" class="text-gray-700 hover:bg-gray-100">
+            Cancel
+          </Button>
+          <Button variant="solid" theme="indigo" @click="handleUnlock" :loading="unlockLoading" class="font-semibold shadow-sm px-4">
+            Unlock
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { nextTick } from 'vue'
 import { Button, Badge, FeatherIcon, TextInput, FormControl, Dialog, ErrorMessage, toast } from 'frappe-ui'
-import { useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useFolders } from '../composables/vault'
+import { useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useFolders, useVerifyMasterPassword } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
 import PasswordStrength from '../components/PasswordStrength.vue'
@@ -834,74 +898,181 @@ function copyField(value, fieldName) {
   }, 3000)
 }
 
-async function togglePassword() {
-  if (!showPassword.value && !decryptedData.value) {
-    await decryptResource.submit({ name: props.name })
+// --- Unlock Dialog State & Logic ---
+const showUnlockDialog = ref(false)
+const unlockPassword = ref('')
+const unlockError = ref('')
+const unlockLoading = ref(false)
+let pendingAction = null
+
+const verifyResource = useVerifyMasterPassword()
+
+async function ensureDecrypted(actionCallback) {
+  try {
+    if (!decryptedData.value) {
+      await decryptResource.submit({ name: props.name })
+    }
+    if (actionCallback) {
+      await actionCallback()
+    }
+  } catch (err) {
+    const errMsg = err.messages?.[0] || err.message || ''
+    const isAuthError = errMsg.toLowerCase().includes('master password') || 
+                        errMsg.toLowerCase().includes('verification required') || 
+                        errMsg.toLowerCase().includes('session expired') ||
+                        err.exc_type === 'AuthenticationError'
+    
+    if (isAuthError) {
+      pendingAction = actionCallback
+      unlockPassword.value = ''
+      unlockError.value = ''
+      showUnlockDialog.value = true
+    } else {
+      toast.error(errMsg || 'Failed to decrypt secret')
+    }
   }
-  showPassword.value = !showPassword.value
+}
+
+async function handleUnlock() {
+  if (!unlockPassword.value) {
+    unlockError.value = 'Please enter your master password'
+    return
+  }
+  
+  unlockLoading.value = true
+  unlockError.value = ''
+  
+  try {
+    const res = await verifyResource.submit({ password: unlockPassword.value })
+    if (res && (res.verified || res.success)) {
+      showUnlockDialog.value = false
+      toast.success('Vault unlocked')
+      
+      // Retry the pending action
+      if (pendingAction) {
+        const action = pendingAction
+        pendingAction = null
+        await ensureDecrypted(action)
+      }
+    } else {
+      unlockError.value = 'Invalid master password'
+    }
+  } catch (err) {
+    unlockError.value = err.messages?.[0] || err.message || 'Invalid master password'
+  } finally {
+    unlockLoading.value = false
+  }
+}
+
+watch(showUnlockDialog, async (val) => {
+  if (val) {
+    await nextTick()
+    const inputEl = document.querySelector('input[placeholder="Enter master password"]')
+    if (inputEl) {
+      inputEl.focus()
+    }
+  }
+})
+
+// --- Sensitive Field Handlers ---
+async function togglePassword() {
+  if (showPassword.value) {
+    showPassword.value = false
+    return
+  }
+  await ensureDecrypted(() => {
+    showPassword.value = true
+  })
 }
 
 async function copyPassword() {
-  if (!decryptedData.value) await decryptResource.submit({ name: props.name })
-  if (decryptedData.value?.password) {
-    copyField(decryptedData.value.password, 'password')
-  }
+  await ensureDecrypted(() => {
+    if (decryptedData.value?.password) {
+      copyField(decryptedData.value.password, 'password')
+    } else {
+      toast.error('Password field is empty')
+    }
+  })
 }
 
 async function toggleAPISecret() {
-  if (!showAPISecret.value && !decryptedData.value) {
-    await decryptResource.submit({ name: props.name })
+  if (showAPISecret.value) {
+    showAPISecret.value = false
+    return
   }
-  showAPISecret.value = !showAPISecret.value
+  await ensureDecrypted(() => {
+    showAPISecret.value = true
+  })
 }
 
 async function copyAPISecret() {
-  if (!decryptedData.value) await decryptResource.submit({ name: props.name })
-  if (decryptedData.value?.api_secret) {
-    copyField(decryptedData.value.api_secret, 'api_secret')
-  }
+  await ensureDecrypted(() => {
+    if (decryptedData.value?.api_secret) {
+      copyField(decryptedData.value.api_secret, 'api_secret')
+    } else {
+      toast.error('API Secret field is empty')
+    }
+  })
 }
 
 async function toggleCardNumber() {
-  if (!showCardNumber.value && !decryptedData.value) {
-    await decryptResource.submit({ name: props.name })
+  if (showCardNumber.value) {
+    showCardNumber.value = false
+    return
   }
-  showCardNumber.value = !showCardNumber.value
+  await ensureDecrypted(() => {
+    showCardNumber.value = true
+  })
 }
 
 async function copyCardNumber() {
-  if (!decryptedData.value) await decryptResource.submit({ name: props.name })
-  if (decryptedData.value?.card_number) {
-    copyField(decryptedData.value.card_number, 'card_number')
-  }
+  await ensureDecrypted(() => {
+    if (decryptedData.value?.card_number) {
+      copyField(decryptedData.value.card_number, 'card_number')
+    } else {
+      toast.error('Card number field is empty')
+    }
+  })
 }
 
 async function toggleCardCVV() {
-  if (!showCardCVV.value && !decryptedData.value) {
-    await decryptResource.submit({ name: props.name })
+  if (showCardCVV.value) {
+    showCardCVV.value = false
+    return
   }
-  showCardCVV.value = !showCardCVV.value
+  await ensureDecrypted(() => {
+    showCardCVV.value = true
+  })
 }
 
 async function copyCardCVV() {
-  if (!decryptedData.value) await decryptResource.submit({ name: props.name })
-  if (decryptedData.value?.card_cvv) {
-    copyField(decryptedData.value.card_cvv, 'card_cvv')
-  }
+  await ensureDecrypted(() => {
+    if (decryptedData.value?.card_cvv) {
+      copyField(decryptedData.value.card_cvv, 'card_cvv')
+    } else {
+      toast.error('CVV field is empty')
+    }
+  })
 }
 
 async function toggleDBPassword() {
-  if (!showDBPassword.value && !decryptedData.value) {
-    await decryptResource.submit({ name: props.name })
+  if (showDBPassword.value) {
+    showDBPassword.value = false
+    return
   }
-  showDBPassword.value = !showDBPassword.value
+  await ensureDecrypted(() => {
+    showDBPassword.value = true
+  })
 }
 
 async function copyDBPassword() {
-  if (!decryptedData.value) await decryptResource.submit({ name: props.name })
-  if (decryptedData.value?.db_password) {
-    copyField(decryptedData.value.db_password, 'db_password')
-  }
+  await ensureDecrypted(() => {
+    if (decryptedData.value?.db_password) {
+      copyField(decryptedData.value.db_password, 'db_password')
+    } else {
+      toast.error('Database Password field is empty')
+    }
+  })
 }
 
 async function toggleEditMode() {
@@ -910,42 +1081,40 @@ async function toggleEditMode() {
     return
   }
 
-  if (!decryptedData.value) {
-    await decryptResource.submit({ name: props.name })
-  }
+  await ensureDecrypted(() => {
+    showEditPassword.value = false
+    showEditAPISecret.value = false
+    showEditCardNumber.value = false
+    showEditCardCVV.value = false
+    showEditDBPassword.value = false
 
-  showEditPassword.value = false
-  showEditAPISecret.value = false
-  showEditCardNumber.value = false
-  showEditCardCVV.value = false
-  showEditDBPassword.value = false
+    const sd = secretData.value || {}
+    const dd = decryptedData.value || {}
 
-  const sd = secretData.value || {}
-  const dd = decryptedData.value || {}
+    editForm.title = sd.title || ''
+    editForm.secret_type = sd.secret_type || 'Password'
+    editForm.folder = sd.folder || ''
+    editForm.url = sd.url || ''
+    editForm.username = sd.username || ''
+    editForm.email = sd.email || ''
+    editForm.notes = sd.notes || ''
 
-  editForm.title = sd.title || ''
-  editForm.secret_type = sd.secret_type || 'Password'
-  editForm.folder = sd.folder || ''
-  editForm.url = sd.url || ''
-  editForm.username = sd.username || ''
-  editForm.email = sd.email || ''
-  editForm.notes = sd.notes || ''
+    editForm.password = dd.password || ''
+    editForm.api_key = sd.api_key || ''
+    editForm.api_secret = dd.api_secret || ''
+    editForm.card_holder = sd.card_holder || ''
+    editForm.card_number = dd.card_number || ''
+    editForm.card_expiry = sd.card_expiry || ''
+    editForm.card_cvv = dd.card_cvv || ''
+    editForm.db_host = sd.db_host || ''
+    editForm.db_port = sd.db_port || ''
+    editForm.db_name = sd.db_name || ''
+    editForm.db_password = dd.db_password || ''
+    editForm.ssh_private_key = sd.ssh_private_key || ''
+    editForm.certificate = sd.certificate || ''
 
-  editForm.password = dd.password || ''
-  editForm.api_key = sd.api_key || ''
-  editForm.api_secret = dd.api_secret || ''
-  editForm.card_holder = sd.card_holder || ''
-  editForm.card_number = dd.card_number || ''
-  editForm.card_expiry = sd.card_expiry || ''
-  editForm.card_cvv = dd.card_cvv || ''
-  editForm.db_host = sd.db_host || ''
-  editForm.db_port = sd.db_port || ''
-  editForm.db_name = sd.db_name || ''
-  editForm.db_password = dd.db_password || ''
-  editForm.ssh_private_key = sd.ssh_private_key || ''
-  editForm.certificate = sd.certificate || ''
-
-  isEditing.value = true
+    isEditing.value = true
+  })
 }
 
 async function handleSave() {
