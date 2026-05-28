@@ -97,7 +97,6 @@ const navItems = computed(() => [
     to: '/favorites',
     count: stats.data?.favorites_count,
   },
-  { name: 'generator', label: 'Generator', icon: 'refresh-cw', to: '/generator' },
   { name: 'settings', label: 'Settings', icon: 'settings', to: '/settings' },
 ])
 
