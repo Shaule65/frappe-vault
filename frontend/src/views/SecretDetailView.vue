@@ -877,7 +877,7 @@ watch(() => props.name, (n) => {
     showDBPassword.value = false
     isEditing.value = false
   }
-}, { immediate: true })
+})
 
 folders.submit()
 

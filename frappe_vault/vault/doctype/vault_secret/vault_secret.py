@@ -40,13 +40,17 @@ class VaultSecret(Document):
 
     def update_access_metadata(self):
         """Update access tracking fields without triggering modified."""
-        # Use direct frappe.db.set_value to avoid document reload deadlocks
-        frappe.db.set_value(
-            "Vault Secret",
-            self.name,
-            {
-                "last_accessed": now_datetime(),
-                "access_count": (self.access_count or 0) + 1,
-            },
-            update_modified=False,
-        )
+        try:
+            # Use direct frappe.db.set_value to avoid document reload deadlocks
+            frappe.db.set_value(
+                "Vault Secret",
+                self.name,
+                {
+                    "last_accessed": now_datetime(),
+                    "access_count": (self.access_count or 0) + 1,
+                },
+                update_modified=False,
+            )
+        except Exception as e:
+            # Log the error but never let statistics tracking block secret retrieval
+            frappe.log_error(f"Failed to update access metadata for {self.name}: {e}", "Vault Access Metadata Error")
