@@ -172,10 +172,10 @@
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
-              class="cursor-pointer hover:bg-surface-gray-1 transition-colors"
+              class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
               @click="router.push({ name: 'SecretDetail', params: { name: row.name } })"
             >
-              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7">
+              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7 h-full flex items-center">
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
@@ -185,7 +185,6 @@
                     </div>
                     <div class="min-w-0">
                       <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 hover:underline cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
-                      <span class="text-xs text-ink-gray-5 truncate block leading-normal mt-0.5" v-if="item.subtitle">{{ item.subtitle }}</span>
                     </div>
                   </div>
 
