@@ -65,7 +65,10 @@ import { ref, computed, watch } from 'vue'
 import { Button, Dialog, FormControl } from 'frappe-ui'
 import { useCreateSecret, useFolders } from '../composables/vault'
 
-const props = defineProps({ modelValue: Boolean })
+const props = defineProps({
+  modelValue: Boolean,
+  initialFolder: String,
+})
 const emit = defineEmits(['update:modelValue', 'created'])
 
 const show = computed({
@@ -85,7 +88,7 @@ const folderOptions = computed(() => {
 })
 
 const defaultForm = () => ({
-  title: '', secret_type: 'Password', folder: '', url: '', username: '', email: '',
+  title: '', secret_type: 'Password', folder: props.initialFolder || '', url: '', username: '', email: '',
   password: '', api_key: '', api_secret: '', notes: '', card_holder: '', card_number: '',
   card_expiry: '', card_cvv: '', db_host: '', db_port: '', db_name: '', db_password: '',
 })

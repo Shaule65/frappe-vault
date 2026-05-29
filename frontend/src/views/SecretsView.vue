@@ -264,7 +264,7 @@
     </div>
 
     <!-- New Secret Dialog -->
-    <NewSecretDialog v-model="showNewDialog" @created="handleCreated" />
+    <NewSecretDialog v-model="showNewDialog" :initial-folder="activeFilters.folder" @created="handleCreated" />
 
   </div>
 </template>

@@ -134,14 +134,14 @@
       <div class="pt-3 mt-3 border-t border-gray-100/50">
         <div class="flex items-center justify-between px-4 mb-2" v-if="!isSidebarCollapsed">
           <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider pl-1">Folders</p>
-          <Button variant="ghost" size="sm" class="h-6 w-6 p-0 hover:bg-surface-gray-2 rounded" @click="$emit('create-folder')">
+          <Button variant="ghost" size="sm" class="h-6 w-6 p-0 hover:bg-surface-gray-2 rounded" @click="openCreateFolderDialog">
             <FeatherIcon name="plus" class="w-3.5 h-3.5 text-ink-gray-7" />
           </Button>
         </div>
         <div class="flex flex-col items-center mb-2" v-else>
           <div class="w-full border-b border-gray-100/50 my-1" />
           <Tooltip text="Create Folder" placement="right">
-            <Button variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-surface-gray-2 rounded" @click="$emit('create-folder')">
+            <Button variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-surface-gray-2 rounded" @click="openCreateFolderDialog">
               <FeatherIcon name="plus" class="w-4 h-4 text-ink-gray-7" />
             </Button>
           </Tooltip>
@@ -160,6 +160,20 @@
                 class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5"
                 :style="{ backgroundColor: folder.color || '#6b7280' }"
               />
+            </div>
+          </template>
+          <template #right>
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-150" @click.prevent.stop>
+              <Dropdown :options="getFolderOptions(folder)">
+                <template #default="{ open }">
+                  <button
+                    class="p-0.5 rounded hover:bg-surface-gray-3 text-ink-gray-6 focus:outline-none"
+                    :class="{ 'bg-surface-gray-3': open }"
+                  >
+                    <FeatherIcon name="more-horizontal" class="w-3.5 h-3.5" />
+                  </button>
+                </template>
+              </Dropdown>
             </div>
           </template>
         </SidebarLink>
@@ -202,14 +216,159 @@
         </div>
       </template>
     </Dialog>
+
+    <!-- Create Folder Dialog -->
+    <Dialog
+      v-model="showCreateFolderDialog"
+      :options="{
+        title: 'New Folder',
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4">
+          <FormControl
+            label="Folder Name"
+            v-model="newFolderName"
+            placeholder="e.g. Work, Personal"
+            @keyup.enter="handleCreateFolder"
+          />
+          <div>
+            <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Color</label>
+            <div class="flex items-center gap-2">
+              <button
+                v-for="color in curatedColors"
+                :key="color"
+                class="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center focus:outline-none transition-transform"
+                :style="{ backgroundColor: color }"
+                :class="{ 'scale-110 ring-2 ring-indigo-500 ring-offset-2': newFolderColor === color }"
+                @click="newFolderColor = color"
+              >
+                <FeatherIcon v-if="newFolderColor === color" name="check" class="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" label="Cancel" @click="showCreateFolderDialog = false" />
+          <Button
+            variant="solid"
+            label="Create"
+            :loading="createFolderResource.loading"
+            :disabled="!newFolderName.trim()"
+            @click="handleCreateFolder"
+          />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Edit Folder Dialog -->
+    <Dialog
+      v-model="showEditFolderDialog"
+      :options="{
+        title: 'Edit Folder',
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4">
+          <FormControl
+            label="Folder Name"
+            v-model="editFolderName"
+            placeholder="e.g. Work, Personal"
+            @keyup.enter="handleEditFolder"
+          />
+          <div>
+            <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Color</label>
+            <div class="flex items-center gap-2">
+              <button
+                v-for="color in curatedColors"
+                :key="color"
+                class="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center focus:outline-none transition-transform"
+                :style="{ backgroundColor: color }"
+                :class="{ 'scale-110 ring-2 ring-indigo-500 ring-offset-2': editFolderColor === color }"
+                @click="editFolderColor = color"
+              >
+                <FeatherIcon v-if="editFolderColor === color" name="check" class="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" label="Cancel" @click="showEditFolderDialog = false" />
+          <Button
+            variant="solid"
+            label="Save"
+            :loading="updateFolderResource.loading"
+            :disabled="!editFolderName.trim()"
+            @click="handleEditFolder"
+          />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Delete Folder Warning Dialog -->
+    <Dialog
+      v-model="showDeleteFolderDialog"
+      :options="{
+        title: 'Delete Folder',
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-2">
+          <p class="text-sm text-ink-gray-7" v-if="loadingCount">
+            Analyzing folder secrets...
+          </p>
+          <template v-else>
+            <div class="space-y-3" v-if="deleteSecretsCount > 0">
+              <div class="p-3 bg-red-50 border border-red-100 rounded-lg text-ink-red-3 flex items-start gap-2.5">
+                <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5" />
+                <div class="text-sm">
+                  <p class="font-semibold text-ink-red-4">Warning: Contains Secrets</p>
+                  <p class="mt-1 leading-relaxed">
+                    This folder contains <span class="font-bold">{{ deleteSecretsCount }}</span> {{ deleteSecretsCount === 1 ? 'secret' : 'secrets' }}. Deleting this folder will <span class="font-bold">permanently delete the folder and all secrets stored inside it</span>!
+                  </p>
+                </div>
+              </div>
+              <p class="text-sm text-ink-gray-7 pl-1">
+                Are you sure you want to proceed with deleting the folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
+              </p>
+            </div>
+            <div class="space-y-2" v-else>
+              <p class="text-sm text-ink-gray-7">
+                Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
+              </p>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" label="Cancel" @click="showDeleteFolderDialog = false" />
+          <Button
+            variant="solid"
+            theme="red"
+            label="Delete"
+            :loading="deleteFolderResource.loading"
+            :disabled="loadingCount"
+            @click="handleDeleteFolder"
+          />
+        </div>
+      </template>
+    </Dialog>
   </aside>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, Popover, FeatherIcon, Tooltip, Dialog } from 'frappe-ui'
-import { useVaultStats, useFolders } from '../composables/vault'
+import { Badge, Button, Popover, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl } from 'frappe-ui'
+import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets } from '../composables/vault'
 import SidebarLink from './SidebarLink.vue'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 
@@ -218,7 +377,125 @@ const router = useRouter()
 const stats = useVaultStats()
 const foldersResource = useFolders()
 
-defineEmits(['create-folder'])
+const createFolderResource = useCreateFolder()
+const deleteFolderResource = useDeleteFolder()
+const updateFolderResource = useUpdateFolder()
+const folderSecretsResource = useFolderSecrets()
+
+const showCreateFolderDialog = ref(false)
+const newFolderName = ref('')
+const newFolderColor = ref('#3b82f6')
+
+const showEditFolderDialog = ref(false)
+const folderToEdit = ref(null)
+const editFolderName = ref('')
+const editFolderColor = ref('#3b82f6')
+
+const showDeleteFolderDialog = ref(false)
+const folderToDelete = ref(null)
+const deleteSecretsCount = ref(0)
+const loadingCount = ref(false)
+
+const curatedColors = [
+  '#3b82f6', // Blue
+  '#10b981', // Green
+  '#f97316', // Orange
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#ef4444', // Red
+]
+
+function openCreateFolderDialog() {
+  newFolderName.value = ''
+  newFolderColor.value = '#3b82f6'
+  showCreateFolderDialog.value = true
+}
+
+async function handleCreateFolder() {
+  if (!newFolderName.value.trim()) return
+  try {
+    await createFolderResource.submit({
+      folder_name: newFolderName.value.trim(),
+      color: newFolderColor.value,
+    })
+    showCreateFolderDialog.value = false
+    foldersResource.reload()
+    stats.reload()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+function getFolderOptions(folder) {
+  return [
+    {
+      label: 'Edit Folder',
+      icon: 'edit-2',
+      onClick: () => {
+        folderToEdit.value = folder
+        editFolderName.value = folder.folder_name
+        editFolderColor.value = folder.color || '#3b82f6'
+        showEditFolderDialog.value = true
+      }
+    },
+    {
+      label: 'Delete Folder',
+      icon: 'trash-2',
+      onClick: () => openDeleteFolderDialog(folder)
+    }
+  ]
+}
+
+function openDeleteFolderDialog(folder) {
+  folderToDelete.value = folder
+  deleteSecretsCount.value = 0
+  loadingCount.value = true
+  showDeleteFolderDialog.value = true
+
+  folderSecretsResource.submit({ folder_name: folder.name }).then((res) => {
+    deleteSecretsCount.value = res.total || 0
+    loadingCount.value = false
+  }).catch(() => {
+    loadingCount.value = false
+  })
+}
+
+async function handleEditFolder() {
+  if (!editFolderName.value.trim() || !folderToEdit.value) return
+  try {
+    await updateFolderResource.submit({
+      name: folderToEdit.value.name,
+      folder_name: editFolderName.value.trim(),
+      color: editFolderColor.value,
+    })
+    showEditFolderDialog.value = false
+    folderToEdit.value = null
+    foldersResource.reload()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function handleDeleteFolder() {
+  if (!folderToDelete.value) return
+  try {
+    await deleteFolderResource.submit({
+      name: folderToDelete.value.name,
+    })
+
+    // Redirect if they are currently inside that folder's secrets list
+    if (route.query.folder === folderToDelete.value.name) {
+      router.push('/secrets')
+    }
+
+    showDeleteFolderDialog.value = false
+    folderToDelete.value = null
+    foldersResource.reload()
+    stats.reload()
+  } catch (err) {
+    console.error(err)
+  }
+}
 
 // LocalStorage collapsed state syncing
 const isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
