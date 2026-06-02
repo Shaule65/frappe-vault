@@ -1,24 +1,405 @@
 <template>
-  <div class="flex-1 overflow-auto p-6">
-    <h1 class="text-xl font-semibold text-gray-900 mb-4">Favorites</h1>
-    <div v-if="secrets.loading" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 rounded-lg animate-pulse" />
-    </div>
-    <div v-else-if="list.length" class="bg-white rounded-xl border divide-y">
-      <div v-for="s in list" :key="s.name" class="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer">
-        <FeatherIcon name="star" class="w-4 h-4 text-yellow-500 fill-yellow-500 mr-3" />
-        <div class="flex-1"><p class="text-sm font-medium">{{ s.title }}</p><p class="text-xs text-gray-500">{{ s.secret_type }}</p></div>
+  <div class="flex-1 flex flex-col overflow-hidden bg-gray-50/20">
+    <!-- Header -->
+    <header class="flex h-14 items-center justify-between border-b bg-white px-5 py-3 shrink-0">
+      <div class="flex items-center gap-2">
+        <h1 class="text-lg font-semibold text-ink-gray-9">Favorites</h1>
+        <Badge variant="subtle" theme="yellow" size="sm" class="ml-1 font-medium">
+          {{ totalCount }} {{ totalCount === 1 ? 'favorite' : 'favorites' }}
+        </Badge>
+      </div>
+    </header>
+
+    <!-- View Controls Bar (Exactly copies secrets view for consistency) -->
+    <div class="bg-white border-b px-5 py-3 flex items-center justify-between gap-4 shrink-0">
+      <!-- Quick Filters (Left side) -->
+      <div class="flex flex-1 items-center gap-2 overflow-x-auto no-scrollbar">
+        <!-- Title Quick Filter -->
+        <div class="min-w-[130px] max-w-[160px]">
+          <TextInput
+            v-model="titleQuery"
+            placeholder="Search favorites..."
+            class="w-full text-sm h-8"
+          />
+        </div>
+
+        <!-- Type Quick Filter Dropdown -->
+        <Dropdown :options="typeFilterOptions">
+          <template #default="{ open }">
+            <button
+              class="flex h-8 items-center justify-between rounded border border-gray-200 bg-gray-50/30 px-3 py-1.5 text-sm text-ink-gray-7 hover:bg-gray-50 focus:outline-none min-w-[120px]"
+              :class="{ 'bg-gray-100 border-gray-300 font-medium text-ink-gray-9': open || activeFilters.secret_type }"
+            >
+              <span class="truncate">{{ activeFilters.secret_type || 'Type' }}</span>
+              <FeatherIcon name="chevron-down" class="w-3.5 h-3.5 text-ink-gray-4 ml-2 shrink-0" />
+            </button>
+          </template>
+        </Dropdown>
+      </div>
+
+      <!-- Controls & Dropdowns (Right side) -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <!-- Refresh Button -->
+        <Button
+          class="h-8 w-8 p-0 flex items-center justify-center focus:outline-none hover:bg-gray-50 border border-gray-200 rounded"
+          variant="outline"
+          @click="secrets.reload()"
+          tooltip="Refresh"
+        >
+          <template #icon>
+            <FeatherIcon name="refresh-cw" class="w-3.5 h-3.5 text-ink-gray-7" :class="{ 'animate-spin': secrets.loading }" />
+          </template>
+        </Button>
+
+        <!-- Sort Button -->
+        <Dropdown :options="sortDropdownOptions">
+          <template #default="{ open }">
+            <Button
+              variant="outline"
+              class="h-8 px-3 text-sm focus:outline-none text-ink-gray-7"
+              :class="{ 'bg-surface-gray-2 border-gray-300': open }"
+            >
+              <template #prefix><FeatherIcon name="bar-chart-2" class="w-3.5 h-3.5 text-ink-gray-5 rotate-90 mr-1" /></template>
+              <span>Sort</span>
+            </Button>
+          </template>
+        </Dropdown>
+
+        <!-- Columns Button -->
+        <Dropdown :options="columnsDropdownOptions">
+          <template #default="{ open }">
+            <Button
+              variant="outline"
+              class="h-8 px-3 text-sm focus:outline-none text-ink-gray-7"
+              :class="{ 'bg-surface-gray-2 border-gray-300': open }"
+            >
+              <template #prefix><FeatherIcon name="columns" class="w-3.5 h-3.5 text-ink-gray-5 mr-1" /></template>
+              <span>Columns</span>
+            </Button>
+          </template>
+        </Dropdown>
+
+        <!-- Clear Button -->
+        <Button
+          v-if="titleQuery || activeFilters.secret_type || currentSort !== 'modified desc'"
+          variant="ghost"
+          class="h-8 px-2 text-sm text-ink-gray-6 hover:text-ink-gray-9 focus:outline-none font-medium"
+          @click="clearFilters"
+        >
+          Clear
+        </Button>
       </div>
     </div>
-    <EmptyState v-else icon="star" title="No favorites yet" description="Star your most-used secrets for quick access" />
+
+    <!-- Favorite list -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Loading state -->
+      <div v-if="secrets.loading && !secrets.data" class="p-6 space-y-3">
+        <div v-for="i in 5" :key="i" class="h-16 bg-gray-100 rounded-lg animate-pulse" />
+      </div>
+
+      <!-- Secrets list view -->
+      <template v-else-if="secretsList.length">
+        <ListView
+          class="flex-1 flex flex-col overflow-hidden bg-white"
+          :columns="columns"
+          :rows="formattedRows"
+          row-key="name"
+          :options="{
+            selectable: false,
+            showTooltip: true,
+            resizeColumn: true,
+            onRowClick: (row) => router.push({ name: 'SecretDetail', params: { name: row.name } }),
+          }"
+        >
+          <ListHeader class="border-b px-5 py-2.5 bg-gray-50/50 shrink-0">
+            <ListHeaderItem
+              v-for="column in columns"
+              :key="column.key"
+              :item="column"
+            />
+          </ListHeader>
+          <ListRows>
+            <ListRow
+              v-for="row in formattedRows"
+              :key="row.name"
+              v-slot="{ column, item }"
+              :row="row"
+              class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
+              @click="router.push({ name: 'SecretDetail', params: { name: row.name } })"
+            >
+              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7 h-full flex items-center">
+                <template #default>
+                  <!-- Title column -->
+                  <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-gray-100 shadow-sm"
+                         :class="typeColors[item.secret_type] || 'bg-gray-100 text-gray-600'">
+                       <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0">
+                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 hover:underline cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Type column -->
+                  <span v-else-if="column.key === 'secret_type'" class="text-base text-ink-gray-9">{{ item }}</span>
+
+                  <!-- Folder column -->
+                  <div v-else-if="column.key === 'folder'" class="flex items-center gap-1.5 text-base text-ink-gray-9">
+                    <template v-if="item">
+                      <FeatherIcon name="folder" class="w-3.5 h-3.5 text-ink-gray-5 shrink-0" />
+                      <span class="truncate">{{ item }}</span>
+                    </template>
+                    <span class="text-base text-ink-gray-4" v-else>—</span>
+                  </div>
+
+                  <!-- Strength column -->
+                  <div v-else-if="column.key === 'password_strength'">
+                    <Badge
+                      v-if="item"
+                      :theme="strengthTheme[item]"
+                      variant="subtle"
+                    >
+                      {{ item }}
+                    </Badge>
+                    <span class="text-base text-ink-gray-4" v-else>—</span>
+                  </div>
+
+                  <!-- Modified column -->
+                  <span v-else-if="column.key === 'modified'" class="text-base text-ink-gray-6">{{ item.formatted }}</span>
+
+                  <!-- Actions column -->
+                  <div v-else-if="column.key === '_actions'" class="flex items-center justify-end gap-1.5" @click.stop>
+                    <button
+                      class="p-1.5 rounded hover:bg-surface-gray-2 text-ink-gray-5 hover:text-ink-gray-9 transition-colors focus:outline-none"
+                      @click.stop="handleToggleFavorite(row)"
+                    >
+                      <FeatherIcon
+                        name="star"
+                        class="w-4 h-4 text-yellow-500 fill-yellow-500"
+                      />
+                    </button>
+                    <Dropdown :options="getRowActions(row)">
+                      <template #default="{ open }">
+                        <Button variant="ghost" class="h-7 w-7 p-0 focus:outline-none" :class="{ 'bg-surface-gray-2': open }">
+                          <template #icon>
+                            <FeatherIcon name="more-horizontal" class="w-4 h-4 text-ink-gray-5" />
+                          </template>
+                        </Button>
+                      </template>
+                    </Dropdown>
+                  </div>
+                </template>
+              </ListRowItem>
+            </ListRow>
+          </ListRows>
+        </ListView>
+      </template>
+
+      <!-- Empty state -->
+      <EmptyState v-else icon="star" title="No favorites yet" description="Star your most-used secrets for quick access" />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { FeatherIcon } from 'frappe-ui'
-import { useSecrets } from '../composables/vault'
+import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { Badge, Button, Dropdown, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem } from 'frappe-ui'
+import { useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
+
+const router = useRouter()
+const titleQuery = ref('')
+const activeFilters = ref({ secret_type: '' })
+const currentSort = ref('modified desc')
+
+const visibleColumns = ref({
+  secret_type: true,
+  folder: true,
+  password_strength: true,
+  modified: true,
+})
+
 const secrets = useSecrets({ favorites_only: 1 })
-const list = computed(() => secrets.data?.secrets || [])
+const foldersResource = useFolders()
+const toggleFav = useToggleFavorite()
+
+const secretsList = computed(() => secrets.data?.secrets || [])
+const totalCount = computed(() => secrets.data?.total || 0)
+
+const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH Key': 'terminal', Certificate: 'shield', 'Credit Card': 'credit-card', Database: 'database', Other: 'file' }
+const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purple-100 text-purple-600', Note: 'bg-green-100 text-green-600', 'SSH Key': 'bg-orange-100 text-orange-600', Certificate: 'bg-teal-100 text-teal-600', 'Credit Card': 'bg-yellow-100 text-yellow-600', Database: 'bg-red-100 text-red-600' }
+const strengthTheme = { weak: 'red', fair: 'orange', good: 'blue', strong: 'green', excellent: 'green' }
+
+const sortOptions = [
+  { label: 'Last Modified (Newest)', value: 'modified desc' },
+  { label: 'Last Modified (Oldest)', value: 'modified asc' },
+  { label: 'Title (A-Z)', value: 'title asc' },
+  { label: 'Title (Z-A)', value: 'title desc' },
+  { label: 'Last Accessed', value: 'last_accessed desc' },
+]
+
+const sortDropdownOptions = computed(() => {
+  return sortOptions.map(opt => ({
+    label: opt.label,
+    onClick: () => {
+      currentSort.value = opt.value
+    }
+  }))
+})
+
+const columnsDropdownOptions = computed(() => {
+  return [
+    {
+      group: 'Toggle Columns',
+      items: [
+        {
+          label: 'Type',
+          icon: visibleColumns.value.secret_type ? 'check' : '',
+          onClick: () => { visibleColumns.value.secret_type = !visibleColumns.value.secret_type }
+        },
+        {
+          label: 'Folder',
+          icon: visibleColumns.value.folder ? 'check' : '',
+          onClick: () => { visibleColumns.value.folder = !visibleColumns.value.folder }
+        },
+        {
+          label: 'Strength',
+          icon: visibleColumns.value.password_strength ? 'check' : '',
+          onClick: () => { visibleColumns.value.password_strength = !visibleColumns.value.password_strength }
+        },
+        {
+          label: 'Last Modified',
+          icon: visibleColumns.value.modified ? 'check' : '',
+          onClick: () => { visibleColumns.value.modified = !visibleColumns.value.modified }
+        },
+      ]
+    }
+  ]
+})
+
+const columns = computed(() => {
+  const cols = [
+    {
+      label: 'Title',
+      key: 'title',
+      width: '260px',
+    }
+  ]
+
+  if (visibleColumns.value.secret_type) {
+    cols.push({
+      label: 'Type',
+      key: 'secret_type',
+      width: '120px',
+    })
+  }
+
+  if (visibleColumns.value.folder) {
+    cols.push({
+      label: 'Folder',
+      key: 'folder',
+      width: '130px',
+    })
+  }
+
+  if (visibleColumns.value.password_strength) {
+    cols.push({
+      label: 'Strength',
+      key: 'password_strength',
+      width: '120px',
+    })
+  }
+
+  if (visibleColumns.value.modified) {
+    cols.push({
+      label: 'Last Modified',
+      key: 'modified',
+      width: '140px',
+    })
+  }
+
+  cols.push({
+    label: '',
+    key: '_actions',
+    width: '90px',
+    align: 'right',
+  })
+
+  return cols
+})
+
+const formattedRows = computed(() => {
+  return secretsList.value.map(secret => {
+    return {
+      ...secret,
+      name: secret.name,
+      title: {
+        title: secret.title,
+        secret_type: secret.secret_type,
+      },
+      secret_type: secret.secret_type,
+      folder: foldersResource.data?.find(f => f.name === secret.folder)?.folder_name || secret.folder || '',
+      password_strength: secret.password_strength || '',
+      modified: {
+        raw: secret.modified,
+        formatted: formatTime(secret.modified),
+      },
+      _actions: secret,
+    }
+  })
+})
+
+const typeFilterOptions = [
+  { label: 'All Types', onClick: () => (activeFilters.value.secret_type = '') },
+  ...['Password', 'API Key', 'Note', 'SSH Key', 'Certificate', 'Credit Card', 'Database'].map(t => ({ label: t, onClick: () => (activeFilters.value.secret_type = t) })),
+]
+
+function clearFilters() {
+  titleQuery.value = ''
+  activeFilters.value = { secret_type: '' }
+  currentSort.value = 'modified desc'
+}
+
+function formatTime(dt) { if (!dt) return ''; const d = new Date(dt); return d.toLocaleDateString() }
+async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); secrets.reload() }
+
+function copyToClipboard(text) {
+  if (!text) return
+  navigator.clipboard.writeText(text)
+}
+
+function getRowActions(secret) {
+  const actions = [
+    {
+      label: 'View Details',
+      icon: 'eye',
+      onClick: () => router.push({ name: 'SecretDetail', params: { name: secret.name } }),
+    },
+    {
+      label: 'Copy Username',
+      icon: 'copy',
+      onClick: () => copyToClipboard(secret.username),
+      condition: () => !!secret.username,
+    },
+    {
+      label: 'Open URL',
+      icon: 'external-link',
+      onClick: () => window.open(secret.url, '_blank'),
+      condition: () => !!secret.url,
+    },
+  ]
+  return actions.filter(a => !a.condition || a.condition())
+}
+
+watch([titleQuery, activeFilters, currentSort], () => {
+  secrets.submit({
+    title: titleQuery.value || undefined,
+    secret_type: activeFilters.value.secret_type || undefined,
+    favorites_only: 1, // Hardcoded for favorites list!
+    order_by: currentSort.value,
+  })
+}, { deep: true })
+
 </script>

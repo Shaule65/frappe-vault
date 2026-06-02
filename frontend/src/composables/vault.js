@@ -11,7 +11,6 @@ export function useSecrets(initialFilters = {}) {
     url: 'frappe_vault.api.secrets.list',
     params: initialFilters,
     auto: true,
-    cache: 'vault-secrets',
   })
 }
 
