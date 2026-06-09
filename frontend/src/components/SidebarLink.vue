@@ -2,7 +2,7 @@
   <router-link
     v-if="to"
     :to="to"
-    class="flex h-7.5 cursor-pointer items-center rounded duration-200 ease-in-out focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px]"
+    class="group flex h-7.5 cursor-pointer items-center rounded duration-200 ease-in-out focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px]"
     :class="
       isActive
         ? 'bg-surface-selected shadow-sm text-ink-gray-9 font-medium'
@@ -53,7 +53,7 @@
   </router-link>
   <button
     v-else
-    class="flex h-7.5 cursor-pointer items-center rounded duration-200 ease-in-out focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px] text-left w-[calc(100%-16px)]"
+    class="group flex h-7.5 cursor-pointer items-center rounded duration-200 ease-in-out focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px] text-left w-[calc(100%-16px)]"
     :class="
       isActive
         ? 'bg-surface-selected shadow-sm text-ink-gray-9 font-medium'

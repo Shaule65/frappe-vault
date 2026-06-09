@@ -17,8 +17,25 @@ def create(folder_name, parent_vault_folder=None, icon=None, color=None, descrip
 
 @frappe.whitelist()
 def delete(name):
+    # Cascading delete: delete all secrets stored inside this folder first
+    secrets = frappe.get_all("Vault Secret", filters={"folder": name}, fields=["name"])
+    for s in secrets:
+        frappe.delete_doc("Vault Secret", s.name, force=True)
+
     frappe.delete_doc("Vault Folder", name)
     return {"deleted": name}
+
+
+@frappe.whitelist()
+def update(name, folder_name, color=None, description=None):
+    doc = frappe.get_doc("Vault Folder", name)
+    doc.folder_name = folder_name
+    if color is not None:
+        doc.color = color
+    if description is not None:
+        doc.description = description
+    doc.save()
+    return {"name": doc.name}
 
 
 @frappe.whitelist()

@@ -11,7 +11,6 @@ export function useSecrets(initialFilters = {}) {
     url: 'frappe_vault.api.secrets.list',
     params: initialFilters,
     auto: true,
-    cache: 'vault-secrets',
   })
 }
 
@@ -71,9 +70,28 @@ export function useFolders() {
   })
 }
 
+export function useFolderSecrets() {
+  return createResource({
+    url: 'frappe_vault.api.folders.get_folder_secrets',
+    makeParams: ({ folder_name }) => ({ folder_name, limit: 1 }),
+  })
+}
+
 export function useCreateFolder() {
   return createResource({
     url: 'frappe_vault.api.folders.create',
+  })
+}
+
+export function useDeleteFolder() {
+  return createResource({
+    url: 'frappe_vault.api.folders.delete',
+  })
+}
+
+export function useUpdateFolder() {
+  return createResource({
+    url: 'frappe_vault.api.folders.update',
   })
 }
 
