@@ -156,3 +156,10 @@ export function useSecretActivity(secretName) {
     auto: !!secretName,
   })
 }
+
+export function useVerifyMasterPassword() {
+  return createResource({
+    url: 'frappe_vault.vault.doctype.vault_settings.vault_settings.verify_master_password',
+  })
+}
+

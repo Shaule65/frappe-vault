@@ -97,7 +97,6 @@ const navItems = computed(() => [
     to: '/favorites',
     count: stats.data?.favorites_count,
   },
-  { name: 'generator', label: 'Generator', icon: 'refresh-cw', to: '/generator' },
   { name: 'settings', label: 'Settings', icon: 'settings', to: '/settings' },
 ])
 
@@ -110,7 +109,9 @@ const userMenuOptions = [
   {
     label: 'Logout',
     icon: 'log-out',
-    onClick: () => session.logout(),
+    onClick: () => {
+      window.location.href = '/logout'
+    },
   },
 ]
 

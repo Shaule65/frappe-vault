@@ -26,7 +26,7 @@
           />
         </div>
 
-
+ 
 
         <!-- Type Quick Filter Dropdown -->
         <Dropdown :options="typeFilterOptions">
@@ -156,8 +156,8 @@
             selectable: false,
             showTooltip: true,
             resizeColumn: true,
+            onRowClick: (row) => router.push({ name: 'SecretDetail', params: { name: row.name } }),
           }"
-          @row-click="(row) => selectedSecret = row.name"
         >
           <ListHeader class="border-b px-5 py-2.5 bg-gray-50/50 shrink-0">
             <ListHeaderItem
@@ -172,18 +172,19 @@
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
+              class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
+              @click="router.push({ name: 'SecretDetail', params: { name: row.name } })"
             >
-              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7">
+              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7 h-full flex items-center">
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-gray-100 shadow-sm"
                          :class="typeColors[item.secret_type] || 'bg-gray-100 text-gray-600'">
-                      <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
+                       <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
                     </div>
                     <div class="min-w-0">
-                      <span class="font-medium text-ink-gray-9 text-base truncate block leading-normal">{{ item.title }}</span>
-                      <span class="text-xs text-ink-gray-5 truncate block leading-normal mt-0.5" v-if="item.subtitle">{{ item.subtitle }}</span>
+                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 hover:underline cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                     </div>
                   </div>
 
@@ -265,14 +266,12 @@
     <!-- New Secret Dialog -->
     <NewSecretDialog v-model="showNewDialog" @created="handleCreated" />
 
-    <!-- Detail Panel -->
-    <SecretDetailPanel v-if="selectedSecret" :name="selectedSecret" @close="selectedSecret = null" @updated="secrets.reload()" @deleted="handleDeleted" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   Button,
   TextInput,
@@ -290,9 +289,9 @@ import {
 import { useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
 import NewSecretDialog from '../components/NewSecretDialog.vue'
-import SecretDetailPanel from '../components/SecretDetailPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
 const titleQuery = ref('')
 const selectedSecret = ref(null)
 const showNewDialog = ref(false)
@@ -496,8 +495,8 @@ function clearFilters() {
 
 function formatTime(dt) { if (!dt) return ''; const d = new Date(dt); return d.toLocaleDateString() }
 async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); secrets.reload() }
-function handleCreated(r) { showNewDialog.value = false; secrets.reload(); selectedSecret.value = r.name }
-function handleDeleted() { selectedSecret.value = null; secrets.reload() }
+function handleCreated(r) { showNewDialog.value = false; secrets.reload(); router.push({ name: 'SecretDetail', params: { name: r.name } }) }
+function handleDeleted() { secrets.reload() }
 
 function copyToClipboard(text) {
   if (!text) return
@@ -509,7 +508,7 @@ function getRowActions(secret) {
     {
       label: 'View Details',
       icon: 'eye',
-      onClick: () => (selectedSecret.value = secret.name),
+      onClick: () => router.push({ name: 'SecretDetail', params: { name: secret.name } }),
     },
     {
       label: 'Copy Username',

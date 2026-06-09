@@ -249,14 +249,9 @@ const navItems = computed(() => [
   { name: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/' },
   { name: 'secrets', label: 'All Secrets', icon: 'key', to: '/secrets', count: stats.data?.total_secrets },
   { name: 'favorites', label: 'Favorites', icon: 'star', to: '/favorites', count: stats.data?.favorites },
-  { name: 'shared', label: 'Shared With Me', icon: 'users', to: '/shared' },
-  { name: 'generator', label: 'Generator', icon: 'refresh-cw', to: '/generator' },
-  { name: 'audit', label: 'Audit Log', icon: 'activity', to: '/audit' },
 ])
 
 const handleLogout = () => {
-  fetch('/api/method/logout', { method: 'POST' }).then(() => {
-    window.location.replace('/login')
-  })
+  window.location.href = '/logout'
 }
 </script>

@@ -45,7 +45,7 @@ def get_secrets(
             ["email", "like", f"%{search}%"],
         ]
 
-    secrets = frappe.get_all(
+    secrets = frappe.get_list(
         "Vault Secret",
         filters=filters,
         or_filters=or_filters,
@@ -180,7 +180,22 @@ def delete_secret(name: str) -> dict:
         frappe.throw(_("You don't have permission to delete this secret"), frappe.PermissionError)
 
     title = frappe.db.get_value("Vault Secret", name, "title")
-    frappe.delete_doc("Vault Secret", name)
+
+    # 1. Clean up associated shareable One Time Links
+    one_time_links = frappe.get_all("Vault One Time Link", filters={"secret": name}, pluck="name")
+    for link_name in one_time_links:
+        frappe.delete_doc("Vault One Time Link", link_name, force=True)
+
+    # 2. Clean up associated share settings
+    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
+    for share_name in shares:
+        frappe.delete_doc("Vault Share", share_name, force=True)
+
+    # 3. Finally delete the Vault Secret document itself.
+    # We bypass link verification (force=True) so we can keep the historical
+    # Vault Audit Logs intact and displaying the raw secret ID in list views!
+    frappe.delete_doc("Vault Secret", name, force=True)
+
     return {"name": name, "title": title}
 
 
@@ -209,22 +224,22 @@ def bulk_move(secret_names: list, target_folder: str) -> dict:
 
 def get_vault_stats() -> dict:
     """Get dashboard statistics for current user."""
-    user = frappe.session.user
-
-    total = frappe.db.count("Vault Secret", filters={"owner": user})
-    favorites = frappe.db.count("Vault Secret", filters={"owner": user, "is_favorite": 1})
-    weak = frappe.db.count("Vault Secret", filters={"owner": user, "password_strength": ("in", ["weak", "fair"])})
-
-    by_type = frappe.db.sql("""
-        SELECT secret_type, COUNT(*) as count
-        FROM `tabVault Secret`
-        WHERE owner = %s
-        GROUP BY secret_type
-    """, (user,), as_dict=True)
-
-    recent = frappe.get_all(
+    secrets = frappe.get_list(
         "Vault Secret",
-        filters={"owner": user},
+        fields=["is_favorite", "password_strength", "secret_type"]
+    )
+
+    total = len(secrets)
+    favorites = sum(1 for s in secrets if s.get("is_favorite"))
+    weak = sum(1 for s in secrets if s.get("password_strength") in ["weak", "fair"])
+
+    secrets_by_type = {}
+    for s in secrets:
+        stype = s.get("secret_type") or "Other"
+        secrets_by_type[stype] = secrets_by_type.get(stype, 0) + 1
+
+    recent = frappe.get_list(
+        "Vault Secret",
         fields=["name", "title", "secret_type", "folder", "last_accessed", "url"],
         order_by="last_accessed desc",
         limit=5,
@@ -234,6 +249,6 @@ def get_vault_stats() -> dict:
         "total_secrets": total,
         "favorites": favorites,
         "weak_passwords": weak,
-        "secrets_by_type": {s.secret_type: s.count for s in by_type},
+        "secrets_by_type": secrets_by_type,
         "recent_secrets": recent,
     }
