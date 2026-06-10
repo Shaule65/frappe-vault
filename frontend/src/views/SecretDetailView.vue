@@ -61,7 +61,7 @@
                 <div class="min-w-0 flex-1">
                   <p class="text-sm text-gray-800 leading-snug mt-0.5">
                     <span class="font-bold text-gray-950">{{ item.user }}</span>
-                    {{ item.action.toLowerCase() }} this secret
+                    &nbsp;{{ getActivityText(item) }}
                   </p>
                   <p class="text-xs text-gray-400 mt-1 font-medium">{{ formatTime(item.timestamp) }}</p>
                 </div>
@@ -72,14 +72,98 @@
           </div>
 
           <!-- Sharing config panel -->
-          <div v-else-if="activeTab === 'sharing'" class="space-y-4 max-w-lg">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Sharing Settings</h3>
-            <Button variant="outline" class="w-full justify-center shadow-sm" @click="showShareDialog = true">
-              <template #prefix><FeatherIcon name="user-plus" class="w-4 h-4" /></template>
-              <span>Share Secret</span>
-            </Button>
-            <div class="p-4 bg-gray-50 border border-gray-100 rounded-xl text-center text-xs text-gray-500 font-medium">
-              Sharing functionality coming soon.
+          <div v-else-if="activeTab === 'sharing'" class="space-y-5 max-w-xl">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3 shrink-0">
+              <h3 class="text-base font-semibold text-gray-950">Sharing Settings</h3>
+              
+              <!-- Share Secret Button (Visible if Owner or Admin) -->
+              <Button
+                v-if="isOwnerOrAdmin"
+                variant="solid"
+                theme="indigo"
+                size="sm"
+                class="shadow-sm font-semibold"
+                @click="showShareDialog = true"
+              >
+                <template #prefix><FeatherIcon name="user-plus" class="w-3.5 h-3.5" /></template>
+                <span>Share Secret</span>
+              </Button>
+            </div>
+
+            <!-- If Not Owner or Admin, show who shared it with them -->
+            <div v-if="!isOwnerOrAdmin" class="p-4 bg-gray-50/70 border border-gray-100/50 rounded-xl text-sm leading-relaxed text-ink-gray-7 font-medium shadow-sm flex items-start gap-3">
+              <div class="w-9 h-9 rounded-full bg-blue-50 border border-blue-100/50 text-blue-650 flex items-center justify-center shrink-0">
+                <FeatherIcon name="share-2" class="w-4.5 h-4.5" />
+              </div>
+              <div>
+                <p class="font-bold text-gray-900 leading-normal">Shared Secret Access</p>
+                <p class="mt-1 text-ink-gray-6 font-normal">
+                  This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
+                </p>
+              </div>
+            </div>
+
+            <div v-else class="space-y-4">
+              <!-- Active Shares List -->
+              <div class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-0.5">Active Shares</div>
+
+              <div v-if="sharesList.length" class="space-y-3">
+                <div
+                  v-for="item in sharesList"
+                  :key="item.name"
+                  class="flex items-center justify-between p-3.5 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 transition-colors"
+                >
+                  <div class="flex items-center gap-3.5 min-w-0">
+                    <div class="w-9 h-9 rounded-full bg-gray-50 border border-gray-100 shadow-sm flex items-center justify-center shrink-0">
+                      <FeatherIcon
+                        :name="item.share_type === 'User' ? 'user' : item.share_type === 'Group' ? 'users' : 'shield'"
+                        class="w-4.5 h-4.5 text-gray-500"
+                      />
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-gray-900 truncate leading-snug">
+                        {{ item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role }}
+                      </p>
+                      <p class="text-xs text-gray-400 mt-1 font-medium flex items-center gap-1.5 leading-none">
+                        <span>{{ item.share_type }}</span>
+                        <span class="w-1 h-1 rounded-full bg-gray-300" />
+                        <span v-if="item.expires_on">Expires {{ formatTime(item.expires_on) }}</span>
+                        <span v-else>Never expires</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-3 shrink-0">
+                    <Badge
+                      :theme="permissionTheme[item.permission_level] || 'gray'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ item.permission_level }}
+                    </Badge>
+
+                    <!-- Revoke Access Action -->
+                    <button
+                      class="p-1.5 rounded hover:bg-red-50 text-ink-gray-4 hover:text-ink-red-3 transition-colors focus:outline-none"
+                      title="Revoke Access"
+                      @click="handleRevokeShare(item.name, item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role)"
+                    >
+                      <FeatherIcon name="trash-2" class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Active Shares Empty State -->
+              <div v-else class="p-8 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center shadow-sm">
+                <div class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200/50 flex items-center justify-center mx-auto text-gray-400 mb-3 shrink-0">
+                  <FeatherIcon name="users" class="w-5 h-5" />
+                </div>
+                <p class="text-sm font-semibold text-gray-900 leading-snug">Not Shared Yet</p>
+                <p class="text-xs text-gray-500 mt-1 max-w-[280px] mx-auto leading-normal font-medium">
+                  This secret is private. Use the Share button to give access to other users, groups, or roles.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -135,7 +219,7 @@
             
             <!-- Reveal / Copy Password action -->
             <Button
-              v-if="secretData.secret_type === 'Password'"
+              v-if="secretData.secret_type === 'Password' && canCopy"
               variant="ghost"
               size="sm"
               :tooltip="'Copy Password'"
@@ -149,7 +233,7 @@
 
             <!-- Copy API Key/Secret action -->
             <Button
-              v-if="secretData.secret_type === 'API Key'"
+              v-if="secretData.secret_type === 'API Key' && canCopy"
               variant="ghost"
               size="sm"
               :tooltip="'Copy API Secret'"
@@ -175,6 +259,7 @@
 
             <!-- Delete action -->
             <Button
+              v-if="canDelete"
               variant="ghost"
               size="sm"
               theme="red"
@@ -188,6 +273,7 @@
 
           <!-- Edit mode trigger -->
           <Button
+            v-if="canEdit"
             variant="outline"
             size="sm"
             @click="toggleEditMode"
@@ -448,7 +534,7 @@
                         <Button variant="ghost" size="sm" @click="togglePassword" class="text-gray-400 hover:text-gray-650" tooltip="Reveal Password">
                           <FeatherIcon :name="showPassword ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" @click="copyPassword" class="text-gray-400 hover:text-gray-650" tooltip="Copy Password">
+                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyPassword" class="text-gray-400 hover:text-gray-650" tooltip="Copy Password">
                           <FeatherIcon :name="copiedField === 'password' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'password'}" />
                         </Button>
                       </div>
@@ -483,7 +569,7 @@
                         <Button variant="ghost" size="sm" @click="toggleAPISecret" class="text-gray-400 hover:text-gray-650" tooltip="Reveal API Secret">
                           <FeatherIcon :name="showAPISecret ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" @click="copyAPISecret" class="text-gray-400 hover:text-gray-650" tooltip="Copy API Secret">
+                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyAPISecret" class="text-gray-400 hover:text-gray-650" tooltip="Copy API Secret">
                           <FeatherIcon :name="copiedField === 'api_secret' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'api_secret'}" />
                         </Button>
                       </div>
@@ -509,7 +595,7 @@
                         <Button variant="ghost" size="sm" @click="toggleCardNumber" class="text-gray-400 hover:text-gray-650" tooltip="Reveal Card Number">
                           <FeatherIcon :name="showCardNumber ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" @click="copyCardNumber" class="text-gray-400 hover:text-gray-650" tooltip="Copy Card Number">
+                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyCardNumber" class="text-gray-400 hover:text-gray-650" tooltip="Copy Card Number">
                           <FeatherIcon :name="copiedField === 'card_number' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'card_number'}" />
                         </Button>
                       </div>
@@ -531,7 +617,7 @@
                         <Button variant="ghost" size="sm" @click="toggleCardCVV" class="text-gray-400 hover:text-gray-650" tooltip="Reveal CVV">
                           <FeatherIcon :name="showCardCVV ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" @click="copyCardCVV" class="text-gray-400 hover:text-gray-650" tooltip="Copy CVV">
+                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyCardCVV" class="text-gray-400 hover:text-gray-650" tooltip="Copy CVV">
                           <FeatherIcon :name="copiedField === 'card_cvv' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'card_cvv'}" />
                         </Button>
                       </div>
@@ -569,7 +655,7 @@
                         <Button variant="ghost" size="sm" @click="toggleDBPassword" class="text-gray-400 hover:text-gray-650" tooltip="Reveal DB Password">
                           <FeatherIcon :name="showDBPassword ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" @click="copyDBPassword" class="text-gray-400 hover:text-gray-650" tooltip="Copy DB Password">
+                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyDBPassword" class="text-gray-400 hover:text-gray-650" tooltip="Copy DB Password">
                           <FeatherIcon :name="copiedField === 'db_password' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'db_password'}" />
                         </Button>
                       </div>
@@ -589,7 +675,7 @@
                     <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">SSH Private Key</span>
                     <div class="relative bg-gray-50 border border-gray-100 rounded-xl p-3.5 group shadow-inner">
                       <pre class="text-xs font-mono text-gray-800 overflow-x-auto max-h-40 whitespace-pre select-all leading-normal">{{ secretData.ssh_private_key }}</pre>
-                      <Button variant="outline" size="sm" @click="copyField(secretData.ssh_private_key, 'ssh_private_key')" class="absolute top-2 right-2 bg-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-gray-200">
+                      <Button v-if="canCopy" variant="outline" size="sm" @click="copyField(secretData.ssh_private_key, 'ssh_private_key')" class="absolute top-2 right-2 bg-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-gray-200">
                         <template #prefix>
                           <FeatherIcon :name="copiedField === 'ssh_private_key' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'ssh_private_key'}" />
                         </template>
@@ -605,7 +691,7 @@
                     <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Certificate</span>
                     <div class="relative bg-gray-50 border border-gray-100 rounded-xl p-3.5 group shadow-inner">
                       <pre class="text-xs font-mono text-gray-800 overflow-x-auto max-h-40 whitespace-pre select-all leading-normal">{{ secretData.certificate }}</pre>
-                      <Button variant="outline" size="sm" @click="copyField(secretData.certificate, 'certificate')" class="absolute top-2 right-2 bg-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-gray-200">
+                      <Button v-if="canCopy" variant="outline" size="sm" @click="copyField(secretData.certificate, 'certificate')" class="absolute top-2 right-2 bg-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-gray-200">
                         <template #prefix>
                           <FeatherIcon :name="copiedField === 'certificate' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'certificate'}" />
                         </template>
@@ -697,50 +783,90 @@
       </template>
     </Dialog>
 
-    <!-- Unlock Vault Dialog (premium dark accents, lock visual, error state) -->
+
+
+    <!-- Share Secret Dialog -->
     <Dialog
-      v-model="showUnlockDialog"
+      v-model="showShareDialog"
       :options="{
-        title: 'Unlock Vault',
+        title: 'Share Secret',
         size: 'sm',
       }"
     >
       <template #body-content>
-        <div class="space-y-4 py-2">
-          <div class="flex flex-col items-center justify-center text-center space-y-2.5 pb-2">
-            <div class="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0 shadow-sm animate-bounce">
-              <FeatherIcon name="lock" class="w-5.5 h-5.5" />
-            </div>
-            <div>
-              <p class="text-sm font-semibold text-gray-900">Verification Required</p>
-              <p class="text-xs text-gray-500 mt-1 leading-normal">
-                Enter your master password to unlock and access sensitive secrets.
-              </p>
+        <div class="space-y-4">
+          <!-- Share Type Selection -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-gray-5 mb-2">Share Type</label>
+            <div class="flex gap-1.5 p-1 bg-surface-gray-2 rounded-lg">
+              <button
+                v-for="t in ['User', 'Group', 'Role']"
+                :key="t"
+                type="button"
+                class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none"
+                :class="newShareType === t ? 'bg-white text-ink-gray-9 shadow-sm' : 'text-ink-gray-6 hover:text-ink-gray-9'"
+                @click="() => { newShareType = t; newShareRecipient = '' }"
+              >
+                {{ t }}
+              </button>
             </div>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Master Password</label>
-            <TextInput
-              type="password"
-              v-model="unlockPassword"
-              placeholder="Enter master password"
-              class="w-full text-sm"
-              @keyup.enter="handleUnlock"
+          <!-- Recipient Selection -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-gray-5 mb-1.5">Select {{ newShareType }}</label>
+            <select
+              v-model="newShareRecipient"
+              class="w-full h-9 rounded-md border border-gray-200 bg-white px-3 py-1 text-sm text-ink-gray-8 focus:border-indigo-500 focus:outline-none shadow-sm font-medium"
+            >
+              <option value="" disabled>Choose recipient...</option>
+              <option
+                v-for="opt in (newShareType === 'User' ? shareOptions.users : newShareType === 'Group' ? shareOptions.groups : shareOptions.roles)"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Permission Level Selection -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-gray-5 mb-1.5">Permission Level</label>
+            <select
+              v-model="newSharePermission"
+              class="w-full h-9 rounded-md border border-gray-200 bg-white px-3 py-1 text-sm text-ink-gray-8 focus:border-indigo-500 focus:outline-none shadow-sm font-medium"
+            >
+              <option value="View Only">View Only</option>
+              <option value="View & Copy">View & Copy</option>
+              <option value="Edit">Edit</option>
+              <option value="Full Control">Full Control</option>
+            </select>
+          </div>
+
+          <!-- Optional Expiration Date -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-ink-gray-5 mb-1.5">Expires On (Optional)</label>
+            <input
+              type="datetime-local"
+              v-model="newShareExpiresOn"
+              class="w-full h-9 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-ink-gray-8 focus:border-indigo-500 focus:outline-none shadow-sm font-medium"
             />
           </div>
-
-          <ErrorMessage v-if="unlockError" :message="unlockError" />
         </div>
       </template>
       <template #actions>
-        <div class="flex items-center justify-end gap-2 px-4 pb-4">
-          <Button variant="outline" @click="showUnlockDialog = false" class="text-gray-700 hover:bg-gray-100">
-            Cancel
-          </Button>
-          <Button variant="solid" theme="indigo" @click="handleUnlock" :loading="unlockLoading" class="font-semibold shadow-sm px-4">
-            Unlock
-          </Button>
+        <div class="flex justify-end gap-2 px-4 pb-4">
+          <Button variant="ghost" label="Cancel" @click="showShareDialog = false" class="text-ink-gray-7 focus:outline-none" />
+          <Button
+            variant="solid"
+            theme="indigo"
+            label="Share"
+            :loading="isSharing"
+            :disabled="!newShareRecipient"
+            @click="handleShareSecret"
+            class="px-4 font-semibold shadow-sm focus:outline-none"
+          />
         </div>
       </template>
     </Dialog>
@@ -752,7 +878,7 @@ import { ref, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { nextTick } from 'vue'
 import { Button, Badge, FeatherIcon, TextInput, FormControl, Dialog, ErrorMessage, toast } from 'frappe-ui'
-import { useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useFolders, useVerifyMasterPassword } from '../composables/vault'
+import { useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useFolders, useVerifyMasterPassword, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
 import PasswordStrength from '../components/PasswordStrength.vue'
@@ -798,16 +924,138 @@ const updateResource = useUpdateSecret()
 const folders = useFolders()
 const clipboard = useClipboard()
 
+// Sharing resources
+const shareResource = useShareSecret()
+const unshareResource = useUnshare()
+const sharesResource = useSecretShares(props.name)
+const shareOptionsResource = useShareOptions()
+const stats = useVaultStats()
+
 const secretData = computed(() => secret.data)
 const decryptedData = computed(() => decryptResource.data?.decrypted)
 const activityList = computed(() => activity.data || [])
+const sharesList = computed(() => sharesResource.data || [])
+const shareOptions = computed(() => shareOptionsResource.data || { users: [], groups: [], roles: [] })
+
+// Sharing Form State
+const newShareType = ref('User') // 'User', 'Group', 'Role'
+const newShareRecipient = ref('')
+const newSharePermission = ref('View Only')
+const newShareExpiresOn = ref('')
+const isSharing = ref(false)
+
+const currentSessionUser = computed(() => {
+  if (window.frappe?.boot?.user) {
+    if (typeof window.frappe.boot.user === 'object') {
+      return window.frappe.boot.user.name || 'Guest'
+    }
+    return window.frappe.boot.user
+  }
+  if (window.frappe?.session?.user) {
+    return window.frappe.session.user
+  }
+  if (window.frappe?.user?.name) {
+    return window.frappe.user.name
+  }
+  return 'Guest'
+})
+const isOwnerOrAdmin = computed(() => {
+  if (stats.data?.is_admin) return true
+  if (currentSessionUser.value === 'Administrator') return true
+  const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  return secretData.value?.owner === currentSessionUser.value
+})
+
+const userPermission = computed(() => secretData.value?.user_permission || 'View Only')
+
+const canEdit = computed(() => {
+  if (stats.data?.is_admin) return true
+  if (currentSessionUser.value === 'Administrator') return true
+  const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (secretData.value?.owner === currentSessionUser.value) return true
+  return ['Edit', 'Full Control'].includes(userPermission.value)
+})
+
+const canDelete = computed(() => {
+  if (stats.data?.is_admin) return true
+  if (currentSessionUser.value === 'Administrator') return true
+  const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (secretData.value?.owner === currentSessionUser.value) return true
+  return userPermission.value === 'Full Control'
+})
+
+const canCopy = computed(() => {
+  if (stats.data?.is_admin) return true
+  if (currentSessionUser.value === 'Administrator') return true
+  const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (secretData.value?.owner === currentSessionUser.value) return true
+  return ['View & Copy', 'Edit', 'Full Control'].includes(userPermission.value)
+})
+
+const permissionTheme = {
+  'View Only': 'gray',
+  'View & Copy': 'blue',
+  'Edit': 'orange',
+  'Full Control': 'green'
+}
+
+async function handleShareSecret() {
+  if (!newShareRecipient.value) {
+    toast.error('Please select a recipient')
+    return
+  }
+
+  isSharing.value = true
+  try {
+    await shareResource.submit({
+      shared_name: props.name,
+      shared_doctype: 'Vault Secret',
+      share_type: newShareType.value,
+      user: newShareType.value === 'User' ? newShareRecipient.value : undefined,
+      group: newShareType.value === 'Group' ? newShareRecipient.value : undefined,
+      frappe_role: newShareType.value === 'Role' ? newShareRecipient.value : undefined,
+      permission_level: newSharePermission.value,
+      expires_on: newShareExpiresOn.value || undefined,
+    })
+
+    toast.success(`Secret shared successfully with ${newShareRecipient.value}`)
+
+    // Reset fields and close
+    newShareRecipient.value = ''
+    newShareExpiresOn.value = ''
+    showShareDialog.value = false
+    await sharesResource.fetch({ secret_name: props.name })
+    activity.reload()
+  } catch (err) {
+    console.error(err)
+    toast.error(err.messages?.[0] || err.message || 'Failed to share secret')
+  } finally {
+    isSharing.value = false
+  }
+}
+
+async function handleRevokeShare(shareName, recipientName) {
+  try {
+    await unshareResource.submit({ share_name: shareName })
+    toast.success(`Revoked access for ${recipientName}`)
+    await sharesResource.fetch({ secret_name: props.name })
+    activity.reload()
+  } catch (err) {
+    console.error(err)
+    toast.error(err.message || 'Failed to revoke access')
+  }
+}
 
 const tabs = [
   { name: 'activity', label: 'Activity' },
   { name: 'sharing', label: 'Sharing' },
 ]
 
-const actionIcons = { Viewed: 'eye', Created: 'plus', Updated: 'edit', Deleted: 'trash', Shared: 'share', Copied: 'copy' }
+const actionIcons = { Viewed: 'eye', Created: 'plus', Updated: 'edit', Deleted: 'trash', Shared: 'share-2', Unshared: 'user-minus', Copied: 'copy' }
 
 const typeMeta = {
   Password: { icon: 'key', bg: 'bg-emerald-50 text-emerald-600 border-emerald-100', color: 'text-emerald-600' },
@@ -898,15 +1146,6 @@ function copyField(value, fieldName) {
   }, 3000)
 }
 
-// --- Unlock Dialog State & Logic ---
-const showUnlockDialog = ref(false)
-const unlockPassword = ref('')
-const unlockError = ref('')
-const unlockLoading = ref(false)
-let pendingAction = null
-
-const verifyResource = useVerifyMasterPassword()
-
 async function ensureDecrypted(actionCallback) {
   try {
     if (!decryptedData.value) {
@@ -916,63 +1155,10 @@ async function ensureDecrypted(actionCallback) {
       await actionCallback()
     }
   } catch (err) {
-    const errMsg = err.messages?.[0] || err.message || ''
-    const isAuthError = errMsg.toLowerCase().includes('master password') || 
-                        errMsg.toLowerCase().includes('verification required') || 
-                        errMsg.toLowerCase().includes('session expired') ||
-                        err.exc_type === 'AuthenticationError'
-    
-    if (isAuthError) {
-      pendingAction = actionCallback
-      unlockPassword.value = ''
-      unlockError.value = ''
-      showUnlockDialog.value = true
-    } else {
-      toast.error(errMsg || 'Failed to decrypt secret')
-    }
+    const errMsg = err.messages?.[0] || err.message || 'Failed to decrypt secret'
+    toast.error(errMsg)
   }
 }
-
-async function handleUnlock() {
-  if (!unlockPassword.value) {
-    unlockError.value = 'Please enter your master password'
-    return
-  }
-  
-  unlockLoading.value = true
-  unlockError.value = ''
-  
-  try {
-    const res = await verifyResource.submit({ password: unlockPassword.value })
-    if (res && (res.verified || res.success)) {
-      showUnlockDialog.value = false
-      toast.success('Vault unlocked')
-      
-      // Retry the pending action
-      if (pendingAction) {
-        const action = pendingAction
-        pendingAction = null
-        await ensureDecrypted(action)
-      }
-    } else {
-      unlockError.value = 'Invalid master password'
-    }
-  } catch (err) {
-    unlockError.value = err.messages?.[0] || err.message || 'Invalid master password'
-  } finally {
-    unlockLoading.value = false
-  }
-}
-
-watch(showUnlockDialog, async (val) => {
-  if (val) {
-    await nextTick()
-    const inputEl = document.querySelector('input[placeholder="Enter master password"]')
-    if (inputEl) {
-      inputEl.focus()
-    }
-  }
-})
 
 // --- Sensitive Field Handlers ---
 async function togglePassword() {
@@ -1207,5 +1393,45 @@ function formatDateOnly(dt) {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+function parseDetails(details) {
+  if (!details) return {}
+  if (typeof details === 'object') return details
+  try {
+    return JSON.parse(details)
+  } catch (e) {
+    return {}
+  }
+}
+
+function getActivityText(item) {
+  const details = parseDetails(item.details)
+  switch (item.action) {
+    case 'Created':
+      return 'created this secret'
+    case 'Updated':
+      return 'updated this secret'
+    case 'Deleted':
+      return 'deleted this secret'
+    case 'Viewed':
+      return 'viewed this secret'
+    case 'Copied': {
+      const field = details.field || 'password'
+      return `copied the ${field} field`
+    }
+    case 'Shared': {
+      const recipient = details.recipient || 'Unknown'
+      const permission = details.permission || 'View Only'
+      const expiresOn = details.expires_on ? ` (expires ${formatTime(details.expires_on)})` : ''
+      return `shared this secret with ${recipient} (${permission})${expiresOn}`
+    }
+    case 'Unshared': {
+      const recipient = details.recipient || 'Unknown'
+      return `revoked access for ${recipient}`
+    }
+    default:
+      return `${item.action.toLowerCase()} this secret`
+  }
 }
 </script>

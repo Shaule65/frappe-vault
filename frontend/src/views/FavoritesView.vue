@@ -43,7 +43,7 @@
         <Button
           class="h-8 w-8 p-0 flex items-center justify-center focus:outline-none hover:bg-gray-50 border border-gray-200 rounded"
           variant="outline"
-          @click="secrets.reload()"
+          @click="refreshSecrets()"
           tooltip="Refresh"
         >
           <template #icon>
@@ -356,6 +356,15 @@ const typeFilterOptions = [
   ...['Password', 'API Key', 'Note', 'SSH Key', 'Certificate', 'Credit Card', 'Database'].map(t => ({ label: t, onClick: () => (activeFilters.value.secret_type = t) })),
 ]
 
+function refreshSecrets() {
+  secrets.submit({
+    title: titleQuery.value || undefined,
+    secret_type: activeFilters.value.secret_type || undefined,
+    favorites_only: 1,
+    order_by: currentSort.value,
+  })
+}
+
 function clearFilters() {
   titleQuery.value = ''
   activeFilters.value = { secret_type: '' }
@@ -363,7 +372,7 @@ function clearFilters() {
 }
 
 function formatTime(dt) { if (!dt) return ''; const d = new Date(dt); return d.toLocaleDateString() }
-async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); secrets.reload() }
+async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
 
 function copyToClipboard(text) {
   if (!text) return
@@ -400,6 +409,6 @@ watch([titleQuery, activeFilters, currentSort], () => {
     favorites_only: 1, // Hardcoded for favorites list!
     order_by: currentSort.value,
   })
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 </script>
