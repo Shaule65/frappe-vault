@@ -9,7 +9,7 @@
   "column_break_1",
   "permission_level", "expires_on",
   "reference_section", "shared_doctype", "shared_name",
-  "meta_section", "shared_by"
+  "meta_section", "shared_by", "is_revoked", "revoked_by"
  ],
  "fields": [
   {"default": "User", "fieldname": "share_type", "fieldtype": "Select", "in_list_view": 1, "label": "Share Type", "options": "User\nGroup\nRole", "reqd": 1},
@@ -23,7 +23,9 @@
   {"default": "Vault Secret", "fieldname": "shared_doctype", "fieldtype": "Select", "label": "Shared DocType", "options": "Vault Secret\nVault Folder", "reqd": 1},
   {"fieldname": "shared_name", "fieldtype": "Dynamic Link", "label": "Shared Document", "options": "shared_doctype", "reqd": 1},
   {"fieldname": "meta_section", "fieldtype": "Section Break", "label": "Meta"},
-  {"fieldname": "shared_by", "fieldtype": "Link", "label": "Shared By", "options": "User", "read_only": 1}
+  {"fieldname": "shared_by", "fieldtype": "Link", "label": "Shared By", "options": "User", "read_only": 1},
+  {"default": "0", "fieldname": "is_revoked", "fieldtype": "Check", "label": "Is Revoked", "read_only": 1},
+  {"fieldname": "revoked_by", "fieldtype": "Link", "label": "Revoked By", "options": "User", "read_only": 1}
  ],
  "index_web_pages_for_search": 0,
  "links": [],

@@ -38,3 +38,66 @@ def create_one_time_link(secret_name, expiry_hours=24, max_views=1, passphrase=N
 def consume_link(token, passphrase=None):
     from frappe_vault.services.sharing_service import consume_one_time_link
     return consume_one_time_link(token, passphrase=passphrase)
+
+
+@frappe.whitelist()
+def get_share_options():
+    # Only authenticated users
+    if not frappe.session.user or frappe.session.user == "Guest":
+        frappe.throw(_("Not logged in"), frappe.PermissionError)
+
+    # 1. Fetch active, non-system users (excluding guest, administrator, and current user)
+    users = frappe.get_all(
+        "User",
+        filters={
+            "enabled": 1,
+            "user_type": "System User",
+            "name": ["not in", ["Guest", "Administrator", frappe.session.user]]
+        },
+        fields=["name", "full_name"],
+        order_by="full_name asc"
+    )
+    
+    # Filter out users with admin roles as they already have full access
+    non_admin_users = []
+    for u in users:
+        roles = frappe.get_roles(u.name)
+        if "Vault Admin" not in roles and "System Manager" not in roles:
+            non_admin_users.append(u)
+            
+    user_options = [{"value": u.name, "label": u.full_name or u.name} for u in non_admin_users]
+
+    # 2. Fetch Vault Groups
+    groups = frappe.get_all(
+        "Vault Group",
+        fields=["name", "group_name"],
+        order_by="group_name asc"
+    )
+    group_options = [{"value": g.name, "label": g.group_name} for g in groups]
+
+    # 3. Fetch active system roles
+    roles = frappe.get_all(
+        "Role",
+        filters={
+            "disabled": 0,
+        },
+        fields=["name"],
+        order_by="name asc"
+    )
+    role_options = [{"value": r.name, "label": r.name} for r in roles]
+
+    return {
+        "users": user_options,
+        "groups": group_options,
+        "roles": role_options
+    }
+
+
+@frappe.whitelist()
+def bulk_delete_shares(share_names):
+    from frappe_vault.services.sharing_service import bulk_delete_shares as _bulk_delete
+    if isinstance(share_names, str):
+        import json
+        share_names = json.loads(share_names)
+    return _bulk_delete(share_names)
+
