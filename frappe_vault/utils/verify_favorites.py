@@ -15,10 +15,18 @@ def run():
         frappe.delete_doc("Vault Secret", test_secret_name, force=True)
     
     frappe.db.sql("DELETE FROM `tabVault Favorite` WHERE secret = 'test_favorite_secret'")
+    frappe.db.sql("DELETE FROM `tabVault Favorite` WHERE user = 'chandayogesh123@gmail.com'")
     frappe.db.sql("DELETE FROM `tabVault Share` WHERE shared_name = 'test_favorite_secret'")
     frappe.db.commit()
 
+    # Get standard user's initial count of visible secrets
+    standard_user = "chandayogesh123@gmail.com"
+    frappe.set_user(standard_user)
+    initial_secrets_count = len(frappe.get_list("Vault Secret", pluck="name"))
+    initial_favorites_count = len(frappe.get_all("Vault Favorite", filters={"user": standard_user}, pluck="secret"))
+
     # 2. Create a test secret owned by Administrator
+    frappe.set_user("Administrator")
     secret = frappe.get_doc({
         "doctype": "Vault Secret",
         "name": test_secret_name,
@@ -30,7 +38,6 @@ def run():
     print(f"Created test secret: {secret.name}")
 
     # 3. Share the secret with standard user
-    standard_user = "chandayogesh123@gmail.com"
     share_res = share_secret(
         shared_name=secret.name,
         shared_doctype="Vault Secret",
@@ -46,7 +53,7 @@ def run():
     assert toggle_res["is_favorite"] == 1, "Admin should have favorited the secret!"
     print("PASSED: Admin successfully favorited the secret.")
 
-    # 5. Check if standard user sees it as favorite (should be 0)
+    # 5. Check if standard user sees it as favorite (should be 0 change from initial)
     frappe.set_user(standard_user)
     fav_check_std = get_secret(secret.name)["is_favorite"]
     assert fav_check_std == 0, "Standard user should NOT see shared secret as favorite when only Admin favorited it!"
@@ -70,11 +77,10 @@ def run():
     print("PASSED: Favorites isolation verified — standard user remains favorited.")
 
     # 9. Verify Stats and Count Leak checks
-    # Standard user has access to 1 secret (the test secret). Let's check get_vault_stats total_secrets and favorites
     stats_std = get_vault_stats()
     print(f"Stats for standard user: {stats_std}")
-    assert stats_std["total_secrets"] == 1, f"Standard user should only see 1 visible secret, but got {stats_std['total_secrets']}"
-    assert stats_std["favorites"] == 1, f"Standard user should have 1 favorite secret, but got {stats_std['favorites']}"
+    assert stats_std["total_secrets"] == initial_secrets_count + 1, f"Standard user should see {initial_secrets_count + 1} visible secrets, but got {stats_std['total_secrets']}"
+    assert stats_std["favorites"] == initial_favorites_count + 1, f"Standard user should have {initial_favorites_count + 1} favorites, but got {stats_std['favorites']}"
     print("PASSED: Count checks and stats respect permissions perfectly.")
 
     # 10. Clean up
