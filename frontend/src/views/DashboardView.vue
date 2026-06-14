@@ -1,9 +1,20 @@
 <template>
   <div class="flex-1 overflow-auto p-6">
-    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
+    <div class="flex items-center gap-2 mb-6">
+      <Button
+        class="size-7 sm:hidden flex items-center justify-center p-0 mr-1 focus:outline-none shrink-0"
+        variant="ghost"
+        @click="mobileSidebarOpened = true"
+      >
+        <template #icon>
+          <FeatherIcon name="menu" class="w-4.5 h-4.5 text-ink-gray-9" />
+        </template>
+      </Button>
+      <h1 class="text-2xl font-semibold text-gray-900">Dashboard</h1>
+    </div>
 
     <!-- Stat cards -->
-    <div class="grid grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div v-for="stat in statCards" :key="stat.label"
            class="bg-white rounded-xl border p-5 hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between mb-3">
@@ -60,8 +71,9 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FeatherIcon } from 'frappe-ui'
+import { FeatherIcon, Button } from 'frappe-ui'
 import { useVaultStats, useSecurityScore } from '../composables/vault'
+import { mobileSidebarOpened } from '../composables/sidebar'
 import EmptyState from '../components/EmptyState.vue'
 
 const stats = useVaultStats()
