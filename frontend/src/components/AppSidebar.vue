@@ -4,21 +4,21 @@
     :class="isSidebarCollapsed ? 'w-12' : 'w-[220px]'"
   >
     <!-- Brand & User Dropdown at the Top -->
-    <div class="p-2 border-b border-gray-100/50">
+    <div class="p-2">
       <Popover placement="bottom-start" trigger="click" class="w-full">
-        <template #target="{ open, togglePopover }">
+        <template #target="{ isOpen, togglePopover }">
           <button
-            class="flex h-12 items-center rounded-md py-2 duration-200 ease-in-out w-full focus:outline-none"
+            class="flex h-12 items-center rounded-md py-2 duration-200 ease-in-out w-full focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
             :class="
               isSidebarCollapsed
                 ? 'w-auto px-0 justify-center mx-auto'
-                : open
-                  ? 'px-2 bg-surface-white shadow-sm border border-gray-100/30'
+                : isOpen
+                  ? 'px-2 bg-surface-white shadow-sm'
                   : 'px-2 hover:bg-surface-gray-3'
             "
             @click.prevent="togglePopover()"
           >
-            <div class="flex items-center w-full" :class="isSidebarCollapsed ? 'justify-center gap-0' : 'px-1 gap-3'">
+            <div class="flex items-center w-full" :class="isSidebarCollapsed ? 'justify-center gap-0' : 'pl-0'">
               <Tooltip text="Frappe Vault" placement="right" :disabled="!isSidebarCollapsed">
                 <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shrink-0 shadow-sm border border-blue-700/10">
                   <FeatherIcon name="lock" class="w-4 h-4 text-white" />
@@ -181,15 +181,23 @@
     </nav>
 
     <!-- Bottom Controls -->
-    <div class="m-2 flex flex-col gap-1">
+    <div v-if="!isMobile" class="m-2 flex flex-col gap-1">
       <!-- Collapse toggle button -->
       <SidebarLink
         :label="isSidebarCollapsed ? 'Expand' : 'Collapse'"
         :isCollapsed="isSidebarCollapsed"
-        :icon="isSidebarCollapsed ? 'chevrons-right' : 'chevrons-left'"
         class="text-ink-gray-7 hover:text-ink-gray-9 hover:bg-surface-gray-2"
         @click="isSidebarCollapsed = !isSidebarCollapsed"
-      />
+      >
+        <template #icon>
+          <span class="grid h-4 w-4 flex-shrink-0 place-items-center">
+            <CollapseSidebar
+              class="h-4 w-4 text-ink-gray-7 duration-300 ease-in-out"
+              :class="{ '[transform:rotateY(180deg)]': isSidebarCollapsed }"
+            />
+          </span>
+        </template>
+      </SidebarLink>
     </div>
 
     <!-- About Dialog -->
@@ -370,7 +378,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, Popover, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl } from 'frappe-ui'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets } from '../composables/vault'
 import SidebarLink from './SidebarLink.vue'
+import CollapseSidebar from './CollapseSidebar.vue'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
+
+const props = defineProps({
+  isMobile: { type: Boolean, default: false }
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -498,9 +511,13 @@ async function handleDeleteFolder() {
 }
 
 // LocalStorage collapsed state syncing
-const isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
-watch(isSidebarCollapsed, (val) => {
-  localStorage.setItem('isSidebarCollapsed', String(val))
+const _isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
+const isSidebarCollapsed = computed({
+  get: () => props.isMobile ? false : _isSidebarCollapsed.value,
+  set: (val) => {
+    _isSidebarCollapsed.value = val
+    localStorage.setItem('isSidebarCollapsed', String(val))
+  }
 })
 
 const showAboutModal = ref(false)

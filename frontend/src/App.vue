@@ -1,7 +1,26 @@
 <template>
-  <div class="h-screen flex bg-gray-50">
-    <AppSidebar v-if="!isPublicRoute" />
-    <main class="flex-1 flex flex-col overflow-hidden">
+  <div class="h-screen flex bg-gray-50 overflow-hidden relative">
+    <!-- Desktop Sidebar -->
+    <AppSidebar v-if="!isPublicRoute" class="hidden sm:flex" />
+
+    <!-- Mobile Drawer Sidebar -->
+    <div
+      v-if="!isPublicRoute && mobileSidebarOpened"
+      class="fixed inset-0 z-50 flex sm:hidden"
+    >
+      <!-- Backdrop -->
+      <div
+        class="fixed inset-0 bg-black/70 transition-opacity"
+        @click="mobileSidebarOpened = false"
+      />
+      <!-- Drawer Content -->
+      <div class="relative w-[220px] h-full bg-white shadow-xl flex flex-col shrink-0 animate-slide-in">
+        <AppSidebar :is-mobile="true" />
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden min-w-0">
       <router-view />
     </main>
   </div>
@@ -11,11 +30,19 @@
 import { computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
+import { mobileSidebarOpened } from './composables/sidebar'
 
 const route = useRoute()
 const isPublicRoute = computed(() => {
   const browserPath = window.location.pathname || ''
   return route.meta.public || route.path.startsWith('/shared/') || browserPath.startsWith('/vault/shared/')
+})
+
+// Auto-close sidebar on route change on mobile
+watchEffect(() => {
+  if (route.path) {
+    mobileSidebarOpened.value = false
+  }
 })
 
 watchEffect(() => {
@@ -25,3 +52,17 @@ watchEffect(() => {
   }
 })
 </script>
+
+<style scoped>
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out forwards;
+}
+</style>
