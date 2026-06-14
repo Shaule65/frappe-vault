@@ -77,7 +77,7 @@
             onRowClick: (row) => handleRowClick(row),
           }"
         >
-          <ListHeader class="border-b sm:mx-5 mx-3 bg-gray-50/50 shrink-0">
+          <ListHeader class="sm:mx-5 mx-3 shrink-0">
             <ListHeaderItem
               v-for="column in columns"
               :key="column.key"
@@ -90,10 +90,9 @@
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
-              class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
               @click="handleRowClick(row)"
             >
-              <ListRowItem :item="item" :align="column.align" class="overflow-hidden text-base font-normal text-ink-gray-7 h-full flex items-center">
+              <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
@@ -233,11 +232,11 @@ const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purpl
 const permissionTheme = { 'View Only': 'gray', 'View & Copy': 'blue', 'Edit': 'orange', 'Full Control': 'green', 'Revoked': 'red' }
 
 const columns = computed(() => [
-  { label: 'Title', key: 'title', width: '240px' },
-  { label: 'Type', key: 'secret_type', width: '120px' },
-  { label: 'Shared By', key: 'shared_by', width: '180px' },
-  { label: 'Permission', key: 'permission_level', width: '130px' },
-  { label: 'Expires On', key: 'expires_on', width: '140px' }
+  { label: 'Title', key: 'title', width: '18rem' },
+  { label: 'Type', key: 'secret_type', width: '10rem' },
+  { label: 'Shared By', key: 'shared_by', width: '14rem' },
+  { label: 'Permission', key: 'permission_level', width: '11rem' },
+  { label: 'Expires On', key: 'expires_on', width: '11rem' }
 ])
 
 const formattedRows = computed(() => {

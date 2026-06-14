@@ -159,7 +159,7 @@
             onRowClick: (row) => router.push({ name: 'SecretDetail', params: { name: row.name } }),
           }"
         >
-          <ListHeader class="border-b sm:mx-5 mx-3 bg-gray-50/50 shrink-0">
+          <ListHeader class="sm:mx-5 mx-3 shrink-0">
             <ListHeaderItem
               v-for="column in columns"
               :key="column.key"
@@ -172,10 +172,9 @@
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
-              class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
               @click="router.push({ name: 'SecretDetail', params: { name: row.name } })"
             >
-              <ListRowItem :item="item" :align="column.align" class="overflow-hidden text-base font-normal text-ink-gray-7 h-full flex items-center">
+              <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
@@ -392,7 +391,7 @@ const columns = computed(() => {
     {
       label: 'Title',
       key: 'title',
-      width: '260px',
+      width: '18rem',
     }
   ]
 
@@ -400,7 +399,7 @@ const columns = computed(() => {
     cols.push({
       label: 'Type',
       key: 'secret_type',
-      width: '120px',
+      width: '10rem',
     })
   }
 
@@ -408,7 +407,7 @@ const columns = computed(() => {
     cols.push({
       label: 'Folder',
       key: 'folder',
-      width: '130px',
+      width: '11rem',
     })
   }
 
@@ -416,7 +415,7 @@ const columns = computed(() => {
     cols.push({
       label: 'Strength',
       key: 'password_strength',
-      width: '120px',
+      width: '10rem',
     })
   }
 
@@ -424,7 +423,7 @@ const columns = computed(() => {
     cols.push({
       label: 'Last Modified',
       key: 'modified',
-      width: '140px',
+      width: '12rem',
     })
   }
 
