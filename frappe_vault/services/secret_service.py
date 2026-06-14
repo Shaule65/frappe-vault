@@ -29,8 +29,21 @@ def get_secrets(
         filters["secret_type"] = secret_type
     if folder:
         filters["folder"] = folder
+
+    # Resolve user favorites
+    user = frappe.session.user
+    user_favorites = set(frappe.get_all("Vault Favorite", filters={"user": user}, pluck="secret"))
+
     if favorites_only:
-        filters["is_favorite"] = 1
+        if not user_favorites:
+            return {
+                "secrets": [],
+                "total": 0,
+                "limit": limit,
+                "offset": offset,
+            }
+        filters["name"] = ["in", list(user_favorites)]
+
     if title:
         filters["title"] = ["like", f"%{title}%"]
     if username:
@@ -55,7 +68,12 @@ def get_secrets(
         limit_start=offset,
     )
 
-    total = frappe.db.count("Vault Secret", filters=filters)
+    # Populate is_favorite dynamically per-user
+    for s in secrets:
+        s["is_favorite"] = 1 if s["name"] in user_favorites else 0
+
+    # Fix total count leak by counting only visible records
+    total = len(frappe.get_list("Vault Secret", filters=filters, or_filters=or_filters, pluck="name"))
 
     return {
         "secrets": secrets,
@@ -80,6 +98,52 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
 
     doc = frappe.get_doc("Vault Secret", name)
 
+    # Determine user permission level for this secret
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+    is_admin = user == "Administrator" or "Vault Admin" in roles or "System Manager" in roles
+
+    if is_admin or doc.owner == user:
+        user_permission = "Full Control"
+    else:
+        conditions = [
+            "(expires_on IS NULL OR expires_on > NOW())"
+        ]
+        target_conds = [f"(shared_doctype = 'Vault Secret' AND shared_name = {frappe.db.escape(doc.name)})"]
+        if doc.folder:
+            target_conds.append(f"(shared_doctype = 'Vault Folder' AND shared_name = {frappe.db.escape(doc.folder)})")
+        conditions.append("(" + " OR ".join(target_conds) + ")")
+
+        share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
+        
+        user_groups = frappe.get_all("Vault Group Member", filters={"user": user}, pluck="parent")
+        if user_groups:
+            groups_str = ", ".join([frappe.db.escape(g) for g in user_groups])
+            share_conds.append(f"(share_type = 'Group' AND `group` IN ({groups_str}))")
+            
+        if roles:
+            roles_str = ", ".join([frappe.db.escape(r) for r in roles])
+            share_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
+            
+        conditions.append("(" + " OR ".join(share_conds) + ")")
+        
+        shares = frappe.db.sql(f"""
+            SELECT permission_level FROM `tabVault Share`
+            WHERE {" AND ".join(conditions)}
+        """, as_dict=True)
+        
+        if shares:
+            perm_map = {
+                "View Only": 1,
+                "View & Copy": 2,
+                "Edit": 3,
+                "Full Control": 4
+            }
+            highest_share = max(shares, key=lambda s: perm_map.get(s.permission_level, 0))
+            user_permission = highest_share.permission_level
+        else:
+            user_permission = "View Only"
+
     result = {
         "name": doc.name,
         "title": doc.title,
@@ -89,7 +153,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "username": doc.username,
         "email": doc.email,
         "notes": doc.notes,
-        "is_favorite": doc.is_favorite,
+        "is_favorite": 1 if frappe.db.exists("Vault Favorite", {"user": frappe.session.user, "secret": doc.name}) else 0,
         "password_strength": doc.password_strength,
         "password_last_changed": doc.password_last_changed,
         "last_accessed": str(doc.last_accessed) if doc.last_accessed else None,
@@ -98,6 +162,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "tags": [t.tag for t in (doc.tags or [])],
         "owner": doc.owner,
         "modified": str(doc.modified),
+        "user_permission": user_permission,
     }
 
     # Type-specific non-sensitive fields
@@ -186,12 +251,20 @@ def delete_secret(name: str) -> dict:
     for link_name in one_time_links:
         frappe.delete_doc("Vault One Time Link", link_name, force=True)
 
-    # 2. Clean up associated share settings
-    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
+    # 2. Mark associated share settings as revoked
+    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name, "is_revoked": 0}, pluck="name")
     for share_name in shares:
-        frappe.delete_doc("Vault Share", share_name, force=True)
+        frappe.db.set_value("Vault Share", share_name, {
+            "is_revoked": 1,
+            "revoked_by": frappe.session.user
+        })
 
-    # 3. Finally delete the Vault Secret document itself.
+    # 3. Clean up associated favorites
+    favorites = frappe.get_all("Vault Favorite", filters={"secret": name}, pluck="name")
+    for fav_name in favorites:
+        frappe.delete_doc("Vault Favorite", fav_name, force=True)
+
+    # 4. Finally delete the Vault Secret document itself.
     # We bypass link verification (force=True) so we can keep the historical
     # Vault Audit Logs intact and displaying the raw secret ID in list views!
     frappe.delete_doc("Vault Secret", name, force=True)
@@ -201,14 +274,24 @@ def delete_secret(name: str) -> dict:
 
 def toggle_favorite(name: str) -> dict:
     """Toggle favorite status."""
-    if not frappe.has_permission("Vault Secret", "write", name):
+    if not frappe.has_permission("Vault Secret", "read", name):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-    doc = frappe.get_doc("Vault Secret", name)
-    doc.is_favorite = 0 if doc.is_favorite else 1
-    doc.save()
+    user = frappe.session.user
+    fav_exists = frappe.db.exists("Vault Favorite", {"user": user, "secret": name})
+    if fav_exists:
+        frappe.delete_doc("Vault Favorite", fav_exists, force=True)
+        is_favorite = 0
+    else:
+        fav_doc = frappe.get_doc({
+            "doctype": "Vault Favorite",
+            "user": user,
+            "secret": name
+        })
+        fav_doc.insert(ignore_permissions=True)
+        is_favorite = 1
 
-    return {"name": doc.name, "is_favorite": doc.is_favorite}
+    return {"name": name, "is_favorite": is_favorite}
 
 
 def bulk_move(secret_names: list, target_folder: str) -> dict:
@@ -224,13 +307,18 @@ def bulk_move(secret_names: list, target_folder: str) -> dict:
 
 def get_vault_stats() -> dict:
     """Get dashboard statistics for current user."""
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
+
     secrets = frappe.get_list(
         "Vault Secret",
-        fields=["is_favorite", "password_strength", "secret_type"]
+        fields=["name", "password_strength", "secret_type"]
     )
 
     total = len(secrets)
-    favorites = sum(1 for s in secrets if s.get("is_favorite"))
+    user_favorites = set(frappe.get_all("Vault Favorite", filters={"user": user}, pluck="secret"))
+    favorites = sum(1 for s in secrets if s.get("name") in user_favorites)
     weak = sum(1 for s in secrets if s.get("password_strength") in ["weak", "fair"])
 
     secrets_by_type = {}
@@ -251,4 +339,5 @@ def get_vault_stats() -> dict:
         "weak_passwords": weak,
         "secrets_by_type": secrets_by_type,
         "recent_secrets": recent,
+        "is_admin": is_admin,
     }

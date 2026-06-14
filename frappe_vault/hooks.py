@@ -69,8 +69,10 @@ scheduler_events = {
 # Permissions — row-level filtering
 permission_query_conditions = {
 	"Vault Secret": "frappe_vault.utils.permissions.get_secret_permission_query",
+	"Vault Folder": "frappe_vault.utils.permissions.get_folder_permission_query",
 }
 
 has_permission = {
 	"Vault Secret": "frappe_vault.utils.permissions.has_secret_permission",
+	"Vault Folder": "frappe_vault.utils.permissions.has_folder_permission",
 }

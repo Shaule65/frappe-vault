@@ -42,13 +42,23 @@ def log_secret_deleted(doc, method):
 
 
 def log_share_created(doc, method):
+    recipient = doc.user if doc.share_type == "User" else doc.group if doc.share_type == "Group" else doc.frappe_role
+    details = {
+        "share_type": doc.share_type,
+        "permission": doc.permission_level,
+        "recipient": recipient
+    }
+    if doc.expires_on:
+        details["expires_on"] = str(doc.expires_on)
     _create_log("Shared", secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
                 folder=doc.shared_name if doc.shared_doctype == "Vault Folder" else None,
-                details={"share_type": doc.share_type, "permission": doc.permission_level})
+                details=details)
 
 
 def log_share_removed(doc, method):
-    _create_log("Unshared", secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None)
+    recipient = doc.user if doc.share_type == "User" else doc.group if doc.share_type == "Group" else doc.frappe_role
+    _create_log("Unshared", secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
+                details={"share_type": doc.share_type, "recipient": recipient})
 
 
 # --- Callable from services ---

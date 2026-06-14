@@ -10,7 +10,7 @@ export function useSecrets(initialFilters = {}) {
   return createResource({
     url: 'frappe_vault.api.secrets.list',
     params: initialFilters,
-    auto: true,
+    auto: false,
   })
 }
 
@@ -102,6 +102,12 @@ export function useShareSecret() {
   })
 }
 
+export function useUnshare() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.unshare',
+  })
+}
+
 export function useSharedWithMe() {
   return createResource({
     url: 'frappe_vault.api.sharing.shared_with_me',
@@ -110,11 +116,25 @@ export function useSharedWithMe() {
   })
 }
 
+export function useShareOptions() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.get_share_options',
+    auto: true,
+    cache: 'vault-share-options',
+  })
+}
+
 export function useSecretShares(secretName) {
   return createResource({
     url: 'frappe_vault.api.sharing.get_shares',
     params: { secret_name: secretName },
     auto: !!secretName,
+  })
+}
+
+export function useBulkDeleteShares() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.bulk_delete_shares',
   })
 }
 

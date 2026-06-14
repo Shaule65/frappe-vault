@@ -61,7 +61,7 @@
         <Button
           class="h-8 w-8 p-0 flex items-center justify-center focus:outline-none hover:bg-gray-50 border border-gray-200 rounded"
           variant="outline"
-          @click="secrets.reload()"
+          @click="refreshSecrets()"
           tooltip="Refresh"
         >
           <template #icon>
@@ -480,12 +480,23 @@ const moreOptions = computed(() => {
         {
           label: 'Refresh List',
           icon: 'refresh-cw',
-          onClick: () => { secrets.reload() }
+          onClick: () => { refreshSecrets() }
         }
       ]
     }
   ]
 })
+
+function refreshSecrets() {
+  secrets.submit({
+    title: titleQuery.value || undefined,
+    secret_type: activeFilters.value.secret_type || undefined,
+    folder: activeFilters.value.folder || undefined,
+    favorites_only: activeFilters.value.favorites_only || undefined,
+    limit: pageLength.value,
+    order_by: currentSort.value,
+  })
+}
 
 function clearFilters() {
   titleQuery.value = ''
@@ -494,9 +505,9 @@ function clearFilters() {
 }
 
 function formatTime(dt) { if (!dt) return ''; const d = new Date(dt); return d.toLocaleDateString() }
-async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); secrets.reload() }
-function handleCreated(r) { showNewDialog.value = false; secrets.reload(); router.push({ name: 'SecretDetail', params: { name: r.name } }) }
-function handleDeleted() { secrets.reload() }
+async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
+function handleCreated(r) { showNewDialog.value = false; refreshSecrets(); router.push({ name: 'SecretDetail', params: { name: r.name } }) }
+function handleDeleted() { refreshSecrets() }
 
 function copyToClipboard(text) {
   if (!text) return

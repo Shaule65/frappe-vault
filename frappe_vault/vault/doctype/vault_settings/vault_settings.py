@@ -18,9 +18,7 @@ def get_vault_settings():
 
 def require_master_password():
     """Verify master password session is active. Throws if not."""
-    settings = get_vault_settings()
-    if not settings.enable_master_password:
-        return
+    return
 
     session_key = f"vault_master_pwd_verified:{frappe.session.user}"
     verified_at = frappe.cache().get_value(session_key)

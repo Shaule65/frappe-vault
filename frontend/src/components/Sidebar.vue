@@ -81,6 +81,14 @@ const categoriesResource = useCategories()
 
 const categories = computed(() => categoriesResource.data || [])
 
+const isAdmin = computed(() => {
+  if (stats.data?.is_admin) return true
+  const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name || ''
+  if (user === 'Administrator') return true
+  const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+  return roles.includes('Vault Admin') || roles.includes('System Manager')
+})
+
 const navItems = computed(() => [
   { name: 'dashboard', label: 'Dashboard', icon: 'home', to: '/' },
   {
@@ -96,6 +104,12 @@ const navItems = computed(() => [
     icon: 'star',
     to: '/favorites',
     count: stats.data?.favorites_count,
+  },
+  {
+    name: 'shared',
+    label: isAdmin.value ? 'Manage Shares' : 'Shared with Me',
+    icon: 'share-2',
+    to: isAdmin.value ? '/manage-shares' : '/shared',
   },
   { name: 'settings', label: 'Settings', icon: 'settings', to: '/settings' },
 ])
