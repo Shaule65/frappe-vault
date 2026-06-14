@@ -22,10 +22,10 @@
               <Tooltip text="Frappe Vault" placement="right" :disabled="!isSidebarCollapsed">
                 <!-- Same SVG as /assets/frappe_vault/images/vault-logo.svg -->
                 <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="rounded-xl shrink-0 shadow-sm">
-                  <rect width="48" height="48" rx="12" fill="url(#vaultGrad)"/>
+                  <rect width="48" height="48" rx="12" :fill="`url(#vaultGrad-${isMobile ? 'mobile' : 'desktop'})`"/>
                   <path d="M24 12C18.48 12 14 16.48 14 22V26H12V36H36V26H34V22C34 16.48 29.52 12 24 12ZM18 22C18 18.69 20.69 16 24 16C27.31 16 30 18.69 30 22V26H18V22ZM24 32C22.9 32 22 31.1 22 30C22 28.9 22.9 28 24 28C25.1 28 26 28.9 26 30C26 31.1 25.1 32 24 32Z" fill="white"/>
                   <defs>
-                    <linearGradient id="vaultGrad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                    <linearGradient :id="`vaultGrad-${isMobile ? 'mobile' : 'desktop'}`" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
                       <stop stop-color="#2563EB"/>
                       <stop offset="1" stop-color="#4338CA"/>
                     </linearGradient>
@@ -124,7 +124,7 @@
     </div>
 
     <!-- Primary Navigation -->
-    <nav class="flex-1 py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
+    <nav class="flex-1 flex flex-col py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
       <SidebarLink
         v-for="item in navItems"
         :key="item.name"
@@ -189,7 +189,7 @@
     </nav>
 
     <!-- Bottom Controls -->
-    <div v-if="!isMobile" class="m-2 flex flex-col gap-1">
+    <div v-if="!isMobile" class="my-2 flex flex-col gap-1">
       <!-- Collapse toggle button -->
       <SidebarLink
         :label="isSidebarCollapsed ? 'Expand' : 'Collapse'"

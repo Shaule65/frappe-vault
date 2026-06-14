@@ -2,17 +2,16 @@
   <router-link
     v-if="to"
     :to="to"
-    class="group w-full flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3"
+    class="group flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px]"
     :class="[
-      isCollapsed ? 'justify-center px-0' : 'justify-between px-2',
       isActive
-        ? 'bg-surface-gray-2 text-ink-gray-9 font-medium'
+        ? 'bg-white shadow-sm text-ink-gray-9 font-medium'
         : 'hover:bg-surface-gray-2 text-ink-gray-8'
     ]"
   >
     <div
       class="flex w-full items-center duration-200 ease-in-out"
-      :class="isCollapsed ? 'justify-center' : 'justify-between px-2 py-[7px]'"
+      :class="isCollapsed ? 'justify-center p-1' : 'justify-between px-2 py-[7px]'"
     >
       <div class="flex items-center truncate">
         <Tooltip :text="label" placement="right" :disabled="!isCollapsed">
@@ -54,18 +53,17 @@
   </router-link>
   <button
     v-else
-    class="group w-full flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-left"
+    class="group flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-left mx-2 my-[1.5px]"
     :class="[
-      isCollapsed ? 'justify-center px-0' : 'justify-between px-2',
       isActive
-        ? 'bg-surface-gray-2 text-ink-gray-9 font-medium'
+        ? 'bg-white shadow-sm text-ink-gray-9 font-medium'
         : 'hover:bg-surface-gray-2 text-ink-gray-8'
     ]"
     @click="$emit('click')"
   >
     <div
       class="flex w-full items-center duration-200 ease-in-out"
-      :class="isCollapsed ? 'justify-center' : 'justify-between px-2 py-[7px]'"
+      :class="isCollapsed ? 'justify-center p-1' : 'justify-between px-2 py-[7px]'"
     >
       <div class="flex items-center truncate">
         <Tooltip :text="label" placement="right" :disabled="!isCollapsed">
