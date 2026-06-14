@@ -1,10 +1,21 @@
 <template>
   <div class="flex-1 flex flex-col overflow-hidden bg-gray-50/20">
     <!-- Header -->
-    <header class="flex h-14 items-center justify-between border-b bg-white px-5 py-3 shrink-0">
-      <div class="flex items-center gap-2">
-        <h1 class="text-lg font-semibold text-ink-gray-9">{{ pageTitle }}</h1>
-        <Badge variant="subtle" theme="gray" size="sm" class="ml-1 font-medium">
+    <header class="flex h-10.5 items-center justify-between border-b bg-white px-5 py-2.5 shrink-0">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <!-- Mobile Sidebar Trigger -->
+        <Button
+          class="size-7 sm:hidden flex items-center justify-center p-0 mr-1 focus:outline-none shrink-0"
+          variant="ghost"
+          @click="mobileSidebarOpened = true"
+        >
+          <template #icon>
+            <FeatherIcon name="menu" class="w-4.5 h-4.5 text-ink-gray-9" />
+          </template>
+        </Button>
+
+        <Breadcrumbs :items="breadcrumbs" class="min-w-0" />
+        <Badge variant="subtle" theme="gray" size="sm" class="ml-1 font-medium shrink-0">
           {{ totalCount }} {{ totalCount === 1 ? 'secret' : 'secrets' }}
         </Badge>
       </div>
@@ -13,128 +24,117 @@
       </div>
     </header>
 
-    <!-- View Controls Bar (Exactly copies CRM quick filters, Sort, Columns, and alignment) -->
-    <div class="bg-white border-b px-5 py-3 flex items-center justify-between gap-4 shrink-0">
-      <!-- Quick Filters (Left side) -->
-      <div class="flex flex-1 items-center gap-2 overflow-x-auto no-scrollbar">
+    <!-- View Controls Bar (matching CRM ViewControls.vue line 132-237) -->
+    <div class="flex items-center justify-between gap-2 px-5 py-4">
+      <!-- Quick Filters (Left side - matching CRM quick filter fields) -->
+      <div class="flex flex-1 items-center overflow-x-auto -ml-1 h-9">
         <!-- Title Quick Filter -->
-        <div class="min-w-[130px] max-w-[160px]">
+        <div class="m-1 min-w-36">
           <TextInput
             v-model="titleQuery"
             placeholder="Title"
-            class="w-full text-sm h-8"
+            class="w-full"
           />
         </div>
 
- 
-
         <!-- Type Quick Filter Dropdown -->
-        <Dropdown :options="typeFilterOptions">
-          <template #default="{ open }">
-            <button
-              class="flex h-8 items-center justify-between rounded border border-gray-200 bg-gray-50/30 px-3 py-1.5 text-sm text-ink-gray-7 hover:bg-gray-50 focus:outline-none min-w-[120px]"
-              :class="{ 'bg-gray-100 border-gray-300 font-medium text-ink-gray-9': open || activeFilters.secret_type }"
-            >
-              <span class="truncate">{{ activeFilters.secret_type || 'Type' }}</span>
-              <FeatherIcon name="chevron-down" class="w-3.5 h-3.5 text-ink-gray-4 ml-2 shrink-0" />
-            </button>
-          </template>
-        </Dropdown>
+        <div class="m-1 min-w-36">
+          <Dropdown :options="typeFilterOptions">
+            <template #default="{ open }">
+              <Button
+                class="w-full"
+                :label="activeFilters.secret_type || 'Type'"
+                :iconRight="'chevron-down'"
+              />
+            </template>
+          </Dropdown>
+        </div>
 
         <!-- Folder Quick Filter Dropdown -->
-        <Dropdown :options="folderFilterOptions">
-          <template #default="{ open }">
-            <button
-              class="flex h-8 items-center justify-between rounded border border-gray-200 bg-gray-50/30 px-3 py-1.5 text-sm text-ink-gray-7 hover:bg-gray-50 focus:outline-none min-w-[120px]"
-              :class="{ 'bg-gray-100 border-gray-300 font-medium text-ink-gray-9': open || activeFilters.folder }"
-            >
-              <span class="truncate">{{ activeFilters.folder ? (foldersResource.data?.find(f => f.name === activeFilters.folder)?.folder_name || 'Folder') : 'Folder' }}</span>
-              <FeatherIcon name="chevron-down" class="w-3.5 h-3.5 text-ink-gray-4 ml-2 shrink-0" />
-            </button>
-          </template>
-        </Dropdown>
+        <div class="m-1 min-w-36">
+          <Dropdown :options="folderFilterOptions">
+            <template #default="{ open }">
+              <Button
+                class="w-full"
+                :label="activeFilters.folder ? (foldersResource.data?.find(f => f.name === activeFilters.folder)?.folder_name || 'Folder') : 'Folder'"
+                :iconRight="'chevron-down'"
+              />
+            </template>
+          </Dropdown>
+        </div>
       </div>
 
-      <!-- Controls & Dropdowns (Right side) -->
-      <div class="flex items-center gap-1.5 shrink-0">
-        <!-- Refresh Button -->
-        <Button
-          class="h-8 w-8 p-0 flex items-center justify-center focus:outline-none hover:bg-gray-50 border border-gray-200 rounded"
-          variant="outline"
-          @click="refreshSecrets()"
-          tooltip="Refresh"
-        >
-          <template #icon>
-            <FeatherIcon name="refresh-cw" class="w-3.5 h-3.5 text-ink-gray-7" :class="{ 'animate-spin': secrets.loading }" />
-          </template>
-        </Button>
+      <!-- Divider (matching CRM: -ml-2 h-[70%] border-l) -->
+      <div class="-ml-2 h-[70%] border-l" />
 
-        <!-- Filter Button -->
+      <!-- Controls (Right side - matching CRM ViewControls right side) -->
+      <div class="flex items-center gap-2">
+        <!-- Refresh Button (matching CRM: icon only with tooltip) -->
+        <Button
+          :tooltip="'Refresh'"
+          :icon="RefreshIcon"
+          :loading="secrets.loading"
+          @click="refreshSecrets()"
+        />
+
+        <!-- Filter Button (matching CRM Filter.vue - Button with iconLeft + label) -->
         <Dropdown :options="combinedFilterOptions">
           <template #default="{ open }">
-            <Button
-              variant="outline"
-              class="h-8 px-3 text-sm focus:outline-none text-ink-gray-7"
-              :class="{ 'bg-surface-gray-2 border-gray-300': open || activeFilters.favorites_only }"
-            >
-              <template #prefix><FeatherIcon name="filter" class="w-3.5 h-3.5 text-ink-gray-5 mr-1" /></template>
-              <span>Filter</span>
-            </Button>
+            <div class="flex items-center">
+              <Button
+                :label="'Filter'"
+                :iconLeft="FilterIcon"
+                :class="activeFilterCount ? 'rounded-r-none' : ''"
+                @click="open"
+              >
+                <template v-if="activeFilterCount" #suffix>
+                  <div
+                    class="flex h-5 w-5 items-center justify-center rounded-[5px] bg-surface-white pt-px text-xs font-medium text-ink-gray-8 shadow-sm"
+                  >
+                    {{ activeFilterCount }}
+                  </div>
+                </template>
+              </Button>
+              <Button
+                v-if="activeFilterCount"
+                :tooltip="'Clear Filters'"
+                class="rounded-l-none border-l"
+                icon="x"
+                variant="ghost"
+                @click.stop="clearFilters()"
+              />
+            </div>
           </template>
         </Dropdown>
 
-        <!-- Sort Button -->
+        <!-- Sort Button (matching CRM SortBy.vue - Button with iconLeft + label) -->
         <Dropdown :options="sortDropdownOptions">
           <template #default="{ open }">
-            <Button
-              variant="outline"
-              class="h-8 px-3 text-sm focus:outline-none text-ink-gray-7"
-              :class="{ 'bg-surface-gray-2 border-gray-300': open }"
-            >
-              <template #prefix><FeatherIcon name="bar-chart-2" class="w-3.5 h-3.5 text-ink-gray-5 rotate-90 mr-1" /></template>
-              <span>Sort</span>
-            </Button>
-          </template>
-        </Dropdown>
-
-        <!-- Columns Button -->
-        <Dropdown :options="columnsDropdownOptions">
-          <template #default="{ open }">
-            <Button
-              variant="outline"
-              class="h-8 px-3 text-sm focus:outline-none text-ink-gray-7"
-              :class="{ 'bg-surface-gray-2 border-gray-300': open }"
-            >
-              <template #prefix><FeatherIcon name="columns" class="w-3.5 h-3.5 text-ink-gray-5 mr-1" /></template>
-              <span>Columns</span>
-            </Button>
-          </template>
-        </Dropdown>
-
-        <!-- More Dropdown -->
-        <Dropdown :options="moreOptions">
-          <template #default="{ open }">
-            <Button
-              variant="outline"
-              class="h-8 w-8 p-0 flex items-center justify-center focus:outline-none"
-              :class="{ 'bg-surface-gray-2': open }"
-            >
-              <template #icon>
-                <FeatherIcon name="more-horizontal" class="w-3.5 h-3.5 text-ink-gray-5" />
+            <Button label="Sort" @click="open">
+              <template #prefix>
+                <SortIcon class="h-4" />
               </template>
             </Button>
           </template>
         </Dropdown>
 
-        <!-- Clear Button -->
-        <Button
-          v-if="hasActiveFilters || currentSort !== 'modified desc'"
-          variant="ghost"
-          class="h-8 px-2 text-sm text-ink-gray-6 hover:text-ink-gray-9 focus:outline-none font-medium"
-          @click="clearFilters"
-        >
-          Clear
-        </Button>
+        <!-- Columns Button (matching CRM ColumnSettings.vue - Button with iconLeft + label) -->
+        <Dropdown :options="columnsDropdownOptions">
+          <template #default="{ open }">
+            <Button label="Columns" @click="open">
+              <template #prefix>
+                <ColumnsIcon class="h-4" />
+              </template>
+            </Button>
+          </template>
+        </Dropdown>
+
+        <!-- More Dropdown (matching CRM: icon-only button with tooltip) -->
+        <Dropdown :options="moreOptions">
+          <template #default>
+            <Button :tooltip="'More Options'" icon="more-horizontal" />
+          </template>
+        </Dropdown>
       </div>
     </div>
 
@@ -153,20 +153,20 @@
           :rows="formattedRows"
           row-key="name"
           :options="{
-            selectable: false,
+            selectable: true,
             showTooltip: true,
             resizeColumn: true,
             onRowClick: (row) => router.push({ name: 'SecretDetail', params: { name: row.name } }),
           }"
         >
-          <ListHeader class="border-b px-5 py-2.5 bg-gray-50/50 shrink-0">
+          <ListHeader class="border-b sm:mx-5 mx-3 bg-gray-50/50 shrink-0">
             <ListHeaderItem
               v-for="column in columns"
               :key="column.key"
               :item="column"
             />
           </ListHeader>
-          <ListRows>
+          <ListRows class="sm:mx-5 mx-3">
             <ListRow
               v-for="row in formattedRows"
               :key="row.name"
@@ -175,7 +175,7 @@
               class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
               @click="router.push({ name: 'SecretDetail', params: { name: row.name } })"
             >
-              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7 h-full flex items-center">
+              <ListRowItem :item="item" :align="column.align" class="overflow-hidden text-base font-normal text-ink-gray-7 h-full flex items-center">
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
@@ -184,7 +184,7 @@
                        <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
                     </div>
                     <div class="min-w-0">
-                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 hover:underline cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600  cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                     </div>
                   </div>
 
@@ -272,6 +272,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { mobileSidebarOpened } from '../composables/sidebar'
+import SortIcon from '../components/SortIcon.vue'
+import ColumnsIcon from '../components/ColumnsIcon.vue'
+import FilterIcon from '../components/FilterIcon.vue'
+import RefreshIcon from '../components/RefreshIcon.vue'
 import {
   Button,
   TextInput,
@@ -285,6 +290,7 @@ import {
   ListRow,
   ListRowItem,
   ListFooter,
+  Breadcrumbs,
 } from 'frappe-ui'
 import { useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
@@ -313,7 +319,22 @@ const toggleFav = useToggleFavorite()
 const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || 0)
 const hasActiveFilters = computed(() => titleQuery.value || activeFilters.value.secret_type || activeFilters.value.folder || activeFilters.value.favorites_only)
+const activeFilterCount = computed(() => [
+  titleQuery.value,
+  activeFilters.value.secret_type,
+  activeFilters.value.folder,
+  activeFilters.value.favorites_only,
+].filter(Boolean).length)
 const pageTitle = computed(() => activeFilters.value.folder ? `Folder: ${foldersResource.data?.find(f => f.name === activeFilters.value.folder)?.folder_name || 'Folder'}` : 'All Secrets')
+const breadcrumbs = computed(() => {
+  const folderName = activeFilters.value.folder
+    ? (foldersResource.data?.find(f => f.name === activeFilters.value.folder)?.folder_name || 'Folder')
+    : 'List'
+  return [
+    { label: 'Secrets', route: '/secrets' },
+    { label: folderName }
+  ]
+})
 
 const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH Key': 'terminal', Certificate: 'shield', 'Credit Card': 'credit-card', Database: 'database', Other: 'file' }
 const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purple-100 text-purple-600', Note: 'bg-green-100 text-green-600', 'SSH Key': 'bg-orange-100 text-orange-600', Certificate: 'bg-teal-100 text-teal-600', 'Credit Card': 'bg-yellow-100 text-yellow-600', Database: 'bg-red-100 text-red-600' }
@@ -550,6 +571,6 @@ watch([titleQuery, activeFilters, pageLength, currentSort], () => {
 
 watch(() => route.query.folder, (newFolder) => {
   activeFilters.value.folder = newFolder || ''
-})
+}, { immediate: true })
 
 </script>
