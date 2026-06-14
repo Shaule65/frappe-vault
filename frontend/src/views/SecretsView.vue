@@ -386,55 +386,20 @@ const columnsDropdownOptions = computed(() => {
   ]
 })
 
+const allColumns = ref([
+  { label: 'Title', key: 'title', width: '18rem' },
+  { label: 'Type', key: 'secret_type', width: '10rem' },
+  { label: 'Folder', key: 'folder', width: '11rem' },
+  { label: 'Strength', key: 'password_strength', width: '10rem' },
+  { label: 'Last Modified', key: 'modified', width: '12rem' },
+  { label: '', key: '_actions', width: '6rem', align: 'right' }
+])
+
 const columns = computed(() => {
-  const cols = [
-    {
-      label: 'Title',
-      key: 'title',
-      width: '18rem',
-    }
-  ]
-
-  if (visibleColumns.value.secret_type) {
-    cols.push({
-      label: 'Type',
-      key: 'secret_type',
-      width: '10rem',
-    })
-  }
-
-  if (visibleColumns.value.folder) {
-    cols.push({
-      label: 'Folder',
-      key: 'folder',
-      width: '11rem',
-    })
-  }
-
-  if (visibleColumns.value.password_strength) {
-    cols.push({
-      label: 'Strength',
-      key: 'password_strength',
-      width: '10rem',
-    })
-  }
-
-  if (visibleColumns.value.modified) {
-    cols.push({
-      label: 'Last Modified',
-      key: 'modified',
-      width: '12rem',
-    })
-  }
-
-  cols.push({
-    label: '',
-    key: '_actions',
-    width: '90px',
-    align: 'right',
+  return allColumns.value.filter(col => {
+    if (col.key === 'title' || col.key === '_actions') return true
+    return visibleColumns.value[col.key]
   })
-
-  return cols
 })
 
 const formattedRows = computed(() => {

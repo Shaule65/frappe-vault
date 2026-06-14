@@ -231,7 +231,7 @@ const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH 
 const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purple-100 text-purple-600', Note: 'bg-green-100 text-green-600', 'SSH Key': 'bg-orange-100 text-orange-600', Certificate: 'bg-teal-100 text-teal-600', 'Credit Card': 'bg-yellow-100 text-yellow-600', Database: 'bg-red-100 text-red-600' }
 const permissionTheme = { 'View Only': 'gray', 'View & Copy': 'blue', 'Edit': 'orange', 'Full Control': 'green', 'Revoked': 'red' }
 
-const columns = computed(() => [
+const columns = ref([
   { label: 'Title', key: 'title', width: '18rem' },
   { label: 'Type', key: 'secret_type', width: '10rem' },
   { label: 'Shared By', key: 'shared_by', width: '14rem' },
