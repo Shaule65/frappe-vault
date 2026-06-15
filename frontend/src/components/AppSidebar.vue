@@ -90,14 +90,7 @@
               </template>
             </Popover>
 
-            <!-- Settings -->
-            <button
-              class="w-full flex h-8 items-center gap-2 rounded px-2.5 hover:bg-surface-gray-2 text-ink-gray-8 text-left focus:outline-none"
-              @click="() => { router.push('/settings'); close() }"
-            >
-              <FeatherIcon name="settings" class="w-4 h-4 text-ink-gray-7" />
-              <span class="text-sm font-medium">Settings</span>
-            </button>
+
 
             <!-- About -->
             <button
