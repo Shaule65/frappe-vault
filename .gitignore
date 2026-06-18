@@ -5,6 +5,7 @@ __pycache__
 dist/
 build/
 *.egg
+scratch/
 
 # Frontend build artifacts
 frontend/dist/
