@@ -2,6 +2,8 @@
 
 A Frappe-based password and secrets management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext environment.
 
+<img src=".github/assets/banner.png" />
+
 ## Features
 
 - **Secure Storage**: Store passwords, API keys, SSH keys, certificates, and notes with encryption
