@@ -1,6 +1,6 @@
 # Frappe Vault
 
-A Frappe-based password and secrets management application inspired by Zoho Vault. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext environment.
+A Frappe-based password and secrets management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext environment.
 
 ## Features
 
@@ -19,23 +19,22 @@ A Frappe-based password and secrets management application inspired by Zoho Vaul
 ### Prerequisites
 
 - Frappe Framework v15+
-- Python 3.10+
 - An active Frappe/ERPNext site
 
 ### Install via Bench
 
 ```bash
 # Get the app
-bench get-app frappe_vault https://github.com/your-org/frappe_vault.git
+bench get-app https://github.com/lubusIN/frappe-vault.git
 
 # Install on your site
-bench --site your-site.local install-app frappe_vault
+bench --site your-site.local install-app frappe-vault
 
 # Run migrations
 bench --site your-site.local migrate
 
 # Build assets
-bench build --app frappe_vault
+bench build --app frappe-vault
 ```
 
 ### Development Installation
@@ -43,10 +42,10 @@ bench build --app frappe_vault
 ```bash
 # Clone the repository
 cd ~/frappe-bench/apps
-git clone https://github.com/your-org/frappe_vault.git
+git clone https://github.com/lubusIN/frappe-vault.git
 
 # Install the app
-bench --site your-site.local install-app frappe_vault
+bench --site your-site.local install-app frappe-vault
 
 # Enable developer mode (optional, for development)
 bench --site your-site.local set-config developer_mode 1
@@ -110,25 +109,25 @@ Click the **Generate Password** button on any Password-type secret to open the p
 
 ### REST API
 
-All secrets are accessible via REST API for integration with browser extensions or other applications.
+All secrets are accessible via REST API for integration with other applications.
 
 ```bash
 # Get all secrets
-curl -X GET "https://your-site.local/api/method/frappe_vault.api.get_secrets" \
+curl -X GET "https://your-site.local/api/method/frappe-vault.api.get_secrets" \
   -H "Authorization: token api_key:api_secret"
 
 # Get a specific secret with decrypted password
-curl -X GET "https://your-site.local/api/method/frappe_vault.api.get_secret" \
+curl -X GET "https://your-site.local/api/method/frappe-vault.api.get_secret" \
   -H "Authorization: token api_key:api_secret" \
   -d "name=VS-0001"
 
 # Create a new secret
-curl -X POST "https://your-site.local/api/method/frappe_vault.api.create_secret" \
+curl -X POST "https://your-site.local/api/method/frappe-vault.api.create_secret" \
   -H "Authorization: token api_key:api_secret" \
   -d "title=My Secret&secret_type=Password&password=hunter2"
 
 # Generate a password
-curl -X GET "https://your-site.local/api/method/frappe_vault.api.generate_password" \
+curl -X GET "https://your-site.local/api/method/frappe-vault.api.generate_password" \
   -H "Authorization: token api_key:api_secret" \
   -d "length=20&use_special=1"
 ```
@@ -169,10 +168,6 @@ Read-only audit log tracking all secret access.
 - Access logging for audit compliance
 - Secrets are only accessible by owners or explicitly shared users/roles
 
-## License
-
-MIT
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -180,3 +175,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Support
 
 For issues and feature requests, please use the GitHub issue tracker.
+
+## Meet Your Artisans
+
+[LUBUS](https://lubus.in/?utm_source=github&utm_medium=open-source&utm_campaign=frappe-vault) is a web design agency based in Mumbai.
+
+<a href="https://cal.com/lubus">
+<img src="https://raw.githubusercontent.com/lubusIN/.github/refs/heads/main/profile/banner.png" />
+</a>
+
+## License
+
+Frappe Local is open-sourced licensed under the [MIT License](LICENSE).
