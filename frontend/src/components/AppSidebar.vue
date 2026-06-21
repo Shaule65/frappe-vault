@@ -4,25 +4,33 @@
     :class="isSidebarCollapsed ? 'w-12' : 'w-[220px]'"
   >
     <!-- Brand & User Dropdown at the Top -->
-    <div class="p-2 border-b border-gray-100/50">
+    <div class="p-2">
       <Popover placement="bottom-start" trigger="click" class="w-full">
-        <template #target="{ open, togglePopover }">
+        <template #target="{ isOpen, togglePopover }">
           <button
-            class="flex h-12 items-center rounded-md py-2 duration-200 ease-in-out w-full focus:outline-none"
+            class="flex h-12 items-center rounded-md py-2 duration-200 ease-in-out w-full focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
             :class="
               isSidebarCollapsed
                 ? 'w-auto px-0 justify-center mx-auto'
-                : open
-                  ? 'px-2 bg-surface-white shadow-sm border border-gray-100/30'
+                : isOpen
+                  ? 'px-2 bg-surface-white shadow-sm'
                   : 'px-2 hover:bg-surface-gray-3'
             "
             @click.prevent="togglePopover()"
           >
-            <div class="flex items-center w-full" :class="isSidebarCollapsed ? 'justify-center gap-0' : 'px-1 gap-3'">
+            <div class="flex items-center w-full" :class="isSidebarCollapsed ? 'justify-center gap-0' : 'pl-0'">
               <Tooltip text="Frappe Vault" placement="right" :disabled="!isSidebarCollapsed">
-                <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shrink-0 shadow-sm border border-blue-700/10">
-                  <FeatherIcon name="lock" class="w-4 h-4 text-white" />
-                </div>
+                <!-- Same SVG as /assets/frappe_vault/images/vault-logo.svg -->
+                <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="rounded-xl shrink-0 shadow-sm">
+                  <rect width="48" height="48" rx="12" :fill="`url(#vaultGrad-${isMobile ? 'mobile' : 'desktop'})`"/>
+                  <path d="M24 12C18.48 12 14 16.48 14 22V26H12V36H36V26H34V22C34 16.48 29.52 12 24 12ZM18 22C18 18.69 20.69 16 24 16C27.31 16 30 18.69 30 22V26H18V22ZM24 32C22.9 32 22 31.1 22 30C22 28.9 22.9 28 24 28C25.1 28 26 28.9 26 30C26 31.1 25.1 32 24 32Z" fill="white"/>
+                  <defs>
+                    <linearGradient :id="`vaultGrad-${isMobile ? 'mobile' : 'desktop'}`" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#2563EB"/>
+                      <stop offset="1" stop-color="#4338CA"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
               </Tooltip>
               <div
                 class="flex flex-1 flex-col text-left duration-200 ease-in-out truncate"
@@ -82,14 +90,7 @@
               </template>
             </Popover>
 
-            <!-- Settings -->
-            <button
-              class="w-full flex h-8 items-center gap-2 rounded px-2.5 hover:bg-surface-gray-2 text-ink-gray-8 text-left focus:outline-none"
-              @click="() => { router.push('/settings'); close() }"
-            >
-              <FeatherIcon name="settings" class="w-4 h-4 text-ink-gray-7" />
-              <span class="text-sm font-medium">Settings</span>
-            </button>
+
 
             <!-- About -->
             <button
@@ -116,7 +117,7 @@
     </div>
 
     <!-- Primary Navigation -->
-    <nav class="flex-1 py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
+    <nav class="flex-1 flex flex-col py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
       <SidebarLink
         v-for="item in navItems"
         :key="item.name"
@@ -181,15 +182,23 @@
     </nav>
 
     <!-- Bottom Controls -->
-    <div class="m-2 flex flex-col gap-1">
+    <div v-if="!isMobile" class="my-2 flex flex-col gap-1">
       <!-- Collapse toggle button -->
       <SidebarLink
         :label="isSidebarCollapsed ? 'Expand' : 'Collapse'"
         :isCollapsed="isSidebarCollapsed"
-        :icon="isSidebarCollapsed ? 'chevrons-right' : 'chevrons-left'"
         class="text-ink-gray-7 hover:text-ink-gray-9 hover:bg-surface-gray-2"
         @click="isSidebarCollapsed = !isSidebarCollapsed"
-      />
+      >
+        <template #icon>
+          <span class="grid h-4 w-4 flex-shrink-0 place-items-center">
+            <CollapseSidebar
+              class="h-4 w-4 text-ink-gray-7 duration-300 ease-in-out"
+              :class="{ '[transform:rotateY(180deg)]': isSidebarCollapsed }"
+            />
+          </span>
+        </template>
+      </SidebarLink>
     </div>
 
     <!-- About Dialog -->
@@ -370,7 +379,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, Popover, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl } from 'frappe-ui'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets } from '../composables/vault'
 import SidebarLink from './SidebarLink.vue'
+import CollapseSidebar from './CollapseSidebar.vue'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
+
+const props = defineProps({
+  isMobile: { type: Boolean, default: false }
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -498,9 +512,13 @@ async function handleDeleteFolder() {
 }
 
 // LocalStorage collapsed state syncing
-const isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
-watch(isSidebarCollapsed, (val) => {
-  localStorage.setItem('isSidebarCollapsed', String(val))
+const _isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
+const isSidebarCollapsed = computed({
+  get: () => props.isMobile ? false : _isSidebarCollapsed.value,
+  set: (val) => {
+    _isSidebarCollapsed.value = val
+    localStorage.setItem('isSidebarCollapsed', String(val))
+  }
 })
 
 const showAboutModal = ref(false)

@@ -2,16 +2,16 @@
   <router-link
     v-if="to"
     :to="to"
-    class="group flex h-7.5 cursor-pointer items-center rounded duration-200 ease-in-out focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px]"
-    :class="
+    class="group flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px]"
+    :class="[
       isActive
-        ? 'bg-surface-selected shadow-sm text-ink-gray-9 font-medium'
+        ? 'bg-white shadow-sm text-ink-gray-9 font-medium'
         : 'hover:bg-surface-gray-2 text-ink-gray-8'
-    "
+    ]"
   >
     <div
-      class="flex w-full items-center justify-between duration-200 ease-in-out"
-      :class="isCollapsed ? 'ml-[3px] p-1' : 'px-2 py-[7px]'"
+      class="flex w-full items-center duration-200 ease-in-out"
+      :class="isCollapsed ? 'justify-center p-1' : 'justify-between px-2 py-[7px]'"
     >
       <div class="flex items-center truncate">
         <Tooltip :text="label" placement="right" :disabled="!isCollapsed">
@@ -20,13 +20,13 @@
               v-if="icon && typeof icon !== 'string'"
               :is="icon"
               class="w-4 h-4 flex-shrink-0 transition-colors"
-              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7'"
+              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7 group-hover:text-ink-gray-9'"
             />
             <FeatherIcon
               v-else-if="icon"
               :name="icon"
               class="w-4 h-4 flex-shrink-0 transition-colors"
-              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7'"
+              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7 group-hover:text-ink-gray-9'"
             />
           </slot>
         </Tooltip>
@@ -53,17 +53,17 @@
   </router-link>
   <button
     v-else
-    class="group flex h-7.5 cursor-pointer items-center rounded duration-200 ease-in-out focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px] text-left w-[calc(100%-16px)]"
-    :class="
+    class="group flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-left mx-2 my-[1.5px]"
+    :class="[
       isActive
-        ? 'bg-surface-selected shadow-sm text-ink-gray-9 font-medium'
+        ? 'bg-white shadow-sm text-ink-gray-9 font-medium'
         : 'hover:bg-surface-gray-2 text-ink-gray-8'
-    "
+    ]"
     @click="$emit('click')"
   >
     <div
-      class="flex w-full items-center justify-between duration-200 ease-in-out"
-      :class="isCollapsed ? 'ml-[3px] p-1' : 'px-2 py-[7px]'"
+      class="flex w-full items-center duration-200 ease-in-out"
+      :class="isCollapsed ? 'justify-center p-1' : 'justify-between px-2 py-[7px]'"
     >
       <div class="flex items-center truncate">
         <Tooltip :text="label" placement="right" :disabled="!isCollapsed">
@@ -71,12 +71,14 @@
             <component
               v-if="icon && typeof icon !== 'string'"
               :is="icon"
-              class="w-4 h-4 flex-shrink-0 text-ink-gray-8 transition-colors"
+              class="w-4 h-4 flex-shrink-0 transition-colors"
+              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7 group-hover:text-ink-gray-9'"
             />
             <FeatherIcon
               v-else-if="icon"
               :name="icon"
-              class="w-4 h-4 flex-shrink-0 text-ink-gray-8 transition-colors"
+              class="w-4 h-4 flex-shrink-0 transition-colors"
+              :class="isActive ? 'text-ink-gray-9' : 'text-ink-gray-7 group-hover:text-ink-gray-9'"
             />
           </slot>
         </Tooltip>

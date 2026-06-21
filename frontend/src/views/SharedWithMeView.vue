@@ -1,31 +1,39 @@
 <template>
   <div class="flex-1 flex flex-col overflow-hidden bg-gray-50/20">
     <!-- Header -->
-    <header class="flex h-14 items-center justify-between border-b bg-white px-5 py-3 shrink-0">
-      <div class="flex items-center gap-2">
-        <h1 class="text-lg font-semibold text-ink-gray-9">Shared with Me</h1>
-        <Badge variant="subtle" theme="blue" size="sm" class="ml-1 font-medium">
-          {{ filteredList.length }} {{ filteredList.length === 1 ? 'item' : 'items' }}
+    <header class="flex h-10.5 items-center justify-between border-b bg-white px-5 py-2.5 shrink-0">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <!-- Mobile Sidebar Trigger -->
+        <Button
+          class="size-7 sm:hidden flex items-center justify-center p-0 mr-1 focus:outline-none shrink-0"
+          variant="ghost"
+          @click="mobileSidebarOpened = true"
+        >
+          <template #icon>
+            <FeatherIcon name="menu" class="w-4.5 h-4.5 text-ink-gray-9" />
+          </template>
+        </Button>
+
+        <Breadcrumbs :items="breadcrumbs" class="min-w-0" />
+        <Badge variant="subtle" theme="blue" size="sm" class="ml-1 font-medium shrink-0">
+          {{ filteredList.length }} {{ filteredList.length === 1 ? 'shared item' : 'shared items' }}
         </Badge>
       </div>
     </header>
 
-    <!-- View Controls Bar -->
-    <div class="bg-white border-b px-5 py-3 flex items-center justify-between gap-4 shrink-0">
-      <!-- Quick Filters (Left side) -->
-      <div class="flex flex-1 items-center gap-2 overflow-x-auto no-scrollbar">
+    
+    <ViewControlsBar>
+      <template #left>
         <!-- Title Quick Filter -->
-        <div class="min-w-[180px] max-w-[240px]">
+        <div class="m-1 min-w-36">
           <TextInput
             v-model="titleQuery"
-            placeholder="Search shared items..."
-            class="w-full text-sm h-8"
+            placeholder="Title"
+            class="w-full"
           />
         </div>
-      </div>
-
-      <!-- Controls & Dropdowns -->
-      <div class="flex items-center gap-1.5 shrink-0">
+      </template>
+      <template #right>
         <!-- Bulk Delete Button -->
         <Button
           v-if="selectedShares.size > 0"
@@ -39,17 +47,13 @@
 
         <!-- Refresh Button -->
         <Button
-          class="h-8 w-8 p-0 flex items-center justify-center focus:outline-none hover:bg-gray-50 border border-gray-200 rounded"
-          variant="outline"
+          :tooltip="'Refresh'"
+          :icon="RefreshIcon"
+          :loading="shared.loading"
           @click="shared.reload()"
-          tooltip="Refresh"
-        >
-          <template #icon>
-            <FeatherIcon name="refresh-cw" class="w-3.5 h-3.5 text-ink-gray-7" :class="{ 'animate-spin': shared.loading }" />
-          </template>
-        </Button>
-      </div>
-    </div>
+        />
+      </template>
+    </ViewControlsBar>
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -73,23 +77,22 @@
             onRowClick: (row) => handleRowClick(row),
           }"
         >
-          <ListHeader class="border-b px-5 py-2.5 bg-gray-50/50 shrink-0">
+          <ListHeader class="sm:mx-5 mx-3 shrink-0">
             <ListHeaderItem
               v-for="column in columns"
               :key="column.key"
               :item="column"
             />
           </ListHeader>
-          <ListRows>
+          <ListRows class="sm:mx-5 mx-3">
             <ListRow
               v-for="row in formattedRows"
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
-              class="cursor-pointer hover:bg-surface-gray-1 transition-colors h-[48px]"
               @click="handleRowClick(row)"
             >
-              <ListRowItem :item="item" :align="column.align" class="text-sm font-normal text-ink-gray-7 h-full flex items-center">
+              <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
@@ -101,7 +104,7 @@
                        <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
                     </div>
                     <div class="min-w-0 flex-1 truncate">
-                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 hover:underline cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600  cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                     </div>
                   </div>
 
@@ -130,6 +133,17 @@
             </ListRow>
           </ListRows>
         </ListView>
+
+        <!-- Pagination Footer -->
+        <ListFooter
+          v-model="pageLength"
+          class="border-t px-5 py-2 bg-white shrink-0"
+          :options="{
+            rowCount: filteredList.length,
+            totalCount: totalCount,
+          }"
+          @loadMore="pageLength += 20"
+        />
       </template>
 
       <!-- Empty state -->
@@ -167,9 +181,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import ViewControlsBar from '../components/ViewControlsBar.vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, TextInput, FeatherIcon, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, Dialog, toast } from 'frappe-ui'
+import { mobileSidebarOpened } from '../composables/sidebar'
+import RefreshIcon from '../components/RefreshIcon.vue'
+import { Badge, Button, TextInput, FeatherIcon, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListFooter, Dialog, Breadcrumbs, toast } from 'frappe-ui'
 import { useSharedWithMe, useBulkDeleteShares } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
 
@@ -181,8 +198,22 @@ const titleQuery = ref('')
 const selectedShares = ref(new Set())
 const showBulkDeleteDialog = ref(false)
 const bulkDeleteLoading = ref(false)
+const pageLength = ref(20)
 
 const list = computed(() => shared.data?.shared || [])
+const totalCount = computed(() => shared.data?.total || 0)
+
+watch(pageLength, (newLength) => {
+  shared.submit({
+    limit: newLength,
+  })
+}, { immediate: true })
+const breadcrumbs = computed(() => {
+  return [
+    { label: 'Shared with Me', route: '/shared' },
+    { label: 'List' }
+  ]
+})
 
 const filteredList = computed(() => {
   let result = list.value
@@ -200,12 +231,12 @@ const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH 
 const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purple-100 text-purple-600', Note: 'bg-green-100 text-green-600', 'SSH Key': 'bg-orange-100 text-orange-600', Certificate: 'bg-teal-100 text-teal-600', 'Credit Card': 'bg-yellow-100 text-yellow-600', Database: 'bg-red-100 text-red-600' }
 const permissionTheme = { 'View Only': 'gray', 'View & Copy': 'blue', 'Edit': 'orange', 'Full Control': 'green', 'Revoked': 'red' }
 
-const columns = computed(() => [
-  { label: 'Title', key: 'title', width: '240px' },
-  { label: 'Type', key: 'secret_type', width: '120px' },
-  { label: 'Shared By', key: 'shared_by', width: '180px' },
-  { label: 'Permission', key: 'permission_level', width: '130px' },
-  { label: 'Expires On', key: 'expires_on', width: '140px' }
+const columns = ref([
+  { label: 'Title', key: 'title', width: '18rem' },
+  { label: 'Type', key: 'secret_type', width: '10rem' },
+  { label: 'Shared By', key: 'shared_by', width: '14rem' },
+  { label: 'Permission', key: 'permission_level', width: '11rem' },
+  { label: 'Expires On', key: 'expires_on', width: '11rem' }
 ])
 
 const formattedRows = computed(() => {

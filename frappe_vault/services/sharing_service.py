@@ -117,7 +117,15 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
         LIMIT %s OFFSET %s
     """, (limit, offset), as_dict=True)
 
-    return {"shared": secrets, "limit": limit, "offset": offset}
+    total = frappe.db.sql(f"""
+        SELECT count(*)
+        FROM `tabVault Share` vs
+        LEFT JOIN `tabVault Secret` sec ON vs.shared_name = sec.name AND vs.shared_doctype = 'Vault Secret'
+        LEFT JOIN `tabVault Folder` fld ON vs.shared_name = fld.name AND vs.shared_doctype = 'Vault Folder'
+        WHERE ({where})
+    """)[0][0]
+
+    return {"shared": secrets, "total": total, "limit": limit, "offset": offset}
 
 
 def create_one_time_link(
