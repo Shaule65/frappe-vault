@@ -1,1 +1,0 @@
-import{o,j as r,b as s,f as t}from"./frappe-ui-BTrtWwJv.js";const a={class:"flex items-center justify-between gap-2 px-5 py-4"},l={class:"flex flex-1 items-center overflow-x-auto -ml-1 h-9"},c={class:"flex items-center gap-2"},f={__name:"ViewControlsBar",setup(n){return(e,i)=>(o(),r("div",a,[s("div",l,[t(e.$slots,"left")]),s("div",c,[t(e.$slots,"right")])]))}};export{f as _};
