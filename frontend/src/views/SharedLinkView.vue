@@ -14,14 +14,7 @@
       <div class="rounded-lg border bg-white p-5 shadow-sm">
         <div v-if="!secret && !errorMessage" class="space-y-4">
           <div v-if="needsPassphrase">
-            <label class="mb-1 block text-sm font-medium text-gray-700">Passphrase</label>
-            <input
-              v-model="passphrase"
-              type="password"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              autofocus
-              @keyup.enter="openLink"
-            />
+            <TextInput v-model="passphrase" type="password" placeholder="Enter passphrase" autofocus @keyup.enter="openLink" />
           </div>
           <button
             class="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -71,7 +64,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { FeatherIcon } from 'frappe-ui'
+import { FeatherIcon, TextInput, Button } from 'frappe-ui'
 import { useRoute } from 'vue-router'
 import { useConsumeOneTimeLink } from '../composables/vault'
 

@@ -31,23 +31,13 @@
           </div>
 
           <div class="grid grid-cols-2 gap-3">
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" v-model="options.use_uppercase" class="accent-blue-600" /> Uppercase (A-Z)
-            </label>
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" v-model="options.use_lowercase" class="accent-blue-600" /> Lowercase (a-z)
-            </label>
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" v-model="options.use_digits" class="accent-blue-600" /> Numbers (0-9)
-            </label>
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" v-model="options.use_special" class="accent-blue-600" /> Special (!@#$)
-            </label>
+            <Checkbox v-model="options.use_uppercase" label="Uppercase (A-Z)" />
+            <Checkbox v-model="options.use_lowercase" label="Lowercase (a-z)" />
+            <Checkbox v-model="options.use_digits" label="Numbers (0-9)" />
+            <Checkbox v-model="options.use_special" label="Special (!@#$)" />
           </div>
 
-          <label class="flex items-center gap-2 text-sm">
-            <input type="checkbox" v-model="options.exclude_ambiguous" class="accent-blue-600" /> Exclude ambiguous (0OIl1)
-          </label>
+          <Checkbox v-model="options.exclude_ambiguous" label="Exclude ambiguous (0OIl1)" />
         </div>
       </div>
     </div>

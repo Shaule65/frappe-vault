@@ -11,6 +11,7 @@ scratch/
 frontend/dist/
 frontend/node_modules/
 frontend/.vite/
+frappe_vault/public/frontend/
 
 # Environment
 .env

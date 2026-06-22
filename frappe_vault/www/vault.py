@@ -19,8 +19,15 @@ def get_context(context):
         site_name=frappe.local.site
     )
     
-    # Check if we should use the dev server or built assets.
-    # If developer_mode is 1, Frappe defaults to dev server for UI.
-    context.is_dev_mode = getattr(frappe.conf, "developer_mode", 0)
+        # Check if we should use the dev server or built assets.
+    # Automatically fallback to production assets if Vite dev server is offline.
+    context.is_dev_mode = False
+    if getattr(frappe.conf, "developer_mode", 0):
+        import socket
+        try:
+            with socket.create_connection(("127.0.0.1", 8080), timeout=0.1):
+                context.is_dev_mode = True
+        except OSError:
+            pass
     
     return context
