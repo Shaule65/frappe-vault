@@ -19,8 +19,11 @@ add_to_apps_screen = [
 ]
 
 # Includes in <head>
-# app_include_css = "/assets/frappe_vault/css/frappe_vault.css"
-# app_include_js = "/assets/frappe_vault/js/frappe_vault.js"
+app_include_css = "/assets/frappe_vault/css/frappe_vault.css"
+app_include_js = [
+	"/assets/frappe_vault/js/frappe_vault.js",
+	"/assets/frappe_vault/js/vault_category_tree.js",
+]
 
 # Fixtures
 fixtures = [

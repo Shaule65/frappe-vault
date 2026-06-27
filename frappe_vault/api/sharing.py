@@ -59,11 +59,14 @@ def get_share_options():
     )
     
     # Filter out users with admin roles as they already have full access
-    non_admin_users = []
-    for u in users:
-        roles = frappe.get_roles(u.name)
-        if "Vault Admin" not in roles and "System Manager" not in roles:
-            non_admin_users.append(u)
+    admin_users = set(
+        frappe.get_all(
+            "Has Role",
+            filters={"role": ["in", ["Vault Admin", "System Manager"]]},
+            pluck="parent"
+        )
+    )
+    non_admin_users = [u for u in users if u.name not in admin_users]
             
     user_options = [{"value": u.name, "label": u.full_name or u.name} for u in non_admin_users]
 
@@ -97,7 +100,6 @@ def get_share_options():
 def bulk_delete_shares(share_names):
     from frappe_vault.services.sharing_service import bulk_delete_shares as _bulk_delete
     if isinstance(share_names, str):
-        import json
-        share_names = json.loads(share_names)
+        share_names = frappe.parse_json(share_names)
     return _bulk_delete(share_names)
 

@@ -15,6 +15,9 @@ def get_all():
 
 @frappe.whitelist()
 def create(folder_name, parent_vault_folder=None, icon=None, color=None, description=None):
+    if not frappe.has_permission("Vault Folder", "create"):
+        frappe.throw(_("You don't have permission to create folders"), frappe.PermissionError)
+
     doc = frappe.get_doc({
         "doctype": "Vault Folder",
         "folder_name": folder_name,
@@ -80,5 +83,5 @@ def get_folder_secrets(folder_name, limit=50, offset=0):
         limit_page_length=int(limit),
         limit_start=int(offset)
     )
-    total = len(frappe.get_list("Vault Secret", filters=filters, fields=["name"]))
+    total = frappe.db.count("Vault Secret", filters=filters)
     return {"secrets": secrets, "total": total}

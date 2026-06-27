@@ -1,0 +1,3 @@
+# Patches for Frappe Vault
+# List sequentially executed patch scripts here.
+# Format: <module>.<path>.<patch_function>

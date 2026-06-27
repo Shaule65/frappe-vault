@@ -107,7 +107,8 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         user_permission = "Full Control"
     else:
         conditions = [
-            "(expires_on IS NULL OR expires_on > NOW())"
+            "(expires_on IS NULL OR expires_on > NOW())",
+            "is_revoked = 0"
         ]
         target_conds = [f"(shared_doctype = 'Vault Secret' AND shared_name = {frappe.db.escape(doc.name)})"]
         if doc.folder:
