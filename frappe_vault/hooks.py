@@ -1,8 +1,8 @@
 app_name = "frappe_vault"
 app_title = "Frappe Vault"
-app_publisher = "Frappe Vault"
-app_description = "Password and secrets management for the Frappe ecosystem"
-app_email = "hello@example.com"
+app_publisher = "lubus"
+app_description = "Password and secrets management."
+app_email = "info@lubus.in"
 app_license = "MIT"
 app_logo_url = "/assets/frappe_vault/images/vault-logo.svg"
 app_home = "/vault"
@@ -13,7 +13,7 @@ add_to_apps_screen = [
 	{
 		"name": "frappe_vault",
 		"logo": app_logo_url,
-		"title": "Frappe Vault",
+		"title": "Vault",
 		"route": app_home,
 	}
 ]

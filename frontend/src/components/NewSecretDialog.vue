@@ -4,8 +4,7 @@
       <div class="space-y-4">
         <FormControl label="Title" v-model="form.title" :required="true" placeholder="e.g. Gmail, AWS Console" />
 
-        <FormControl label="Secret Type" type="select" v-model="form.secret_type"
-          :options="['Password', 'API Key', 'Note', 'SSH Key', 'Certificate', 'Credit Card', 'Database', 'Other']" />
+        <FormControl label="Secret Type" type="select" v-model="form.secret_type" :options="SECRET_TYPES" />
 
         <div class="grid grid-cols-2 gap-4">
           <FormControl label="Folder" type="select" v-model="form.folder" :options="folderOptions" />
@@ -64,6 +63,7 @@
 import { ref, computed, watch } from 'vue'
 import { Button, Dialog, FormControl } from 'frappe-ui'
 import { useCreateSecret, useFolders } from '../composables/vault'
+import { SECRET_TYPES } from '../composables/constants'
 
 const props = defineProps({
   modelValue: Boolean,

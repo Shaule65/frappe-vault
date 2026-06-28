@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen flex bg-gray-50 overflow-hidden relative">
+  <div class="h-screen flex bg-surface-base overflow-hidden relative">
     <!-- Desktop Sidebar -->
     <AppSidebar v-if="!isPublicRoute" class="hidden sm:flex" />
 
@@ -14,7 +14,7 @@
         @click="mobileSidebarOpened = false"
       />
       <!-- Drawer Content -->
-      <div class="relative w-[220px] h-full bg-white shadow-xl flex flex-col shrink-0 animate-slide-in">
+      <div class="relative w-[220px] h-full bg-surface-gray-2 shadow-xl flex flex-col shrink-0 animate-slide-in">
         <AppSidebar :is-mobile="true" />
       </div>
     </div>
@@ -30,7 +30,7 @@
 import { computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
-import { mobileSidebarOpened } from './composables/sidebar'
+import { mobileSidebarOpened } from './composables/vault'
 
 const route = useRoute()
 const isPublicRoute = computed(() => {

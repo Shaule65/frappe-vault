@@ -1,23 +1,17 @@
 <template>
-  <div class="flex-1 flex flex-col overflow-hidden bg-gray-50/20">
+  <div class="flex-1 flex flex-col overflow-hidden bg-surface-base">
     <!-- Header -->
-    <header class="flex h-10.5 items-center justify-between border-b bg-white px-5 py-2.5 shrink-0">
+    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-2 bg-surface-base px-5 py-2.5 shrink-0">
       <div class="flex items-center gap-2 min-w-0 flex-1">
         <!-- Mobile Sidebar Trigger -->
         <Button
-          class="size-7 sm:hidden flex items-center justify-center p-0 mr-1 focus:outline-none shrink-0"
+          class="sm:hidden mr-1 shrink-0"
           variant="ghost"
+          icon="lucide-menu"
           @click="mobileSidebarOpened = true"
-        >
-          <template #icon>
-            <FeatherIcon name="menu" class="w-4.5 h-4.5 text-ink-gray-9" />
-          </template>
-        </Button>
+        />
 
         <Breadcrumbs :items="breadcrumbs" class="min-w-0" />
-        <Badge variant="subtle" theme="gray" size="sm" class="ml-1 font-medium shrink-0">
-          {{ totalCount }} {{ totalCount === 1 ? 'secret' : 'secrets' }}
-        </Badge>
       </div>
       <div class="flex items-center gap-2">
         <Button variant="solid" iconLeft="plus" label="Create" @click="showNewDialog = true" />
@@ -27,9 +21,9 @@
     <!-- View Controls Bar (matching CRM ViewControls.vue line 132-237) -->
     <div class="flex items-center justify-between gap-2 px-5 py-4">
       <!-- Quick Filters (Left side - matching CRM quick filter fields) -->
-      <div class="flex flex-1 items-center overflow-x-auto -ml-1 h-9">
+      <div class="flex flex-1 items-center gap-2.5 overflow-x-auto h-9">
         <!-- Title Quick Filter -->
-        <div class="m-1 min-w-36">
+        <div class="w-44 shrink-0">
           <TextInput
             v-model="titleQuery"
             placeholder="Title"
@@ -38,30 +32,18 @@
         </div>
 
         <!-- Type Quick Filter Dropdown -->
-        <div class="m-1 min-w-36">
-          <Dropdown :options="typeFilterOptions">
-            <template #default="{ open }">
-              <Button
-                class="w-full"
-                :label="activeFilters.secret_type || 'Type'"
-                :iconRight="'chevron-down'"
-              />
-            </template>
-          </Dropdown>
-        </div>
+        <Select
+          v-model="activeFilters.secret_type"
+          :options="typeFilterOptions"
+          placeholder="Type"
+        />
 
         <!-- Folder Quick Filter Dropdown -->
-        <div class="m-1 min-w-36">
-          <Dropdown :options="folderFilterOptions">
-            <template #default="{ open }">
-              <Button
-                class="w-full"
-                :label="activeFilters.folder ? (foldersResource.data?.find(f => f.name === activeFilters.folder)?.folder_name || 'Folder') : 'Folder'"
-                :iconRight="'chevron-down'"
-              />
-            </template>
-          </Dropdown>
-        </div>
+        <Select
+          v-model="activeFilters.folder"
+          :options="folderFilterOptions"
+          placeholder="Folder"
+        />
       </div>
 
       <!-- Divider (matching CRM: -ml-2 h-[70%] border-l) -->
@@ -89,7 +71,7 @@
               >
                 <template v-if="activeFilterCount" #suffix>
                   <div
-                    class="flex h-5 w-5 items-center justify-center rounded-[5px] bg-surface-white pt-px text-xs font-medium text-ink-gray-8 shadow-sm"
+                    class="flex h-5 w-5 items-center justify-center rounded-[5px] bg-surface-elevation-1 pt-px text-xs font-medium text-ink-gray-8 shadow-sm"
                   >
                     {{ activeFilterCount }}
                   </div>
@@ -142,13 +124,13 @@
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Loading state -->
       <div v-if="secrets.loading && !secrets.data" class="p-6 space-y-3">
-        <div v-for="i in 5" :key="i" class="h-16 bg-gray-100 rounded-lg animate-pulse" />
+        <div v-for="i in 5" :key="i" class="h-16 bg-surface-gray-3 rounded-lg animate-pulse" />
       </div>
 
       <!-- Secrets list view -->
       <template v-else-if="secretsList.length">
         <ListView
-          class="flex-1 flex flex-col overflow-hidden bg-white"
+          class="flex-1 flex flex-col overflow-hidden bg-surface-base"
           :columns="columns"
           :rows="formattedRows"
           row-key="name"
@@ -178,12 +160,9 @@
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-gray-100 shadow-sm"
-                         :class="typeColors[item.secret_type] || 'bg-gray-100 text-gray-600'">
-                       <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
-                    </div>
+                    <SecretTypeIcon :type="item.secret_type" />
                     <div class="min-w-0">
-                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600  cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                     </div>
                   </div>
 
@@ -201,13 +180,7 @@
 
                   <!-- Strength column -->
                   <div v-else-if="column.key === 'password_strength'">
-                    <Badge
-                      v-if="item"
-                      :theme="strengthTheme[item]"
-                      variant="subtle"
-                    >
-                      {{ item }}
-                    </Badge>
+                    <StrengthBadge v-if="item" :strength="item" size="sm" />
                     <span class="text-base text-ink-gray-4" v-else>—</span>
                   </div>
 
@@ -216,8 +189,9 @@
 
                   <!-- Actions column -->
                   <div v-else-if="column.key === '_actions'" class="flex items-center justify-end gap-1.5" @click.stop>
-                    <button
-                      class="p-1.5 rounded hover:bg-surface-gray-2 text-ink-gray-5 hover:text-ink-gray-9 transition-colors focus:outline-none"
+                    <Button
+                      variant="ghost"
+                      class="!p-1.5 h-auto text-ink-gray-5 hover:text-ink-gray-9"
                       @click.stop="handleToggleFavorite(row)"
                     >
                       <FeatherIcon
@@ -225,14 +199,10 @@
                         class="w-4 h-4"
                         :class="row.is_favorite ? 'text-yellow-500 fill-yellow-500' : 'text-ink-gray-3'"
                       />
-                    </button>
+                    </Button>
                     <Dropdown :options="getRowActions(row)">
                       <template #default="{ open }">
-                        <Button variant="ghost" class="h-7 w-7 p-0 focus:outline-none" :class="{ 'bg-surface-gray-2': open }">
-                          <template #icon>
-                            <FeatherIcon name="more-horizontal" class="w-4 h-4 text-ink-gray-5" />
-                          </template>
-                        </Button>
+                        <Button variant="ghost" icon="lucide-more-horizontal" :class="{ 'bg-surface-gray-2': open }" />
                       </template>
                     </Dropdown>
                   </div>
@@ -245,7 +215,7 @@
         <!-- Pagination Footer -->
         <ListFooter
           v-model="pageLength"
-          class="border-t px-5 py-2 bg-white shrink-0"
+          class="border-t border-outline-gray-2 px-5 py-2 bg-surface-base shrink-0"
           :options="{
             rowCount: secretsList.length,
             totalCount: totalCount,
@@ -257,7 +227,7 @@
       <!-- Empty state -->
       <EmptyState v-else icon="key" title="No secrets found" :description="hasActiveFilters ? 'Try adjusting your filters' : 'Create your first secret to get started'">
         <template #actions>
-          <Button variant="solid" @click="showNewDialog = true">Add Secret</Button>
+          <Button variant="solid" @click="showNewDialog = true">Create</Button>
         </template>
       </EmptyState>
     </div>
@@ -271,7 +241,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { mobileSidebarOpened } from '../composables/sidebar'
 import SortIcon from '../components/SortIcon.vue'
 import ColumnsIcon from '../components/ColumnsIcon.vue'
 import FilterIcon from '../components/FilterIcon.vue'
@@ -287,13 +256,15 @@ import {
   ListHeaderItem,
   ListRows,
   ListRow,
-  ListRowItem,
-  ListFooter,
   Breadcrumbs,
+  Select,
 } from 'frappe-ui'
-import { useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
+import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
+import { SECRET_TYPES } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import NewSecretDialog from '../components/NewSecretDialog.vue'
+import SecretTypeIcon from '../components/SecretTypeIcon.vue'
+import StrengthBadge from '../components/StrengthBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -324,20 +295,17 @@ const activeFilterCount = computed(() => [
   activeFilters.value.folder,
   activeFilters.value.favorites_only,
 ].filter(Boolean).length)
-const pageTitle = computed(() => activeFilters.value.folder ? `Folder: ${foldersResource.data?.find(f => f.name === activeFilters.value.folder)?.folder_name || 'Folder'}` : 'All Secrets')
 const breadcrumbs = computed(() => {
-  const folderName = activeFilters.value.folder
-    ? (foldersResource.data?.find(f => f.name === activeFilters.value.folder)?.folder_name || 'Folder')
-    : 'List'
-  return [
-    { label: 'Secrets', route: '/secrets' },
-    { label: folderName }
-  ]
+  if (activeFilters.value.folder) {
+    const folderName = foldersResource.data?.find(f => f.name === activeFilters.value.folder)?.folder_name || 'Folder'
+    return [
+      { label: 'Secrets', route: '/secrets' },
+      { label: folderName }
+    ]
+  }
+  return [{ label: 'Secrets' }]
 })
 
-const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH Key': 'terminal', Certificate: 'shield', 'Credit Card': 'credit-card', Database: 'database', Other: 'file' }
-const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purple-100 text-purple-600', Note: 'bg-green-100 text-green-600', 'SSH Key': 'bg-orange-100 text-orange-600', Certificate: 'bg-teal-100 text-teal-600', 'Credit Card': 'bg-yellow-100 text-yellow-600', Database: 'bg-red-100 text-red-600' }
-const strengthTheme = { weak: 'red', fair: 'orange', good: 'blue', strong: 'green', excellent: 'green' }
 
 const sortOptions = [
   { label: 'Last Modified (Newest)', value: 'modified desc' },
@@ -424,15 +392,15 @@ const formattedRows = computed(() => {
   })
 })
 
-const typeFilterOptions = [
-  { label: 'All Types', onClick: () => (activeFilters.value.secret_type = '') },
-  ...['Password', 'API Key', 'Note', 'SSH Key', 'Certificate', 'Credit Card', 'Database'].map(t => ({ label: t, onClick: () => (activeFilters.value.secret_type = t) })),
-]
+const typeFilterOptions = computed(() => [
+  { label: 'All Types', value: '' },
+  ...SECRET_TYPES.map(t => ({ label: t, value: t })),
+])
 
 const folderFilterOptions = computed(() => {
-  const opts = [{ label: 'All Folders', onClick: () => (activeFilters.value.folder = '') }]
+  const opts = [{ label: 'All Folders', value: '' }]
   for (const f of foldersResource.data || []) {
-    opts.push({ label: f.folder_name, onClick: () => (activeFilters.value.folder = f.name) })
+    opts.push({ label: f.folder_name, value: f.name })
   }
   return opts
 })

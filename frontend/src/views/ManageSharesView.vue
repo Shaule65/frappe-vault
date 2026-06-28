@@ -1,23 +1,17 @@
 <template>
-  <div class="flex-1 flex flex-col overflow-hidden bg-gray-50/20">
+  <div class="flex-1 flex flex-col overflow-hidden bg-surface-base">
     <!-- Header -->
-    <header class="flex h-10.5 items-center justify-between border-b bg-white px-5 py-2.5 shrink-0">
+    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-2 bg-surface-base px-5 py-2.5 shrink-0">
       <div class="flex items-center gap-2 min-w-0 flex-1">
         <!-- Mobile Sidebar Trigger -->
         <Button
-          class="size-7 sm:hidden flex items-center justify-center p-0 mr-1 focus:outline-none shrink-0"
+          class="sm:hidden mr-1 shrink-0"
           variant="ghost"
+          icon="lucide-menu"
           @click="mobileSidebarOpened = true"
-        >
-          <template #icon>
-            <FeatherIcon name="menu" class="w-4.5 h-4.5 text-ink-gray-9" />
-          </template>
-        </Button>
+        />
 
         <Breadcrumbs :items="breadcrumbs" class="min-w-0" />
-        <Badge variant="subtle" theme="blue" size="sm" class="ml-1 font-medium shrink-0">
-          {{ filteredList.length }} {{ filteredList.length === 1 ? 'active share' : 'active shares' }}
-        </Badge>
       </div>
       <!-- Header Actions -->
       <div class="flex items-center gap-2">
@@ -25,17 +19,16 @@
           variant="solid"
           size="sm"
           class="shadow-sm font-semibold"
+          iconLeft="lucide-user-plus"
+          label="Share Item"
           @click="openShareDialog"
-        >
-          <template #prefix><FeatherIcon name="user-plus" class="w-3.5 h-3.5" /></template>
-          <span>Share Item</span>
-        </Button>
+        />
       </div>
     </header>
 
     <ViewControlsBar>
       <template #left>
-        <div class="m-1 min-w-36">
+        <div class="w-44 shrink-0">
           <TextInput
             v-model="titleQuery"
             placeholder="Title"
@@ -69,14 +62,14 @@
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Loading state -->
       <div v-if="shared.loading && !shared.data" class="p-6 space-y-3">
-        <div v-for="i in 5" :key="i" class="h-16 bg-gray-100 rounded-lg animate-pulse" />
+        <div v-for="i in 5" :key="i" class="h-16 bg-surface-gray-3 rounded-lg animate-pulse" />
       </div>
 
       <!-- ListView Table of shares -->
       <template v-else-if="filteredList.length">
         <ListView
           v-model:selections="selectedShares"
-          class="flex-1 flex flex-col overflow-hidden bg-white"
+          class="flex-1 flex flex-col overflow-hidden bg-surface-base"
           :columns="columns"
           :rows="formattedRows"
           row-key="name"
@@ -106,13 +99,10 @@
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-gray-100 shadow-sm bg-indigo-50 text-indigo-600">
+                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-2 shadow-sm bg-indigo-50 text-indigo-600">
                        <FeatherIcon name="folder" class="w-4 h-4" />
                     </div>
-                    <div v-else class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-gray-100 shadow-sm"
-                         :class="typeColors[item.secret_type] || 'bg-gray-100 text-gray-600'">
-                       <FeatherIcon :name="typeIcons[item.secret_type] || 'file'" class="w-4 h-4" />
-                    </div>
+                    <SecretTypeIcon v-else :type="item.secret_type" />
                     <div class="min-w-0 flex-1 truncate">
                       <span class="font-semibold text-ink-gray-9 hover:text-indigo-600  cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                     </div>
@@ -156,14 +146,11 @@
                       variant="ghost"
                       theme="red"
                       size="sm"
+                      icon="lucide-trash-2"
                       class="h-7.5 px-2 text-ink-red-3 hover:text-ink-red-4 hover:bg-red-50 rounded focus:outline-none"
                       @click="confirmRevokeShare(row)"
                       tooltip="Revoke Share"
-                    >
-                      <template #icon>
-                        <FeatherIcon name="trash-2" class="w-3.5 h-3.5" />
-                      </template>
-                    </Button>
+                    />
                   </div>
                 </template>
               </ListRowItem>
@@ -174,7 +161,7 @@
         <!-- Pagination Footer -->
         <ListFooter
           v-model="pageLength"
-          class="border-t px-5 py-2 bg-white shrink-0"
+          class="border-t border-outline-gray-2 px-5 py-2 bg-surface-base shrink-0"
           :options="{
             rowCount: filteredList.length,
             totalCount: totalCount,
@@ -199,19 +186,15 @@
         <div class="space-y-4 pt-2">
           <!-- Shared DocType Selector -->
           <div>
-            <label class="block text-sm text-ink-gray-5 mb-1.5">Item Type</label>
-            <div class="flex gap-1.5 p-1 bg-surface-gray-2 rounded-lg">
-              <button
-                v-for="doctype in ['Vault Secret', 'Vault Folder']"
-                :key="doctype"
-                type="button"
-                class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none"
-                :class="newShareDoctype === doctype ? 'bg-white text-ink-gray-9 shadow-sm' : 'text-ink-gray-6 hover:text-ink-gray-9'"
-                @click="() => { newShareDoctype = doctype; newShareItem = '' }"
-              >
-                {{ doctype === 'Vault Secret' ? 'Secret' : 'Folder' }}
-              </button>
-            </div>
+            <label class="block text-p-sm-medium text-ink-gray-7 mb-1.5">Item Type</label>
+            <TabButtons
+              v-model="newShareDoctype"
+              :options="[
+                { label: 'Secret', value: 'Vault Secret', class: 'flex-1 !justify-center', onClick: () => { newShareItem = '' } },
+                { label: 'Folder', value: 'Vault Folder', class: 'flex-1 !justify-center', onClick: () => { newShareItem = '' } }
+              ]"
+              class="w-full !flex"
+            />
           </div>
 
           <!-- Item Selector -->
@@ -224,19 +207,16 @@
 
           <!-- Share Type Selection -->
           <div>
-            <label class="block text-sm text-ink-gray-5 mb-1.5">Share With</label>
-            <div class="flex gap-1.5 p-1 bg-surface-gray-2 rounded-lg">
-              <button
-                v-for="t in ['User', 'Group', 'Role']"
-                :key="t"
-                type="button"
-                class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none"
-                :class="newShareType === t ? 'bg-white text-ink-gray-9 shadow-sm' : 'text-ink-gray-6 hover:text-ink-gray-9'"
-                @click="() => { newShareType = t; newShareRecipient = '' }"
-              >
-                {{ t }}
-              </button>
-            </div>
+            <label class="block text-p-sm-medium text-ink-gray-7 mb-1.5">Share With</label>
+            <TabButtons
+              v-model="newShareType"
+              :options="[
+                { label: 'User', value: 'User', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } },
+                { label: 'Group', value: 'Group', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } },
+                { label: 'Role', value: 'Role', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } }
+              ]"
+              class="w-full !flex"
+            />
           </div>
 
           <!-- Recipient Selection -->
@@ -263,7 +243,7 @@
           <!-- Optional Expiration Date -->
           <FormControl
             label="Expires On (Optional)"
-            type="datetime-local"
+            type="datetime"
             v-model="newShareExpiresOn"
           />
         </div>
@@ -347,11 +327,12 @@
 import ViewControlsBar from '../components/ViewControlsBar.vue'
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { mobileSidebarOpened } from '../composables/sidebar'
 import RefreshIcon from '../components/RefreshIcon.vue'
-import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListFooter, Dialog, Breadcrumbs, toast } from 'frappe-ui'
-import { useSharedWithMe, useShareSecret, useUnshare, useShareOptions, useSecrets, useFolders, useBulkDeleteShares } from '../composables/vault'
+import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListFooter, Dialog, Breadcrumbs, toast, TabButtons } from 'frappe-ui'
+import { mobileSidebarOpened, useSharedWithMe, useShareSecret, useUnshare, useShareOptions, useSecrets, useFolders, useBulkDeleteShares } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
+import SecretTypeIcon from '../components/SecretTypeIcon.vue'
+import { permissionTheme } from '../composables/constants'
 
 const router = useRouter()
 const shared = useSharedWithMe()
@@ -391,12 +372,7 @@ watch(pageLength, (newLength) => {
     limit: newLength,
   })
 }, { immediate: true })
-const breadcrumbs = computed(() => {
-  return [
-    { label: 'Manage Shares', route: '/manage-shares' },
-    { label: 'List' }
-  ]
-})
+const breadcrumbs = computed(() => [{ label: 'Shares' }])
 const secretsList = computed(() => secretsResource.data?.secrets || [])
 const foldersList = computed(() => foldersResource.data || [])
 const shareOptions = computed(() => shareOptionsResource.data || { users: [], groups: [], roles: [] })
@@ -438,10 +414,6 @@ const filteredList = computed(() => {
   }
   return result
 })
-
-const typeIcons = { Password: 'key', 'API Key': 'code', Note: 'file-text', 'SSH Key': 'terminal', Certificate: 'shield', 'Credit Card': 'credit-card', Database: 'database', Other: 'file' }
-const typeColors = { Password: 'bg-blue-100 text-blue-600', 'API Key': 'bg-purple-100 text-purple-600', Note: 'bg-green-100 text-green-600', 'SSH Key': 'bg-orange-100 text-orange-600', Certificate: 'bg-teal-100 text-teal-600', 'Credit Card': 'bg-yellow-100 text-yellow-600', Database: 'bg-red-100 text-red-600' }
-const permissionTheme = { 'View Only': 'gray', 'View & Copy': 'blue', 'Edit': 'orange', 'Full Control': 'green', 'Revoked': 'red' }
 
 const columns = ref([
   { label: 'Title', key: 'title', width: '18rem' },

@@ -1,21 +1,17 @@
 <template>
   <div class="flex-1 overflow-auto p-6">
-    <h1 class="text-xl font-semibold text-gray-900 mb-6">Password Generator</h1>
+    <h1 class="text-xl font-semibold text-ink-gray-9 mb-6">Password Generator</h1>
 
     <div class="max-w-xl">
-      <div class="bg-white rounded-xl border p-6 mb-6">
+      <div class="bg-surface-elevation-1 rounded-xl border border-outline-gray-2 p-6 mb-6">
         <!-- Generated password display -->
-        <div class="bg-gray-50 rounded-lg p-4 mb-4">
-          <p class="font-mono text-lg text-gray-900 break-all select-all">{{ generatedPassword || 'Click Generate' }}</p>
+        <div class="bg-surface-gray-2 rounded-lg p-4 mb-4">
+          <p class="font-mono text-lg text-ink-gray-9 break-all select-all">{{ generatedPassword || 'Click Generate' }}</p>
         </div>
 
         <div class="flex gap-3 mb-6">
-          <Button variant="solid" class="flex-1" @click="handleGenerate" :loading="generator.loading">
-            <FeatherIcon name="refresh-cw" class="w-4 h-4" /> Generate
-          </Button>
-          <Button variant="outline" @click="handleCopy" :disabled="!generatedPassword">
-            <FeatherIcon name="copy" class="w-4 h-4" /> {{ clipboard.copied.value ? `Copied (${clipboard.countdown.value}s)` : 'Copy' }}
-          </Button>
+          <Button variant="solid" class="flex-1" iconLeft="lucide-refresh-cw" label="Generate" @click="handleGenerate" :loading="generator.loading" />
+          <Button variant="outline" iconLeft="lucide-copy" :label="clipboard.copied.value ? `Copied (${clipboard.countdown.value}s)` : 'Copy'" @click="handleCopy" :disabled="!generatedPassword" />
         </div>
 
         <!-- Strength indicator -->
@@ -26,7 +22,7 @@
         <!-- Options -->
         <div class="space-y-4">
           <div>
-            <label class="text-sm font-medium text-gray-700 mb-2 block">Length: {{ options.length }}</label>
+            <label class="text-sm font-medium text-ink-gray-7 mb-2 block">Length: {{ options.length }}</label>
             <input type="range" v-model.number="options.length" min="8" max="128" class="w-full accent-blue-600" />
           </div>
 
@@ -46,7 +42,7 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { Button, FeatherIcon } from 'frappe-ui'
+import { Button, FeatherIcon, Checkbox } from 'frappe-ui'
 import { useGeneratePassword } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import PasswordStrength from '../components/PasswordStrength.vue'

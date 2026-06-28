@@ -5,8 +5,8 @@
     class="group flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 mx-2 my-[1.5px]"
     :class="[
       isActive
-        ? 'bg-white shadow-sm text-ink-gray-9 font-medium'
-        : 'hover:bg-surface-gray-2 text-ink-gray-8'
+        ? 'bg-surface-base shadow-sm text-ink-gray-9 font-medium'
+        : 'hover:bg-surface-gray-3 text-ink-gray-8'
     ]"
   >
     <div
@@ -56,8 +56,8 @@
     class="group flex h-7 items-center rounded text-base focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-left mx-2 my-[1.5px]"
     :class="[
       isActive
-        ? 'bg-white shadow-sm text-ink-gray-9 font-medium'
-        : 'hover:bg-surface-gray-2 text-ink-gray-8'
+        ? 'bg-surface-base shadow-sm text-ink-gray-9 font-medium'
+        : 'hover:bg-surface-gray-3 text-ink-gray-8'
     ]"
     @click="$emit('click')"
   >

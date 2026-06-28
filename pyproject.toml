@@ -1,9 +1,9 @@
 [project]
 name = "frappe_vault"
 authors = [
-    { name = "Frappe Vault", email = "hello@example.com"}
+    { name = "lubus", email = "info@lubus.in"}
 ]
-description = "A Frappe-based password and secrets management application"
+description = "Password and secrets management application"
 requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]

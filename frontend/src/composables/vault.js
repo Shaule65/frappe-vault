@@ -1,9 +1,11 @@
 /**
  * Composables for Frappe Vault data fetching.
- * Uses createResource / createListResource from frappe-ui.
+ * Uses createResource from frappe-ui.
  */
-import { createResource, createListResource } from 'frappe-ui'
-import { ref, reactive } from 'vue'
+import { createResource } from 'frappe-ui'
+import { ref } from 'vue'
+
+export const mobileSidebarOpened = ref(false)
 
 // --- Secrets ---
 export function useSecrets(initialFilters = {}) {

@@ -1,21 +1,21 @@
 <template>
-  <div class="flex-1 overflow-auto p-6">
-    <h1 class="text-xl font-semibold text-gray-900 mb-4">Audit Log</h1>
+  <div class="flex-1 flex flex-col overflow-auto p-6">
+    <h1 class="text-xl font-semibold text-ink-gray-9 mb-4">Audit Log</h1>
     <div v-if="logs.loading" class="space-y-3">
-      <div v-for="i in 5" :key="i" class="h-12 bg-gray-100 rounded animate-pulse" />
+      <div v-for="i in 5" :key="i" class="h-12 bg-surface-gray-3 rounded animate-pulse" />
     </div>
-    <div v-else-if="logList.length" class="bg-white rounded-xl border divide-y">
+    <div v-else-if="logList.length" class="bg-surface-elevation-1 rounded-xl border border-outline-gray-2 divide-y divide-outline-gray-2">
       <div v-for="log in logList" :key="log.name" class="flex items-center px-4 py-3">
-        <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3" :class="actionColors[log.action] || 'bg-gray-100'">
-          <FeatherIcon :name="actionIcons[log.action] || 'activity'" class="w-4 h-4" />
+        <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3" :class="actionColors[log.action] || 'bg-surface-gray-3'">
+          <FeatherIcon :name="actionIcons[log.action] || 'activity'" class="w-4 h-4 text-ink-gray-6" />
         </div>
         <div class="flex-1">
-          <p class="text-sm">
-            <span class="font-medium">{{ log.user }}</span>
+          <p class="text-sm text-ink-gray-7">
+            <span class="font-medium text-ink-gray-9">{{ log.user }}</span>
             {{ log.action.toLowerCase() }}
-            <span v-if="getSecretLabel(log)" class="font-medium text-gray-900">{{ getSecretLabel(log) }}</span>
+            <span v-if="getSecretLabel(log)" class="font-medium text-ink-gray-9">{{ getSecretLabel(log) }}</span>
           </p>
-          <p class="text-xs text-gray-400">{{ formatTime(log.timestamp) }} · {{ log.ip_address }}</p>
+          <p class="text-xs text-ink-gray-4">{{ formatTime(log.timestamp) }} · {{ log.ip_address }}</p>
         </div>
       </div>
     </div>
@@ -27,13 +27,11 @@
 import { computed } from 'vue'
 import { FeatherIcon } from 'frappe-ui'
 import { useAuditLogs } from '../composables/vault'
+import { actionIcons, actionColors } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 
 const logs = useAuditLogs()
 const logList = computed(() => logs.data?.logs || [])
-
-const actionIcons = { Viewed: 'eye', Created: 'plus-circle', Updated: 'edit', Deleted: 'trash-2', Shared: 'share', Copied: 'copy', Generated: 'refresh-cw' }
-const actionColors = { Created: 'bg-green-100', Deleted: 'bg-red-100', Shared: 'bg-blue-100', Viewed: 'bg-gray-100' }
 
 function getSecretLabel(log) {
   if (log.secret) {

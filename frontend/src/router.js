@@ -48,11 +48,6 @@ const routes = [
     name: 'AuditLog',
     component: () => import('./views/AuditLogView.vue'),
   },
-  {
-    path: '/settings',
-    name: 'Settings',
-    component: () => import('./views/SettingsView.vue'),
-  },
 ]
 
 const router = createRouter({

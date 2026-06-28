@@ -1,15 +1,16 @@
-# Frappe Vault
+<p align="center"><img width="160" src=".github/assets/logo.svg"></p>
 
-A Frappe-based password and secrets management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext environment.
 
 <img src=".github/assets/banner.png" />
+
+# Frappe Vault
+
+Password and secrets management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext portal.
 
 ## Features
 
 - **Secure Storage**: Store passwords, API keys, SSH keys, certificates, and notes with encryption
 - **Categories**: Organize secrets in a tree-based category structure
-- **Password Generator**: Generate strong, random passwords with customizable options
-- **Password Strength Analysis**: Automatic analysis of password strength
 - **Access Logging**: Track who accessed which secrets and when
 - **Sharing**: Share secrets with specific users or roles
 - **Favorites**: Mark frequently used secrets as favorites
@@ -31,12 +32,6 @@ bench get-app https://github.com/lubusIN/frappe-vault.git
 
 # Install on your site
 bench --site your-site.local install-app frappe-vault
-
-# Run migrations
-bench --site your-site.local migrate
-
-# Build assets
-bench build --app frappe-vault
 ```
 
 ### Development Installation
@@ -93,14 +88,6 @@ Assign these roles to users through the User DocType or Role Permissions Manager
 3. Fill in the credentials (password, API key, etc.)
 4. Optionally assign a category and tags
 5. Save
-
-### Password Generator
-
-Click the **Generate Password** button on any Password-type secret to open the password generator dialog. Customize options like:
-
-- Length (8-128 characters)
-- Character types (uppercase, lowercase, numbers, special)
-- Exclude ambiguous characters
 
 ### Sharing Secrets
 
