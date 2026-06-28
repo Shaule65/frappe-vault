@@ -41,13 +41,10 @@ def delete(name):
     for s in secrets:
         delete_secret(s.name)
 
-    # Mark folder shares as revoked
-    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Folder", "shared_name": name, "is_revoked": 0}, pluck="name")
+    # Delete folder shares
+    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Folder", "shared_name": name}, pluck="name")
     for share_name in shares:
-        frappe.db.set_value("Vault Share", share_name, {
-            "is_revoked": 1,
-            "revoked_by": frappe.session.user
-        })
+        frappe.delete_doc("Vault Share", share_name, force=True)
 
     frappe.delete_doc("Vault Folder", name)
     return {"deleted": name}

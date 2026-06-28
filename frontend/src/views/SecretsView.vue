@@ -227,7 +227,17 @@
       <!-- Empty state -->
       <EmptyState v-else icon="key" title="No secrets found" :description="hasActiveFilters ? 'Try adjusting your filters' : 'Create your first secret to get started'">
         <template #actions>
-          <Button variant="solid" @click="showNewDialog = true">Create</Button>
+          <div class="flex items-center gap-2">
+            <Button variant="solid" @click="showNewDialog = true">Create</Button>
+            <Button
+              v-if="!hasActiveFilters && !stats.data?.has_demo_data"
+              variant="outline"
+              iconLeft="lucide-sparkles"
+              label="Load Demo Data"
+              :loading="generateDemo.loading"
+              @click="handleGenerateDemo"
+            />
+          </div>
         </template>
       </EmptyState>
     </div>
@@ -259,7 +269,7 @@ import {
   Breadcrumbs,
   Select,
 } from 'frappe-ui'
-import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
+import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite, useGenerateDemoData, useVaultStats } from '../composables/vault'
 import { SECRET_TYPES } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import NewSecretDialog from '../components/NewSecretDialog.vue'
@@ -285,6 +295,18 @@ const visibleColumns = ref({
 const secrets = useSecrets()
 const foldersResource = useFolders()
 const toggleFav = useToggleFavorite()
+const stats = useVaultStats()
+const generateDemo = useGenerateDemoData()
+
+async function handleGenerateDemo() {
+  try {
+    await generateDemo.submit()
+    secrets.reload()
+    stats.reload()
+  } catch (err) {
+    console.error(err)
+  }
+}
 
 const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || 0)

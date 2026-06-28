@@ -27,14 +27,14 @@
       <!-- Stat cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div v-for="stat in statCards" :key="stat.label"
-             class="bg-surface-elevation-1 rounded-lg shadow-sm border border-outline-gray-2 p-5 hover:shadow-md transition-shadow flex flex-col justify-center">
+             class="bg-surface-elevation-1 rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow flex flex-col justify-center">
           <p class="text-sm font-medium text-ink-gray-5 mb-1">{{ stat.label }}</p>
           <p class="text-3xl font-semibold text-ink-gray-9">{{ stat.value }}</p>
         </div>
       </div>
 
       <!-- Security Score -->
-      <div class="bg-surface-elevation-1 rounded-lg shadow-sm border border-outline-gray-2 p-6 mb-8">
+      <div class="bg-surface-elevation-1 rounded-lg shadow-sm p-6 mb-8">
         <h2 class="text-base font-medium text-ink-gray-9 mb-4">Security Score</h2>
         <div class="flex flex-col sm:flex-row items-center gap-6">
           <div class="relative w-24 h-24 shrink-0 flex items-center justify-center">
@@ -61,7 +61,7 @@
       </div>
 
       <!-- Recent Secrets -->
-      <div class="bg-surface-elevation-1 rounded-lg shadow-sm border border-outline-gray-2 p-0 overflow-hidden mb-4">
+      <div class="bg-surface-elevation-1 rounded-lg shadow-sm p-0 overflow-hidden mb-4">
         <div class="px-5 py-4 border-b border-outline-gray-2">
           <h2 class="text-base font-medium text-ink-gray-9">Recently Accessed</h2>
         </div>

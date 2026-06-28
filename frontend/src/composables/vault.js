@@ -203,3 +203,16 @@ export function useVerifyMasterPassword() {
   })
 }
 
+// --- Demo Data ---
+export function useGenerateDemoData() {
+  return createResource({
+    url: 'frappe_vault.api.demo.generate_demo_data',
+  })
+}
+
+export function useClearDemoData() {
+  return createResource({
+    url: 'frappe_vault.api.demo.clear_demo_data',
+  })
+}
+

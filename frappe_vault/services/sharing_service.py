@@ -112,7 +112,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
         FROM `tabVault Share` vs
         LEFT JOIN `tabVault Secret` sec ON vs.shared_name = sec.name AND vs.shared_doctype = 'Vault Secret'
         LEFT JOIN `tabVault Folder` fld ON vs.shared_name = fld.name AND vs.shared_doctype = 'Vault Folder'
-        WHERE ({where})
+        WHERE ({where}) AND vs.is_revoked = 0 AND (sec.name IS NOT NULL OR fld.name IS NOT NULL)
         ORDER BY vs.creation DESC
         LIMIT %s OFFSET %s
     """, (limit, offset), as_dict=True)
@@ -122,7 +122,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
         FROM `tabVault Share` vs
         LEFT JOIN `tabVault Secret` sec ON vs.shared_name = sec.name AND vs.shared_doctype = 'Vault Secret'
         LEFT JOIN `tabVault Folder` fld ON vs.shared_name = fld.name AND vs.shared_doctype = 'Vault Folder'
-        WHERE ({where})
+        WHERE ({where}) AND vs.is_revoked = 0 AND (sec.name IS NOT NULL OR fld.name IS NOT NULL)
     """)[0][0]
 
     return {"shared": secrets, "total": total, "limit": limit, "offset": offset}

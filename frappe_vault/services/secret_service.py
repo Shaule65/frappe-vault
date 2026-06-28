@@ -252,13 +252,10 @@ def delete_secret(name: str) -> dict:
     for link_name in one_time_links:
         frappe.delete_doc("Vault One Time Link", link_name, force=True)
 
-    # 2. Mark associated share settings as revoked
-    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name, "is_revoked": 0}, pluck="name")
+    # 2. Delete associated share settings
+    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
     for share_name in shares:
-        frappe.db.set_value("Vault Share", share_name, {
-            "is_revoked": 1,
-            "revoked_by": frappe.session.user
-        })
+        frappe.delete_doc("Vault Share", share_name, force=True)
 
     # 3. Clean up associated favorites
     favorites = frappe.get_all("Vault Favorite", filters={"secret": name}, pluck="name")
@@ -334,6 +331,8 @@ def get_vault_stats() -> dict:
         limit=5,
     )
 
+    from frappe_vault.services.demo_service import check_has_demo_data
+
     return {
         "total_secrets": total,
         "favorites": favorites,
@@ -341,4 +340,5 @@ def get_vault_stats() -> dict:
         "secrets_by_type": secrets_by_type,
         "recent_secrets": recent,
         "is_admin": is_admin,
+        "has_demo_data": check_has_demo_data(),
     }

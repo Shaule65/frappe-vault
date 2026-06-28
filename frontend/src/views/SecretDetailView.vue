@@ -42,29 +42,27 @@
         <div class="flex-1 flex flex-col overflow-y-auto p-6 min-h-0">
           
           <!-- Activity feed timeline panel -->
-          <div v-if="activeTab === 'activity'" class="flex-1 flex flex-col space-y-6">
-            <div class="flex items-center justify-between border-b border-outline-gray-2 pb-3 mb-5">
-              <h3 class="text-base font-semibold text-ink-gray-9">Activity Timeline</h3>
+          <div v-if="activeTab === 'activity'" class="flex-1 flex flex-col max-w-3xl">
+            <div class="flex items-center justify-between border-b border-outline-gray-2 pb-4 mb-6">
+              <h3 class="text-lg font-bold text-ink-gray-9">Activity</h3>
             </div>
             
             <div v-if="activity.loading" class="space-y-4">
               <div v-for="i in 3" :key="i" class="h-16 bg-surface-gray-2 border border-outline-gray-2 rounded-xl animate-pulse" />
             </div>
             
-            <div v-else-if="activityList.length" class="relative border-l border-outline-gray-2 ml-4 pl-6 space-y-6 py-2">
+            <div v-else-if="activityList.length" class="relative space-y-6 before:absolute before:top-3 before:bottom-3 before:left-[15px] before:w-px before:bg-outline-gray-2 pl-1 py-1">
               <div v-for="item in activityList" :key="item.name" class="relative flex items-start gap-4">
-                <!-- Dot marker -->
-                <span class="absolute -left-[31px] top-2 w-2.5 h-2.5 rounded-full border-2 border-surface-white bg-ink-gray-5 ring-4 ring-surface-white" />
-                
-                <div class="w-8.5 h-8.5 rounded-full border border-outline-gray-2 bg-surface-gray-2 flex items-center justify-center shrink-0 shadow-sm">
-                  <FeatherIcon :name="actionIcons[item.action] || 'activity'" class="w-4 h-4 text-ink-gray-5" />
+                <!-- Single clean icon circle centered on the line -->
+                <div class="w-8 h-8 rounded-full border border-outline-gray-2 bg-surface-base flex items-center justify-center shrink-0 shadow-2xs z-10 text-ink-gray-7">
+                  <FeatherIcon :name="actionIcons[item.action] || 'activity'" class="w-3.5 h-3.5" />
                 </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm text-ink-gray-8 leading-snug mt-0.5">
+                <div class="min-w-0 flex-1 pt-1 flex items-baseline justify-between gap-4">
+                  <p class="text-sm text-ink-gray-8 leading-snug">
                     <span class="font-bold text-ink-gray-9">{{ item.user }}</span>
-                    &nbsp;{{ getActivityText(item) }}
+                    <span class="text-ink-gray-6 ml-1.5">{{ getActivityText(item) }}</span>
                   </p>
-                  <p class="text-xs text-ink-gray-4 mt-1 font-medium">{{ formatTime(item.timestamp) }}</p>
+                  <span class="text-xs text-ink-gray-4 font-normal shrink-0">{{ formatTime(item.timestamp) }}</span>
                 </div>
               </div>
             </div>
@@ -171,589 +169,542 @@
       <!-- RIGHT PANE: Resizable Side Panel Drawer (off-white bg, bordered) -->
       <div class="w-[380px] shrink-0 flex flex-col overflow-y-auto border-l border-outline-gray-2 flex-1 lg:flex-none bg-surface-base">
         
-        <!-- Sidebar ID Header (matching CRM Resizer top row) -->
-        <div
-          class="flex h-[45px] cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
-          @click="copyField(secretData.name, 'name')"
-        >
-          {{ secretData.name }}
+        <!-- Sidebar ID Header (matching CRM top ID text) -->
+        <div class="px-6 pt-5 pb-1 flex items-center justify-between">
+          <span
+            class="text-sm font-mono font-medium text-ink-gray-5 hover:text-ink-gray-7 cursor-pointer select-none transition-colors"
+            @click="copyField(secretData.name, 'name')"
+            title="Click to copy ID"
+          >
+            {{ secretData.name }}
+          </span>
         </div>
 
         <!-- Avatar + Title + Quick Actions (matching CRM Lead detail panel) -->
-        <div class="flex items-center justify-start gap-5 border-b p-5">
+        <div class="px-6 pt-3 pb-6 flex items-start gap-4 border-b border-outline-gray-2">
           <!-- Circular type avatar icon -->
-          <div :class="`size-12 rounded-full border flex items-center justify-center shrink-0 shadow-sm ${typeMeta[secretData.secret_type || 'Other']?.bg}`">
-            <FeatherIcon :name="typeMeta[secretData.secret_type || 'Other']?.icon" class="w-5.5 h-5.5" />
+          <div :class="`size-12 rounded-full border flex items-center justify-center shrink-0 shadow-2xs ${typeMeta[secretData.secret_type || 'Other']?.bg}`">
+            <FeatherIcon :name="typeMeta[secretData.secret_type || 'Other']?.icon" class="w-6 h-6" />
           </div>
           
-          <div class="flex flex-col gap-2.5 truncate">
+          <div class="flex flex-col gap-2 min-w-0 flex-1 pt-0.5">
             <Tooltip :text="secretData.title">
-              <div class="truncate text-2xl font-medium text-ink-gray-9">
+              <h2 class="truncate text-xl font-bold text-ink-gray-9 leading-tight">
                 {{ secretData.title }}
-              </div>
+              </h2>
             </Tooltip>
-            <div class="flex gap-1.5">
-              <!-- Quick action buttons row (matching CRM Lead action row) -->
-              <Button
+            
+            <!-- Action buttons row (matching CRM rounded square / circular buttons) -->
+            <div class="flex items-center gap-1.5 pt-1">
+              <button
                 v-if="secretData.username"
-                :tooltip="'Copy Username'"
-                icon="user"
+                title="Copy Username"
+                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
                 @click="copyField(secretData.username, 'username')"
-              />
-              <Button
+              >
+                <FeatherIcon name="user" class="w-3.5 h-3.5" />
+              </button>
+              <button
                 v-if="secretData.secret_type === 'Password' && canCopy"
-                :tooltip="'Copy Password'"
-                icon="key"
+                title="Copy Password"
+                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
                 @click="copyPassword"
-              />
-              <Button
+              >
+                <FeatherIcon name="key" class="w-3.5 h-3.5" />
+              </button>
+              <button
                 v-if="secretData.secret_type === 'API Key' && canCopy"
-                :tooltip="'Copy API Secret'"
-                icon="code"
+                title="Copy API Secret"
+                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
                 @click="copyAPISecret"
-              />
-              <Button
+              >
+                <FeatherIcon name="code" class="w-3.5 h-3.5" />
+              </button>
+              <button
                 v-if="secretData.url"
-                :tooltip="'Open URL'"
-                icon="external-link"
+                title="Open URL"
+                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
                 @click="window.open(secretData.url, '_blank')"
-              />
-              <Button
+              >
+                <FeatherIcon name="external-link" class="w-3.5 h-3.5" />
+              </button>
+              <button
                 v-if="canDelete"
-                :tooltip="'Delete'"
-                variant="subtle"
-                theme="red"
-                icon="trash-2"
+                title="Delete Secret"
+                class="w-7.5 h-7.5 rounded-lg border border-red-100 bg-red-50 hover:bg-red-100/80 flex items-center justify-center text-red-600 transition-colors shadow-2xs ml-auto"
                 @click="showDeleteDialog = true"
-              />
+              >
+                <FeatherIcon name="trash-2" class="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- Edit Mode Toggle (below avatar, matching CRM pattern) -->
-        <div v-if="canEdit" class="px-5 py-3 border-b flex items-center justify-end shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            @click="toggleEditMode"
-            :class="isEditing ? 'bg-surface-gray-2 text-ink-gray-9 font-bold border-outline-gray-3' : 'text-ink-gray-7 hover:bg-surface-gray-1'"
-          >
-            <template #prefix>
-              <FeatherIcon :name="isEditing ? 'eye' : 'edit-2'" class="w-3.5 h-3.5" />
-            </template>
-            <span>{{ isEditing ? 'View' : 'Edit' }}</span>
-          </Button>
-        </div>
-
         <div class="flex flex-1 flex-col justify-between overflow-hidden">
-          <div class="flex-1 overflow-y-auto p-1 sm:p-3">
+          <div class="flex-1 overflow-y-auto">
           
           <!-- Clipboard clear warning indicator -->
-          <div v-if="clipboard.copied.value" class="flex items-center gap-2.5 p-3 mx-2 bg-amber-50/70 text-amber-800 rounded-xl text-xs font-semibold border border-amber-100/40 shadow-sm transition-all duration-300 mb-2">
+          <div v-if="clipboard.copied.value" class="flex items-center gap-2.5 p-3 mx-4 my-2 bg-amber-50/70 text-amber-800 rounded-xl text-xs font-semibold border border-amber-100/40 shadow-sm transition-all duration-300">
             <FeatherIcon name="shield" class="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
             <span class="flex-1">Clipboard copied. Auto-clearing in <strong>{{ clipboard.countdown.value }}s</strong>.</span>
           </div>
 
-          <!-- EDIT VIEW FORM (CRM SIDEBAR SPLIT) -->
-          <div v-if="isEditing" class="space-y-5">
-            <!-- Title -->
-            <div class="flex items-center justify-between min-h-[38px]">
-              <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Title <span class="text-red-550">*</span></label>
-              <div class="w-[65%]">
-                <TextInput v-model="editForm.title" placeholder="Secret Title" class="w-full text-sm" />
-              </div>
-            </div>
-
-            <!-- Type select -->
-            <div class="flex items-center justify-between min-h-[38px]">
-              <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Type</label>
-              <div class="w-[65%]">
-                <FormControl v-model="editForm.secret_type" type="select" :options="secretTypeOptions" class="w-full text-sm cursor-pointer" />
-              </div>
-            </div>
-
-            <!-- Folder select -->
-            <div class="flex items-center justify-between min-h-[38px]">
-              <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Folder</label>
-              <div class="w-[65%]">
-                <FormControl v-model="editForm.folder" type="select" :options="folderOptions" class="w-full text-sm cursor-pointer" />
-              </div>
-            </div>
-
-            <div class="w-full border-t border-outline-gray-2 my-4" />
-
-            <!-- Dynamic type inputs -->
-            <!-- PASSWORD TYPE -->
-            <div v-if="editForm.secret_type === 'Password'" class="space-y-4">
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Username</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.username" placeholder="Username" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Password</label>
-                <div class="w-[65%] relative">
-                  <TextInput :type="showEditPassword ? 'text' : 'password'" v-model="editForm.password" placeholder="Password" class="w-full text-sm pr-10" />
-                  <Button variant="ghost" size="sm" class="absolute right-2 top-1.5 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditPassword = !showEditPassword">
-                    <FeatherIcon :name="showEditPassword ? 'eye-off' : 'eye'" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">URL</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.url" placeholder="https://example.com" class="w-full text-sm" />
-                </div>
-              </div>
-            </div>
-
-            <!-- API KEY TYPE -->
-            <div v-else-if="editForm.secret_type === 'API Key'" class="space-y-4">
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">API Key</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.api_key" placeholder="API Key" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">API Secret</label>
-                <div class="w-[65%] relative">
-                  <TextInput :type="showEditAPISecret ? 'text' : 'password'" v-model="editForm.api_secret" placeholder="API Secret" class="w-full text-sm pr-10" />
-                  <Button variant="ghost" size="sm" class="absolute right-2 top-1.5 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditAPISecret = !showEditAPISecret">
-                    <FeatherIcon :name="showEditAPISecret ? 'eye-off' : 'eye'" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">URL</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.url" placeholder="https://api.example.com" class="w-full text-sm" />
-                </div>
-              </div>
-            </div>
-
-            <!-- CREDIT CARD TYPE -->
-            <div v-else-if="editForm.secret_type === 'Credit Card'" class="space-y-4">
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Card Holder</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.card_holder" placeholder="Holder Name" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Card Number</label>
-                <div class="w-[65%] relative">
-                  <TextInput :type="showEditCardNumber ? 'text' : 'password'" v-model="editForm.card_number" placeholder="Card Number" class="w-full text-sm pr-10" />
-                  <Button variant="ghost" size="sm" class="absolute right-2 top-1.5 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditCardNumber = !showEditCardNumber">
-                    <FeatherIcon :name="showEditCardNumber ? 'eye-off' : 'eye'" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Expiry</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.card_expiry" placeholder="MM/YY" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">CVV</label>
-                <div class="w-[65%] relative">
-                  <TextInput :type="showEditCardCVV ? 'text' : 'password'" v-model="editForm.card_cvv" placeholder="CVV" class="w-full text-sm pr-10" />
-                  <Button variant="ghost" size="sm" class="absolute right-2 top-1.5 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditCardCVV = !showEditCardCVV">
-                    <FeatherIcon :name="showEditCardCVV ? 'eye-off' : 'eye'" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <!-- DATABASE TYPE -->
-            <div v-else-if="editForm.secret_type === 'Database'" class="space-y-4">
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Host</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.db_host" placeholder="localhost" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Port</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.db_port" placeholder="3306" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">DB Name</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.db_name" placeholder="my_database" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Username</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.username" placeholder="Username" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Password</label>
-                <div class="w-[65%] relative">
-                  <TextInput :type="showEditDBPassword ? 'text' : 'password'" v-model="editForm.db_password" placeholder="Password" class="w-full text-sm pr-10" />
-                  <Button variant="ghost" size="sm" class="absolute right-2 top-1.5 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditDBPassword = !showEditDBPassword">
-                    <FeatherIcon :name="showEditDBPassword ? 'eye-off' : 'eye'" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <!-- SSH KEY TYPE -->
-            <div v-else-if="editForm.secret_type === 'SSH Key'" class="space-y-4">
-              <div class="flex items-center justify-between min-h-[38px]">
-                <label class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Username</label>
-                <div class="w-[65%]">
-                  <TextInput v-model="editForm.username" placeholder="e.g. root" class="w-full text-sm" />
-                </div>
-              </div>
-              <div class="pt-1.5">
-                <FormControl
-                  type="textarea"
-                  label="Private Key"
-                  v-model="editForm.ssh_private_key"
-                  :rows="6"
-                  placeholder="-----BEGIN OPENSSH KEY-----"
-                  class="w-full text-xs font-mono"
+          <!-- Collapsible DETAILS Accordion (matching CRM styling) -->
+          <div class="border-b border-outline-gray-2 py-3.5 px-6">
+            <div class="flex items-center justify-between select-none">
+              <div
+                class="flex items-center gap-2 cursor-pointer font-bold text-ink-gray-9 text-sm"
+                @click="detailsOpen = !detailsOpen"
+              >
+                <FeatherIcon
+                  name="chevron-right"
+                  class="h-4 w-4 transition-transform duration-200 text-ink-gray-5"
+                  :class="{ 'rotate-90': detailsOpen }"
                 />
+                <span>Details</span>
               </div>
+
+              <!-- Edit toggle button aligned right inside accordion header matching CRM -->
+              <button
+                v-if="canEdit"
+                @click="toggleEditMode"
+                class="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-colors"
+                :class="isEditing ? 'bg-ink-gray-9 text-surface-white' : 'text-ink-gray-6 hover:bg-surface-gray-2 hover:text-ink-gray-9 border border-outline-gray-2'"
+              >
+                <FeatherIcon :name="isEditing ? 'eye' : 'edit-2'" class="w-3 h-3" />
+                <span>{{ isEditing ? 'View' : 'Edit' }}</span>
+              </button>
             </div>
 
-            <!-- CERTIFICATE TYPE -->
-            <div v-else-if="editForm.secret_type === 'Certificate'" class="pt-1.5">
-              <FormControl
-                type="textarea"
-                label="Certificate Content"
-                v-model="editForm.certificate"
-                :rows="6"
-                placeholder="-----BEGIN CERTIFICATE-----"
-                class="w-full text-xs font-mono"
-              />
-            </div>
+            <div v-show="detailsOpen" class="mt-3.5">
+              <!-- EDIT VIEW FORM -->
+              <div v-if="isEditing" class="space-y-4 pt-1">
+                <!-- Title -->
+                <div class="flex items-center justify-between gap-3 text-sm">
+                  <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Title <span class="text-red-550">*</span></label>
+                  <div class="flex-1 min-w-0">
+                    <TextInput v-model="editForm.title" placeholder="Secret Title" class="w-full text-sm" />
+                  </div>
+                </div>
 
-            <!-- Stacked Notes Box -->
-            <div class="pt-1.5">
-              <FormControl
-                type="textarea"
-                label="Notes"
-                v-model="editForm.notes"
-                :rows="4"
-                placeholder="Enter notes..."
-                class="w-full text-sm"
-              />
-            </div>
+                <!-- Type select -->
+                <div class="flex items-center justify-between gap-3 text-sm">
+                  <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Type</label>
+                  <div class="flex-1 min-w-0">
+                    <FormControl v-model="editForm.secret_type" type="select" :options="secretTypeOptions" class="w-full text-sm cursor-pointer" />
+                  </div>
+                </div>
 
-            <!-- Edit Sticky Buttons -->
-            <div class="flex items-center justify-end gap-3 pt-3 border-t border-outline-gray-2">
-              <Button variant="outline" @click="isEditing = false" class="text-ink-gray-7 hover:bg-surface-gray-2">Cancel</Button>
-              <Button variant="solid" @click="handleSave" :loading="updateResource.loading" class="font-semibold shadow-sm px-4">Save Changes</Button>
-            </div>
-          </div>
+                <!-- Folder select -->
+                <div class="flex items-center justify-between gap-3 text-sm">
+                  <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Folder</label>
+                  <div class="flex-1 min-w-0">
+                    <FormControl v-model="editForm.folder" type="select" :options="folderOptions" class="w-full text-sm cursor-pointer" />
+                  </div>
+                </div>
 
-          <!-- READ ONLY VIEW COLLAPSIBLES (CRM STYLE DETAILS DRAWER) -->
-          <template v-else>
-            
-            <!-- Collapsible DETAILS Accordion -->
-            <div class="section border-b pb-1">
-              <div class="section-header flex h-8 items-center justify-between">
-                <div
-                  class="flex text-ink-gray-9 max-w-fit cursor-pointer items-center gap-2 text-base px-2 font-semibold select-none"
-                  @click="detailsOpen = !detailsOpen"
-                >
-                  <FeatherIcon
-                    name="chevron-right"
-                    class="h-4 w-4 transition-all duration-300 ease-in-out text-ink-gray-5"
-                    :class="{ 'rotate-90': detailsOpen }"
-                  />
-                  <span>Details</span>
+                <div class="w-full border-t border-outline-gray-2 my-2" />
+
+                <!-- Dynamic type inputs -->
+                <div v-if="editForm.secret_type === 'Password'" class="space-y-3">
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Username</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.username" placeholder="Username" class="w-full text-sm" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Password</label>
+                    <div class="flex-1 min-w-0 relative">
+                      <TextInput :type="showEditPassword ? 'text' : 'password'" v-model="editForm.password" placeholder="Password" class="w-full text-sm pr-9" />
+                      <button type="button" class="absolute right-2.5 top-2 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditPassword = !showEditPassword">
+                        <FeatherIcon :name="showEditPassword ? 'eye-off' : 'eye'" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">URL</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.url" placeholder="https://example.com" class="w-full text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else-if="editForm.secret_type === 'API Key'" class="space-y-3">
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">API Key</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.api_key" placeholder="API Key" class="w-full text-sm" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">API Secret</label>
+                    <div class="flex-1 min-w-0 relative">
+                      <TextInput :type="showEditAPISecret ? 'text' : 'password'" v-model="editForm.api_secret" placeholder="API Secret" class="w-full text-sm pr-9" />
+                      <button type="button" class="absolute right-2.5 top-2 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditAPISecret = !showEditAPISecret">
+                        <FeatherIcon :name="showEditAPISecret ? 'eye-off' : 'eye'" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Endpoint URL</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.url" placeholder="https://api.example.com" class="w-full text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else-if="editForm.secret_type === 'Credit Card'" class="space-y-3">
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Card Holder</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.card_holder" placeholder="Name on Card" class="w-full text-sm" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Card Number</label>
+                    <div class="flex-1 min-w-0 relative">
+                      <TextInput :type="showEditCardNumber ? 'text' : 'password'" v-model="editForm.card_number" placeholder="•••• •••• •••• ••••" class="w-full text-sm pr-9 font-mono" />
+                      <button type="button" class="absolute right-2.5 top-2 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditCardNumber = !showEditCardNumber">
+                        <FeatherIcon :name="showEditCardNumber ? 'eye-off' : 'eye'" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Expiry</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.card_expiry" placeholder="MM/YY" class="w-full text-sm font-mono" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">CVV</label>
+                    <div class="flex-1 min-w-0 relative">
+                      <TextInput :type="showEditCardCVV ? 'text' : 'password'" v-model="editForm.card_cvv" placeholder="123" class="w-full text-sm pr-9 font-mono" />
+                      <button type="button" class="absolute right-2.5 top-2 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditCardCVV = !showEditCardCVV">
+                        <FeatherIcon :name="showEditCardCVV ? 'eye-off' : 'eye'" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else-if="editForm.secret_type === 'Database'" class="space-y-3">
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Host</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.db_host" placeholder="localhost or IP" class="w-full text-sm font-mono" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Port</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.db_port" placeholder="3306" class="w-full text-sm font-mono" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">DB Name</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.db_name" placeholder="Database Name" class="w-full text-sm" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Username</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.username" placeholder="DB Username" class="w-full text-sm font-mono" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Password</label>
+                    <div class="flex-1 min-w-0 relative">
+                      <TextInput :type="showEditDBPassword ? 'text' : 'password'" v-model="editForm.db_password" placeholder="DB Password" class="w-full text-sm pr-9" />
+                      <button type="button" class="absolute right-2.5 top-2 text-ink-gray-4 hover:text-ink-gray-9" @click="showEditDBPassword = !showEditDBPassword">
+                        <FeatherIcon :name="showEditDBPassword ? 'eye-off' : 'eye'" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else-if="editForm.secret_type === 'SSH Key'" class="space-y-3">
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Username</label>
+                    <div class="flex-1 min-w-0">
+                      <TextInput v-model="editForm.username" placeholder="root / ubuntu" class="w-full text-sm font-mono" />
+                    </div>
+                  </div>
+                  <div class="pt-1">
+                    <FormControl type="textarea" label="SSH Private Key" v-model="editForm.ssh_private_key" :rows="5" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..." class="w-full text-xs font-mono" />
+                  </div>
+                </div>
+
+                <div v-else-if="editForm.secret_type === 'Certificate'" class="space-y-3">
+                  <div class="pt-1">
+                    <FormControl type="textarea" label="Certificate / PEM" v-model="editForm.certificate" :rows="5" placeholder="-----BEGIN CERTIFICATE-----..." class="w-full text-xs font-mono" />
+                  </div>
+                </div>
+
+                <!-- Notes input -->
+                <div class="pt-2">
+                  <FormControl type="textarea" label="Notes" v-model="editForm.notes" :rows="3" placeholder="Enter notes..." class="w-full text-sm" />
+                </div>
+
+                <!-- Edit Action Buttons -->
+                <div class="flex items-center justify-end gap-2 pt-4 border-t border-outline-gray-2">
+                  <Button variant="outline" size="sm" @click="isEditing = false">Cancel</Button>
+                  <Button variant="solid" size="sm" @click="handleSave" :loading="updateResource.loading" class="font-semibold shadow-2xs">Save Changes</Button>
                 </div>
               </div>
 
-              <div v-show="detailsOpen" class="space-y-1">
+              <!-- READ ONLY VIEW -->
+              <div v-else class="space-y-2.5 py-1">
                 <!-- Secret Type -->
-                <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                  <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Secret Type</div>
-                  <div class="w-[65%] flex items-center justify-start min-w-0">
-                    <Badge size="md" variant="subtle" :theme="secretData.secret_type === 'Password' ? 'green' : 'gray'">
+                <div class="flex items-center justify-between py-1 text-sm">
+                  <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Secret Type</span>
+                  <div class="min-w-0 flex-1 flex justify-end truncate">
+                    <Badge size="sm" variant="subtle" :theme="secretData.secret_type === 'Password' ? 'green' : 'gray'">
                       {{ secretData.secret_type }}
                     </Badge>
                   </div>
                 </div>
 
                 <!-- Folder -->
-                <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                  <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Folder</div>
-                  <div class="w-[65%] flex items-center justify-start min-w-0 text-base text-ink-gray-9 truncate">
+                <div class="flex items-center justify-between py-1 text-sm">
+                  <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Folder</span>
+                  <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">
                     {{ getFolderName(secretData.folder) || '—' }}
-                  </div>
+                  </span>
                 </div>
 
-                <!-- Password Type specific fields -->
-                <div v-if="secretData.secret_type === 'Password'" class="space-y-1">
-                  <div v-if="secretData.url" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">URL</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <a :href="secretData.url" target="_blank" class="text-sm font-semibold text-indigo-650 hover:text-indigo-800 hover:underline truncate mr-2 inline-flex items-center gap-1">
-                        <span>{{ secretData.url }}</span>
-                        <FeatherIcon name="external-link" class="w-3.5 h-3.5" />
-                      </a>
-                    </div>
+                <!-- Password Type fields -->
+                <template v-if="secretData.secret_type === 'Password'">
+                  <div v-if="secretData.url" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">URL</span>
+                    <a :href="secretData.url" target="_blank" class="min-w-0 flex-1 text-right font-medium text-indigo-650 hover:underline truncate inline-flex items-center justify-end gap-1">
+                      <span class="truncate">{{ secretData.url }}</span>
+                      <FeatherIcon name="external-link" class="w-3.5 h-3.5 shrink-0" />
+                    </a>
                   </div>
-                  <div v-if="secretData.username" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Username</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono truncate mr-2">{{ secretData.username }}</span>
-                    </div>
+                  <div v-if="secretData.username" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Username</span>
+                    <span class="min-w-0 flex-1 text-right font-mono font-medium text-ink-gray-9 truncate">{{ secretData.username }}</span>
                   </div>
-                  <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Password</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono tracking-wider truncate mr-2">
+                  <div class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Password</span>
+                    <div class="min-w-0 flex-1 flex items-center justify-end gap-2">
+                      <span class="font-mono tracking-wider font-medium text-ink-gray-9 truncate">
                         {{ showPassword ? decryptedData?.password : '••••••••••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="togglePassword" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Reveal Password">
+                        <button type="button" @click="togglePassword" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Reveal Password">
                           <FeatherIcon :name="showPassword ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
-                        </Button>
-                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyPassword" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Copy Password">
+                        </button>
+                        <button v-if="canCopy" type="button" @click="copyPassword" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Copy Password">
                           <FeatherIcon :name="copiedField === 'password' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'password'}" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </template>
 
-                <!-- API Key specific fields -->
-                <div v-else-if="secretData.secret_type === 'API Key'" class="space-y-1">
-                  <div v-if="secretData.url" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Endpoint</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <a :href="secretData.url" target="_blank" class="text-sm font-semibold text-indigo-650 hover:text-indigo-800 hover:underline truncate mr-2 inline-flex items-center gap-1">
-                        <span>{{ secretData.url }}</span>
-                        <FeatherIcon name="external-link" class="w-3.5 h-3.5" />
-                      </a>
-                    </div>
+                <!-- API Key fields -->
+                <template v-else-if="secretData.secret_type === 'API Key'">
+                  <div v-if="secretData.url" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Endpoint</span>
+                    <a :href="secretData.url" target="_blank" class="min-w-0 flex-1 text-right font-medium text-indigo-650 hover:underline truncate inline-flex items-center justify-end gap-1">
+                      <span class="truncate">{{ secretData.url }}</span>
+                      <FeatherIcon name="external-link" class="w-3.5 h-3.5 shrink-0" />
+                    </a>
                   </div>
-                  <div v-if="secretData.api_key" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">API Key</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono truncate mr-2">{{ secretData.api_key }}</span>
-                    </div>
+                  <div v-if="secretData.api_key" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">API Key</span>
+                    <span class="min-w-0 flex-1 text-right font-mono font-medium text-ink-gray-9 truncate">{{ secretData.api_key }}</span>
                   </div>
-                  <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">API Secret</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono tracking-wider truncate mr-2">
+                  <div class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">API Secret</span>
+                    <div class="min-w-0 flex-1 flex items-center justify-end gap-2">
+                      <span class="font-mono tracking-wider font-medium text-ink-gray-9 truncate">
                         {{ showAPISecret ? decryptedData?.api_secret : '••••••••••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleAPISecret" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Reveal API Secret">
+                        <button type="button" @click="toggleAPISecret" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Reveal API Secret">
                           <FeatherIcon :name="showAPISecret ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
-                        </Button>
-                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyAPISecret" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Copy API Secret">
+                        </button>
+                        <button v-if="canCopy" type="button" @click="copyAPISecret" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Copy API Secret">
                           <FeatherIcon :name="copiedField === 'api_secret' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'api_secret'}" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </template>
 
-                <!-- Credit Card specific fields -->
-                <div v-else-if="secretData.secret_type === 'Credit Card'" class="space-y-1">
-                  <div v-if="secretData.card_holder" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Card Holder</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 truncate mr-2">{{ secretData.card_holder }}</span>
-                    </div>
+                <!-- Credit Card fields -->
+                <template v-else-if="secretData.secret_type === 'Credit Card'">
+                  <div v-if="secretData.card_holder" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Card Holder</span>
+                    <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ secretData.card_holder }}</span>
                   </div>
-                  <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Card Number</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono tracking-wider truncate mr-2">
+                  <div class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Card Number</span>
+                    <div class="min-w-0 flex-1 flex items-center justify-end gap-2">
+                      <span class="font-mono tracking-wider font-medium text-ink-gray-9 truncate">
                         {{ showCardNumber ? decryptedData?.card_number : '•••• •••• •••• ••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleCardNumber" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Reveal Card Number">
+                        <button type="button" @click="toggleCardNumber" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Reveal Card Number">
                           <FeatherIcon :name="showCardNumber ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
-                        </Button>
-                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyCardNumber" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Copy Card Number">
+                        </button>
+                        <button v-if="canCopy" type="button" @click="copyCardNumber" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Copy Card Number">
                           <FeatherIcon :name="copiedField === 'card_number' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'card_number'}" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <div v-if="secretData.card_expiry" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Expiry</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono truncate mr-2">{{ secretData.card_expiry }}</span>
-                    </div>
+                  <div v-if="secretData.card_expiry" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Expiry</span>
+                    <span class="min-w-0 flex-1 text-right font-mono font-medium text-ink-gray-9 truncate">{{ secretData.card_expiry }}</span>
                   </div>
-                  <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">CVV</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono tracking-wider truncate mr-2">
+                  <div class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">CVV</span>
+                    <div class="min-w-0 flex-1 flex items-center justify-end gap-2">
+                      <span class="font-mono tracking-wider font-medium text-ink-gray-9 truncate">
                         {{ showCardCVV ? decryptedData?.card_cvv : '•••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleCardCVV" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Reveal CVV">
+                        <button type="button" @click="toggleCardCVV" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Reveal CVV">
                           <FeatherIcon :name="showCardCVV ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
-                        </Button>
-                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyCardCVV" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Copy CVV">
+                        </button>
+                        <button v-if="canCopy" type="button" @click="copyCardCVV" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Copy CVV">
                           <FeatherIcon :name="copiedField === 'card_cvv' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'card_cvv'}" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </template>
 
-                <!-- Database specific fields -->
-                <div v-else-if="secretData.secret_type === 'Database'" class="space-y-1">
-                  <div v-if="secretData.db_host" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Host</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono truncate mr-2">{{ secretData.db_host }}{{ secretData.db_port ? ':' + secretData.db_port : '' }}</span>
-                    </div>
+                <!-- Database fields -->
+                <template v-else-if="secretData.secret_type === 'Database'">
+                  <div v-if="secretData.db_host" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Host</span>
+                    <span class="min-w-0 flex-1 text-right font-mono font-medium text-ink-gray-9 truncate">{{ secretData.db_host }}{{ secretData.db_port ? ':' + secretData.db_port : '' }}</span>
                   </div>
-                  <div v-if="secretData.db_name" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">DB Name</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 truncate mr-2">{{ secretData.db_name }}</span>
-                    </div>
+                  <div v-if="secretData.db_name" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">DB Name</span>
+                    <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ secretData.db_name }}</span>
                   </div>
-                  <div v-if="secretData.username" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Username</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono truncate mr-2">{{ secretData.username }}</span>
-                    </div>
+                  <div v-if="secretData.username" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Username</span>
+                    <span class="min-w-0 flex-1 text-right font-mono font-medium text-ink-gray-9 truncate">{{ secretData.username }}</span>
                   </div>
-                  <div class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Password</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono tracking-wider truncate mr-2">
+                  <div class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Password</span>
+                    <div class="min-w-0 flex-1 flex items-center justify-end gap-2">
+                      <span class="font-mono tracking-wider font-medium text-ink-gray-9 truncate">
                         {{ showDBPassword ? decryptedData?.db_password : '••••••••••••' }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
-                        <Button variant="ghost" size="sm" @click="toggleDBPassword" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Reveal DB Password">
+                        <button type="button" @click="toggleDBPassword" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Reveal DB Password">
                           <FeatherIcon :name="showDBPassword ? 'eye-off' : 'eye'" class="w-3.5 h-3.5" />
-                        </Button>
-                        <Button v-if="canCopy" variant="ghost" size="sm" @click="copyDBPassword" class="text-ink-gray-4 hover:text-ink-gray-9" tooltip="Copy DB Password">
+                        </button>
+                        <button v-if="canCopy" type="button" @click="copyDBPassword" class="p-1 text-ink-gray-4 hover:text-ink-gray-9 rounded" title="Copy DB Password">
                           <FeatherIcon :name="copiedField === 'db_password' ? 'check' : 'copy'" class="w-3.5 h-3.5" :class="{'text-green-600': copiedField === 'db_password'}" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </template>
 
-                <!-- SSH Key specific fields -->
-                <div v-else-if="secretData.secret_type === 'SSH Key'" class="space-y-1">
-                  <div v-if="secretData.username" class="flex items-center justify-between py-2 border-b border-outline-gray-2 min-h-[36px]">
-                    <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5 truncate pr-2">Username</div>
-                    <div class="w-[65%] flex items-center justify-between min-w-0">
-                      <span class="text-base text-ink-gray-9 font-mono truncate mr-2">{{ secretData.username }}</span>
-                    </div>
+                <!-- SSH Key fields -->
+                <template v-else-if="secretData.secret_type === 'SSH Key'">
+                  <div v-if="secretData.username" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Username</span>
+                    <span class="min-w-0 flex-1 text-right font-mono font-medium text-ink-gray-9 truncate">{{ secretData.username }}</span>
                   </div>
-                  <div v-if="secretData.ssh_private_key" class="py-2.5">
-                    <span class="block text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-2">SSH Private Key</span>
-                    <div class="relative bg-surface-gray-2 border border-outline-gray-2 rounded-xl p-3.5 group shadow-inner">
-                      <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-40 whitespace-pre select-all leading-normal">{{ secretData.ssh_private_key }}</pre>
-                      <Button v-if="canCopy" variant="outline" size="sm" @click="copyField(secretData.ssh_private_key, 'ssh_private_key')" class="absolute top-2 right-2 bg-surface-base opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-outline-gray-3">
-                        <template #prefix>
-                          <FeatherIcon :name="copiedField === 'ssh_private_key' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'ssh_private_key'}" />
-                        </template>
+                  <div v-if="secretData.ssh_private_key" class="pt-2">
+                    <span class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">SSH Private Key</span>
+                    <div class="relative bg-surface-gray-2 border border-outline-gray-2 rounded-xl p-3 group shadow-inner">
+                      <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-36 whitespace-pre select-all leading-normal">{{ secretData.ssh_private_key }}</pre>
+                      <button v-if="canCopy" type="button" @click="copyField(secretData.ssh_private_key, 'ssh_private_key')" class="absolute top-2 right-2 px-2 py-1 bg-surface-base border border-outline-gray-2 rounded-md text-xs font-medium text-ink-gray-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs flex items-center gap-1">
+                        <FeatherIcon :name="copiedField === 'ssh_private_key' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'ssh_private_key'}" />
                         <span>Copy</span>
-                      </Button>
+                      </button>
                     </div>
                   </div>
-                </div>
+                </template>
 
-                <!-- Certificate specific fields -->
-                <div v-else-if="secretData.secret_type === 'Certificate'" class="space-y-1">
-                  <div v-if="secretData.certificate" class="py-2.5">
-                    <span class="block text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-2">Certificate</span>
-                    <div class="relative bg-surface-gray-2 border border-outline-gray-2 rounded-xl p-3.5 group shadow-inner">
-                      <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-40 whitespace-pre select-all leading-normal">{{ secretData.certificate }}</pre>
-                      <Button v-if="canCopy" variant="outline" size="sm" @click="copyField(secretData.certificate, 'certificate')" class="absolute top-2 right-2 bg-surface-base opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-outline-gray-3">
-                        <template #prefix>
-                          <FeatherIcon :name="copiedField === 'certificate' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'certificate'}" />
-                        </template>
+                <!-- Certificate fields -->
+                <template v-else-if="secretData.secret_type === 'Certificate'">
+                  <div v-if="secretData.certificate" class="pt-2">
+                    <span class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">Certificate</span>
+                    <div class="relative bg-surface-gray-2 border border-outline-gray-2 rounded-xl p-3 group shadow-inner">
+                      <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-36 whitespace-pre select-all leading-normal">{{ secretData.certificate }}</pre>
+                      <button v-if="canCopy" type="button" @click="copyField(secretData.certificate, 'certificate')" class="absolute top-2 right-2 px-2 py-1 bg-surface-base border border-outline-gray-2 rounded-md text-xs font-medium text-ink-gray-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs flex items-center gap-1">
+                        <FeatherIcon :name="copiedField === 'certificate' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'certificate'}" />
                         <span>Copy</span>
-                      </Button>
+                      </button>
                     </div>
                   </div>
-                </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsible NOTES Accordion -->
+          <div v-if="secretData.notes" class="border-b border-outline-gray-2 py-3.5 px-6">
+            <div class="flex items-center justify-between select-none">
+              <div
+                class="flex items-center gap-2 cursor-pointer font-bold text-ink-gray-9 text-sm"
+                @click="notesOpen = !notesOpen"
+              >
+                <FeatherIcon
+                  name="chevron-right"
+                  class="h-4 w-4 transition-transform duration-200 text-ink-gray-5"
+                  :class="{ 'rotate-90': notesOpen }"
+                />
+                <span>Notes</span>
+              </div>
+            </div>
+            
+            <div v-show="notesOpen" class="mt-3 p-3.5 bg-surface-gray-2 rounded-xl text-sm text-ink-gray-8 border border-outline-gray-2 leading-relaxed whitespace-pre-wrap font-normal" v-html="secretData.notes" />
+          </div>
+
+          <!-- Collapsible METADATA Accordion -->
+          <div class="border-b border-outline-gray-2 py-3.5 px-6">
+            <div class="flex items-center justify-between select-none">
+              <div
+                class="flex items-center gap-2 cursor-pointer font-bold text-ink-gray-9 text-sm"
+                @click="metaOpen = !metaOpen"
+              >
+                <FeatherIcon
+                  name="chevron-right"
+                  class="h-4 w-4 transition-transform duration-200 text-ink-gray-5"
+                  :class="{ 'rotate-90': metaOpen }"
+                />
+                <span>Metadata</span>
               </div>
             </div>
 
-            <!-- Collapsible NOTES Accordion -->
-            <div v-if="secretData.notes" class="section border-b pb-1">
-              <div class="section-header flex h-8 items-center justify-between">
-                <div
-                  class="flex text-ink-gray-9 max-w-fit cursor-pointer items-center gap-2 text-base px-2 font-semibold select-none"
-                  @click="notesOpen = !notesOpen"
-                >
-                  <FeatherIcon
-                    name="chevron-right"
-                    class="h-4 w-4 transition-all duration-300 ease-in-out text-ink-gray-5"
-                    :class="{ 'rotate-90': notesOpen }"
-                  />
-                  <span>Notes</span>
+            <div v-show="metaOpen" class="mt-3 space-y-2.5 py-1">
+              <div v-if="secretData.secret_type === 'Password' && secretData.password_strength" class="flex items-center justify-between py-1 text-sm">
+                <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Strength</span>
+                <div class="min-w-0 flex-1 flex justify-end">
+                  <StrengthBadge :strength="secretData.password_strength" size="sm" />
                 </div>
               </div>
               
-              <div v-show="notesOpen" class="p-3.5 bg-surface-gray-2 rounded-xl text-sm text-ink-gray-7 border border-outline-gray-2 leading-relaxed shadow-sm whitespace-pre-wrap" v-html="secretData.notes" />
-            </div>
-
-            <!-- Collapsible METADATA Accordion -->
-            <div class="section border-b pb-1">
-              <div class="section-header flex h-8 items-center justify-between">
-                <div
-                  class="flex text-ink-gray-9 max-w-fit cursor-pointer items-center gap-2 text-base px-2 font-semibold select-none"
-                  @click="metaOpen = !metaOpen"
-                >
-                  <FeatherIcon
-                    name="chevron-right"
-                    class="h-4 w-4 transition-all duration-300 ease-in-out text-ink-gray-5"
-                    :class="{ 'rotate-90': metaOpen }"
-                  />
-                  <span>Metadata</span>
-                </div>
+              <div class="flex items-center justify-between py-1 text-sm">
+                <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Last Accessed</span>
+                <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ formatDateOnly(secretData.last_accessed) }}</span>
+              </div>
+              
+              <div class="flex items-center justify-between py-1 text-sm">
+                <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Access Count</span>
+                <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ secretData.access_count || 0 }} times</span>
               </div>
 
-              <div v-show="metaOpen" class="space-y-1 px-3">
-                <!-- Strength bar -->
-                <div v-if="secretData.secret_type === 'Password' && secretData.password_strength" class="flex items-center gap-2 leading-5 min-h-[28px]">
-                  <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5">Strength</div>
-                  <div class="w-[65%] flex items-center">
-                    <StrengthBadge :strength="secretData.password_strength" size="sm" />
-                  </div>
-                </div>
-                
-                <!-- Last accessed -->
-                <div class="flex items-center gap-2 leading-5 min-h-[28px]">
-                  <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5">Last Accessed</div>
-                  <div class="w-[65%] text-base text-ink-gray-9">{{ formatDateOnly(secretData.last_accessed) }}</div>
-                </div>
-                
-                <!-- Access count -->
-                <div class="flex items-center gap-2 leading-5 min-h-[28px]">
-                  <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5">Access Count</div>
-                  <div class="w-[65%] text-base text-ink-gray-9">{{ secretData.access_count || 0 }} times</div>
-                </div>
-
-                <!-- Last changed -->
-                <div class="flex items-center gap-2 leading-5 min-h-[28px]">
-                  <div class="w-[35%] min-w-20 shrink-0 text-sm text-ink-gray-5">Last Changed</div>
-                  <div class="w-[65%] text-base text-ink-gray-9">{{ formatDateOnly(secretData.password_last_changed) }}</div>
-                </div>
+              <div class="flex items-center justify-between py-1 text-sm">
+                <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Last Changed</span>
+                <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ formatDateOnly(secretData.password_last_changed) }}</span>
               </div>
             </div>
-
-          </template>
+          </div>
           </div>
         </div>
       </div>

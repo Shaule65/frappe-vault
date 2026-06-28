@@ -79,6 +79,51 @@
 
     <!-- Footer items slot (holds dialogs since Sidebar has no default slot) -->
     <template #footer-items="{ isCollapsed }">
+      <SidebarItem
+        v-if="stats.data?.has_demo_data"
+        label="Clear Demo Data"
+        class="hover:!bg-red-100/80 !text-red-600 transition-colors cursor-pointer font-medium"
+        @click="showClearDemoConfirm = true"
+      >
+        <template #icon>
+          <BrushCleaningIcon class="size-4 text-red-600 shrink-0" />
+        </template>
+      </SidebarItem>
+      <SidebarItem
+        v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
+        label="Load Demo Data"
+        class="hover:!bg-blue-100/80 !text-blue-600 transition-colors cursor-pointer font-medium"
+        @click="handleGenerateDemo"
+      >
+        <template #icon>
+          <SparklesIcon class="size-4 text-blue-600 shrink-0" />
+        </template>
+      </SidebarItem>
+
+      <!-- Clear Demo Data Confirmation Dialog -->
+      <Dialog
+        v-model="showClearDemoConfirm"
+        :options="{ title: 'Clear Demo Data', size: 'sm' }"
+      >
+        <template #body-content>
+          <p class="text-sm text-ink-gray-7 leading-relaxed">
+            Are you sure you want to remove all demo folders and secrets? Any changes made to demo secrets will be lost.
+          </p>
+        </template>
+        <template #actions>
+          <div class="flex justify-end gap-2">
+            <Button variant="ghost" label="Cancel" @click="showClearDemoConfirm = false" />
+            <Button
+              variant="solid"
+              theme="red"
+              label="Clear Demo Data"
+              :loading="clearDemo.loading"
+              @click="handleClearDemo"
+            />
+          </div>
+        </template>
+      </Dialog>
+
       <!-- Dialogs (rendered inside #footer-items slot since Sidebar has no default slot) -->
       <!-- About Dialog -->
       <Dialog
@@ -263,13 +308,15 @@
 import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, createResource } from 'frappe-ui'
-import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets } from '../composables/vault'
+import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData } from '../composables/vault'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
 import BookOpenIcon from '~icons/lucide/book-open'
 import BugIcon from '~icons/lucide/bug'
 import HeadphonesIcon from '~icons/lucide/headphones'
+import BrushCleaningIcon from '~icons/lucide/brush-cleaning'
+import SparklesIcon from '~icons/lucide/sparkles'
 
 const props = defineProps({
   isMobile: { type: Boolean, default: false }
@@ -279,6 +326,9 @@ const route = useRoute()
 const router = useRouter()
 const stats = useVaultStats()
 const foldersResource = useFolders()
+const generateDemo = useGenerateDemoData()
+const clearDemo = useClearDemoData()
+const showClearDemoConfirm = ref(false)
 
 const appsResource = createResource({
   url: 'frappe.apps.get_apps',
@@ -412,7 +462,7 @@ async function handleDeleteFolder() {
       name: folderToDelete.value.name,
     })
 
-    if (route.query.folder === folderToDelete.value.name) {
+    if (route.query.folder === folderToDelete.value.name || route.name === 'SecretDetail') {
       router.push('/secrets')
     }
 
@@ -420,6 +470,31 @@ async function handleDeleteFolder() {
     folderToDelete.value = null
     foldersResource.reload()
     stats.reload()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function handleGenerateDemo() {
+  try {
+    await generateDemo.submit()
+    stats.reload()
+    foldersResource.reload()
+    if (route.name === 'SecretDetail') {
+      router.push('/')
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+async function handleClearDemo() {
+  try {
+    await clearDemo.submit()
+    showClearDemoConfirm.value = false
+    stats.reload()
+    foldersResource.reload()
+    router.push('/')
   } catch (err) {
     console.error(err)
   }

@@ -15,7 +15,7 @@ def calculate_security_score(user=None):
 
     total = len(secrets)
     weak_count = sum(1 for s in secrets if s.password_strength in ("weak", "fair"))
-    old_count = sum(1 for s in secrets if s.password_last_changed and getdate(s.password_last_changed) < add_days(today(), -90))
+    old_count = sum(1 for s in secrets if s.password_last_changed and getdate(s.password_last_changed) < getdate(add_days(today(), -90)))
     strong_count = sum(1 for s in secrets if s.password_strength in ("strong", "excellent"))
 
     score = 100 - (weak_count / total) * 40 - (old_count / total) * 30

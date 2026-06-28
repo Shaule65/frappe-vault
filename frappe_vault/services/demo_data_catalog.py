@@ -1,0 +1,518 @@
+"""Catalog of demo folders and secrets used for trial environments and testing."""
+
+DEMO_FOLDERS = [
+    {"folder_name": "Infrastructure", "icon": "server", "color": "#6366F1"},
+    {"folder_name": "Operations", "icon": "briefcase", "color": "#EC4899"},
+    {"folder_name": "Engineering & DevOps", "icon": "code", "color": "#10B981"},
+    {"folder_name": "Finance & Accounting", "icon": "dollar-sign", "color": "#F59E0B"},
+    {"folder_name": "Marketing & Sales", "icon": "trending-up", "color": "#3B82F6"},
+    {"folder_name": "Executive & Legal", "icon": "shield", "color": "#8B5CF6"},
+]
+
+DEMO_FOLDER_SHARES = [
+    {"folder_name": "Engineering & DevOps", "frappe_role": "System Manager", "permission_level": "Edit"},
+    {"folder_name": "Marketing & Sales", "frappe_role": "System Manager", "permission_level": "Edit"},
+]
+
+DEMO_SECRETS = [
+    # Operations
+    {
+        "title": "Stripe Production Gateway",
+        "secret_type": "API Key",
+        "folder": "Operations",
+        "api_key": "pk_live_51M0...demo_key_9921",
+        "api_secret": "sk_live_51M0...demo_secret_8832",
+        "notes": "Demo production API credentials for checkout gateway integration.",
+        "is_favorite": 1,
+        "share_role": "System Manager",
+        "share_perm": "Full Control"
+    },
+    {
+        "title": "Admin Portal Login",
+        "secret_type": "Password",
+        "folder": "Operations",
+        "username": "admin@company-demo.local",
+        "password": "Str0ngDemoPassword2026#",
+        "url": "https://portal.company-demo.local/login",
+        "notes": "Demo primary administrator credentials.",
+        "is_favorite": 1
+    },
+    {
+        "title": "Corporate Master Card",
+        "secret_type": "Credit Card",
+        "folder": "Operations",
+        "card_holder": "Jane Doe",
+        "card_number": "4532 •••• •••• 8890",
+        "card_expiry": "12/28",
+        "card_cvv": "842",
+        "notes": "Demo company purchasing credit card.",
+        "is_favorite": 1,
+        "share_role": "System Manager",
+        "share_perm": "View Only"
+    },
+    {
+        "title": "Google Workspace Admin Console",
+        "secret_type": "Password",
+        "folder": "Operations",
+        "username": "it-admin@company-demo.local",
+        "password": "G00gleW0rkspace#2026!",
+        "url": "https://admin.google.com",
+        "notes": "Primary enterprise admin portal login.",
+        "is_favorite": 1
+    },
+    {
+        "title": "Zoom Corporate Account",
+        "secret_type": "Password",
+        "folder": "Operations",
+        "username": "billing@company-demo.local",
+        "password": "Z00mV1de0C0nf!992",
+        "url": "https://zoom.us/signin",
+        "notes": "Master Zoom room licensing account."
+    },
+    {
+        "title": "Slack Corporate Workspace Admin",
+        "secret_type": "Password",
+        "folder": "Operations",
+        "username": "admin@company-demo.local",
+        "password": "Sl@ckC0rpAdmin2026",
+        "url": "https://slack.com/signin",
+        "notes": "Enterprise Grid workspace owner login."
+    },
+    {
+        "title": "1Password Team Recovery Kit",
+        "secret_type": "Note",
+        "folder": "Operations",
+        "note_content": "Recovery Key: A3-99281-88291-00291-88291\nMaster Passphrase: correct horse battery staple demo",
+        "notes": "Emergency recovery codes for legacy password manager."
+    },
+    {
+        "title": "Twilio SMS Gateway Key",
+        "secret_type": "API Key",
+        "folder": "Operations",
+        "api_key": "AC_demo_9928172618291",
+        "api_secret": "auth_token_demo_8829182",
+        "notes": "SMS OTP delivery service credentials."
+    },
+    {
+        "title": "SendGrid SMTP API Key",
+        "secret_type": "API Key",
+        "folder": "Operations",
+        "api_key": "SG.demo_key_9928172",
+        "api_secret": "SG_secret_demo_8829182716251",
+        "notes": "Transactional email gateway authentication."
+    },
+    {
+        "title": "Intercom Customer Support App",
+        "secret_type": "API Key",
+        "folder": "Operations",
+        "api_key": "dG9rZW46ZGVtb185OTI4MTc=",
+        "api_secret": "sec_demo_intercom_88291",
+        "notes": "Live chat widget API integration."
+    },
+
+    # Infrastructure
+    {
+        "title": "Production DB Cluster",
+        "secret_type": "Database",
+        "folder": "Infrastructure",
+        "db_host": "db-primary.demo-internal.local",
+        "db_port": "5432",
+        "db_name": "prod_erpnext_db",
+        "db_user": "postgres_admin",
+        "db_password": "P@ssw0rd_Demo_Cluster_2026!",
+        "notes": "Demo PostgreSQL master node credentials.",
+        "is_favorite": 1,
+        "share_role": "System Manager",
+        "share_perm": "Edit"
+    },
+    {
+        "title": "AWS Ubuntu Bastion Server",
+        "secret_type": "SSH Key",
+        "folder": "Infrastructure",
+        "username": "ubuntu",
+        "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\nQyNTUxOQAAACBA1/Q9x8...DemoKey...\n-----END OPENSSH PRIVATE KEY-----",
+        "notes": "Demo SSH key for production server access.",
+        "is_favorite": 1
+    },
+    {
+        "title": "DigitalOcean Droplet Root Key",
+        "secret_type": "SSH Key",
+        "folder": "Infrastructure",
+        "username": "root",
+        "ssh_private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z1...DemoDropletKey...\n-----END RSA PRIVATE KEY-----",
+        "notes": "Staging environment hosting server key."
+    },
+    {
+        "title": "Linode Backup Server SSH",
+        "secret_type": "SSH Key",
+        "folder": "Infrastructure",
+        "username": "backup_admin",
+        "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXk...DemoBackup...\n-----END OPENSSH PRIVATE KEY-----",
+        "notes": "Offsite backup storage cluster access."
+    },
+    {
+        "title": "VPN Gateway Admin Console",
+        "secret_type": "Password",
+        "folder": "Infrastructure",
+        "username": "admin",
+        "password": "Vpn#G@teway!2026",
+        "url": "https://vpn.company-demo.local:8443",
+        "notes": "WireGuard / OpenVPN perimeter router login."
+    },
+    {
+        "title": "Internal Jenkins Build Server",
+        "secret_type": "Password",
+        "folder": "Infrastructure",
+        "username": "jenkins_admin",
+        "password": "J3nk1ns#Bu1ldM@ster",
+        "url": "https://ci.company-demo.local",
+        "notes": "Continuous integration orchestrator login."
+    },
+    {
+        "title": "Proxmox Virtualization Cluster",
+        "secret_type": "Password",
+        "folder": "Infrastructure",
+        "username": "root@pam",
+        "password": "Pr0xm0x#Hyperv1s0r!",
+        "url": "https://proxmox.internal.local:8006",
+        "notes": "On-prem hypervisor cluster manager."
+    },
+    {
+        "title": "MinIO Object Storage Root",
+        "secret_type": "API Key",
+        "folder": "Infrastructure",
+        "api_key": "minioadmin_demo",
+        "api_secret": "minio_secret_demo_key_99281",
+        "notes": "S3-compatible local object store credentials."
+    },
+    {
+        "title": "Grafana Metrics Dashboard Admin",
+        "secret_type": "Password",
+        "folder": "Infrastructure",
+        "username": "admin",
+        "password": "Gr@f@n@#M3tr1cs2026",
+        "url": "https://grafana.internal.local",
+        "notes": "System observability and alerting dashboard."
+    },
+    {
+        "title": "Prometheus Scrape Target Auth",
+        "secret_type": "Password",
+        "folder": "Infrastructure",
+        "username": "prometheus",
+        "password": "Pr0m#Scr@p3rP@ss!",
+        "notes": "Basic auth credentials for metric endpoints."
+    },
+
+    # Engineering & DevOps
+    {
+        "title": "GitHub Organization Token",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "ghp_demo_99281726182918271625182910",
+        "api_secret": "ghs_demo_secret_token_placeholder",
+        "notes": "Personal access token with repo and org admin scopes.",
+        "is_favorite": 1,
+        "share_role": "System Manager",
+        "share_perm": "Edit"
+    },
+    {
+        "title": "GitLab CI/CD Deploy Key",
+        "secret_type": "SSH Key",
+        "folder": "Engineering & DevOps",
+        "username": "git",
+        "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1...GitLabDeployKey...\n-----END OPENSSH PRIVATE KEY-----",
+        "notes": "Read-only deploy key attached to core repositories."
+    },
+    {
+        "title": "Docker Hub Robot Account",
+        "secret_type": "Password",
+        "folder": "Engineering & DevOps",
+        "username": "company_bot",
+        "password": "dckr_pat_demo_992817261829182",
+        "url": "https://hub.docker.com",
+        "notes": "Automated image pushing token for CI pipelines."
+    },
+    {
+        "title": "AWS Root IAM Access Key",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "AKIA_DEMO_9928172618",
+        "api_secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "notes": "Restricted programmatic IAM user for S3 and CloudFront.",
+        "is_favorite": 1
+    },
+    {
+        "title": "Cloudflare DNS Token",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "cf_api_token_demo_99281726",
+        "api_secret": "cf_secret_demo_8829182716251",
+        "notes": "Zone edit permissions for company domains."
+    },
+    {
+        "title": "Kubernetes Production Master Certificate",
+        "secret_type": "Note",
+        "folder": "Engineering & DevOps",
+        "note_content": "apiVersion: v1\nclusters:\n- cluster:\n    certificate-authority-data: LS0tLS1CRUdJTi...==\n    server: https://k8s.internal.local:6443",
+        "notes": "Kubeconfig admin access yaml snippet."
+    },
+    {
+        "title": "Sentry Error Tracking DSN",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "https://demo@sentry.io/123456",
+        "api_secret": "sntry_u_demo_992817261829182",
+        "notes": "Frontend and backend crash reporting API key."
+    },
+    {
+        "title": "Datadog APM Agent Key",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "dd_api_demo_992817261829182716",
+        "api_secret": "dd_app_demo_882918271625182910",
+        "notes": "Application performance monitoring ingestion API key."
+    },
+    {
+        "title": "PagerDuty Routing Key",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "pd_routing_demo_99281726",
+        "api_secret": "pd_token_demo_88291827",
+        "notes": "Incident alerting webhook integration token."
+    },
+    {
+        "title": "Redis Cache Cluster",
+        "secret_type": "Database",
+        "folder": "Engineering & DevOps",
+        "db_host": "redis.internal.local",
+        "db_port": "6379",
+        "db_name": "0",
+        "db_user": "default",
+        "db_password": "R3d1s#C@ch3!Str0ngP@ss",
+        "notes": "In-memory session storage cluster auth."
+    },
+    {
+        "title": "MongoDB Atlas Production Cluster",
+        "secret_type": "Database",
+        "folder": "Engineering & DevOps",
+        "db_host": "cluster0.demo.mongodb.net",
+        "db_port": "27017",
+        "db_name": "analytics_db",
+        "db_user": "atlas_admin",
+        "db_password": "M0ng0#Atla$!2026",
+        "notes": "Document database credentials for analytics pipeline."
+    },
+    {
+        "title": "ElasticSearch Logstash Auth",
+        "secret_type": "Password",
+        "folder": "Engineering & DevOps",
+        "username": "elastic",
+        "password": "El@st1c#S3@rch!2026",
+        "url": "https://es.internal.local:9200",
+        "notes": "Log indexing engine superuser credentials."
+    },
+    {
+        "title": "Terraform Cloud Token",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "tfc_team_token_demo",
+        "api_secret": "q8.atlasv1.demo_992817261829182",
+        "notes": "Infrastructure as code state management token."
+    },
+    {
+        "title": "Vercel Production Deploy Token",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "vc_token_demo_99281726",
+        "api_secret": "vc_secret_demo_88291827",
+        "notes": "Frontend CDN auto-deployment webhook auth."
+    },
+    {
+        "title": "Supabase Admin Key",
+        "secret_type": "API Key",
+        "folder": "Engineering & DevOps",
+        "api_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "api_secret": "supa_secret_demo_service_role_key",
+        "notes": "Service role JWT for backend real-time database."
+    },
+
+    # Finance & Accounting
+    {
+        "title": "QuickBooks Enterprise Login",
+        "secret_type": "Password",
+        "folder": "Finance & Accounting",
+        "username": "accounting@company-demo.local",
+        "password": "Qu1ckB00ks#Ent!2026",
+        "url": "https://qbo.intuit.com",
+        "notes": "Master general ledger and invoicing portal login.",
+        "is_favorite": 1
+    },
+    {
+        "title": "Xero Payroll API Token",
+        "secret_type": "API Key",
+        "folder": "Finance & Accounting",
+        "api_key": "xero_app_demo_99281726",
+        "api_secret": "xero_secret_demo_88291827",
+        "notes": "OAuth2 client credentials for automated payroll sync."
+    },
+    {
+        "title": "Corporate Amex Platinum Card",
+        "secret_type": "Credit Card",
+        "folder": "Finance & Accounting",
+        "card_holder": "John Smith (CEO)",
+        "card_number": "3782 •••• •••• 9912",
+        "card_expiry": "08/29",
+        "card_cvv": "9182",
+        "notes": "Executive travel and client entertainment card.",
+        "is_favorite": 1,
+        "share_role": "System Manager",
+        "share_perm": "View Only"
+    },
+    {
+        "title": "SVB Corporate Checking Account PINs",
+        "secret_type": "Note",
+        "folder": "Finance & Accounting",
+        "note_content": "Account Ending: #8829\nWire Transfer PIN: 882912\nTelephone Banking Code: 4421",
+        "notes": "Confidential banking security verification pins."
+    },
+    {
+        "title": "Expensify Reimbursement Admin",
+        "secret_type": "Password",
+        "folder": "Finance & Accounting",
+        "username": "finance@company-demo.local",
+        "password": "Exp3ns1fy#Adm1n2026",
+        "url": "https://www.expensify.com",
+        "notes": "Employee expense report approval portal."
+    },
+    {
+        "title": "Bill.com Payables Gateway",
+        "secret_type": "Password",
+        "folder": "Finance & Accounting",
+        "username": "ap@company-demo.local",
+        "password": "B1llP@y@bl3s#2026!",
+        "url": "https://app.bill.com",
+        "notes": "Vendor invoicing and automated ACH dispatch."
+    },
+    {
+        "title": "Stripe Radar Fraud Detection Key",
+        "secret_type": "API Key",
+        "folder": "Finance & Accounting",
+        "api_key": "rk_live_demo_99281726",
+        "api_secret": "rs_live_demo_88291827",
+        "notes": "Webhook signing secret for chargeback dispute alerts."
+    },
+    {
+        "title": "Gusto HR Payroll Master",
+        "secret_type": "Password",
+        "folder": "Finance & Accounting",
+        "username": "hr-payroll@company-demo.local",
+        "password": "Gust0#P@yr0ll!9928",
+        "url": "https://app.gusto.com",
+        "notes": "Bi-weekly contractor and employee salary portal."
+    },
+
+    # Marketing & Sales
+    {
+        "title": "Salesforce Production Instance Login",
+        "secret_type": "Password",
+        "folder": "Marketing & Sales",
+        "username": "sales-vp@company-demo.local",
+        "password": "S@l3sf0rc3#CRM!2026",
+        "url": "https://login.salesforce.com",
+        "notes": "Enterprise customer relationship management master seat.",
+        "is_favorite": 1
+    },
+    {
+        "title": "HubSpot CRM Master API Key",
+        "secret_type": "API Key",
+        "folder": "Marketing & Sales",
+        "api_key": "pat-na1-demo-99281726-1829",
+        "api_secret": "hs_secret_demo_88291827",
+        "notes": "Inbound lead capture form webhook token."
+    },
+    {
+        "title": "Google Ads Conversion Tracking ID",
+        "secret_type": "API Key",
+        "folder": "Marketing & Sales",
+        "api_key": "AW-992817261",
+        "api_secret": "gads_secret_conversion_label_882",
+        "notes": "Tag manager conversion pixel verification."
+    },
+    {
+        "title": "Mailchimp Campaign Manager Key",
+        "secret_type": "API Key",
+        "folder": "Marketing & Sales",
+        "api_key": "mc_demo_992817261829182716251829-us19",
+        "api_secret": "mc_secret_placeholder",
+        "notes": "Newsletter blast automation API key."
+    },
+    {
+        "title": "LinkedIn Recruiter Corporate Seat",
+        "secret_type": "Password",
+        "folder": "Marketing & Sales",
+        "username": "recruiting@company-demo.local",
+        "password": "L1nk3dIn#R3cru1t3r!",
+        "url": "https://www.linkedin.com/talent",
+        "notes": "Premium candidate sourcing and outreach login."
+    },
+    {
+        "title": "Ahrefs SEO Analytics Pro",
+        "secret_type": "Password",
+        "folder": "Marketing & Sales",
+        "username": "seo@company-demo.local",
+        "password": "Ahr3fs#SE0#Pr0!2026",
+        "url": "https://app.ahrefs.com",
+        "notes": "Backlink auditing and keyword tracking subscription."
+    },
+    {
+        "title": "Semrush Content Tool Login",
+        "secret_type": "Password",
+        "folder": "Marketing & Sales",
+        "username": "content@company-demo.local",
+        "password": "S3mrush#C0nt3nt!992",
+        "url": "https://www.semrush.com/login",
+        "notes": "Competitor traffic research tool credential."
+    },
+    {
+        "title": "Meta Business Manager Admin",
+        "secret_type": "Password",
+        "folder": "Marketing & Sales",
+        "username": "social@company-demo.local",
+        "password": "M3t@#Bus1n3ss!2026",
+        "url": "https://business.facebook.com",
+        "notes": "Facebook and Instagram ad account billing admin."
+    },
+
+    # Executive & Legal
+    {
+        "title": "DocuSign eSignature API Key",
+        "secret_type": "API Key",
+        "folder": "Executive & Legal",
+        "api_key": "ds_demo_99281726-1829-1827-1625",
+        "api_secret": "ds_secret_rsa_private_key_placeholder",
+        "notes": "Contract execution automated signature gateway."
+    },
+    {
+        "title": "Carta Equity Management Portal",
+        "secret_type": "Password",
+        "folder": "Executive & Legal",
+        "username": "legal@company-demo.local",
+        "password": "C@rt@#Equ1ty!2026",
+        "url": "https://app.carta.com",
+        "notes": "Cap table and employee stock option management."
+    },
+    {
+        "title": "Boardroom Meeting Archive Passcode",
+        "secret_type": "Note",
+        "folder": "Executive & Legal",
+        "note_content": "Archive Room Lockbox: 8829-112\nDigital Encrypted Vault Key: 9928-1827-1625\nLegal Counsel Direct: (555) 019-2831",
+        "notes": "Confidential quarterly board meeting recording access."
+    },
+    {
+        "title": "Company Patent Filing Vault",
+        "secret_type": "Note",
+        "folder": "Executive & Legal",
+        "note_content": "USPTO Docket #9928172\nFiling Attorney: Morrison & Foerster LLP\nEscrow Verification Code: ESC-99281726",
+        "notes": "Intellectual property registration filing numbers."
+    }
+]
