@@ -4,19 +4,16 @@
     <div v-if="logs.loading" class="space-y-3">
       <div v-for="i in 5" :key="i" class="h-12 bg-surface-gray-3 rounded animate-pulse" />
     </div>
-    <div v-else-if="logList.length" class="bg-surface-elevation-1 rounded-xl border border-outline-gray-2 divide-y divide-outline-gray-2">
-      <div v-for="log in logList" :key="log.name" class="flex items-center px-4 py-3">
-        <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3" :class="actionColors[log.action] || 'bg-surface-gray-3'">
-          <FeatherIcon :name="actionIcons[log.action] || 'activity'" class="w-4 h-4 text-ink-gray-6" />
+    <div v-else-if="logList.length" class="bg-surface-elevation-1 rounded-xl border border-outline-gray-1 divide-y divide-outline-gray-1">
+      <div v-for="log in logList" :key="log.name" class="flex items-start justify-between px-5 py-3.5 gap-3.5">
+        <FeatherIcon :name="actionIcons[log.action] || 'activity'" class="w-4 h-4 shrink-0 mt-1 text-ink-gray-5" />
+        <div class="min-w-0 flex-1 text-sm leading-relaxed text-ink-gray-8">
+          <span class="font-bold text-ink-gray-9">{{ log.user }}</span>
+          <span class="text-ink-gray-6 ml-1.5">{{ log.action.toLowerCase() }}</span>
+          <span v-if="getSecretLabel(log)" class="font-semibold text-ink-gray-9 ml-1">{{ getSecretLabel(log) }}</span>
+          <div v-if="log.ip_address" class="text-xs text-ink-gray-4 mt-0.5 font-mono">{{ log.ip_address }}</div>
         </div>
-        <div class="flex-1">
-          <p class="text-sm text-ink-gray-7">
-            <span class="font-medium text-ink-gray-9">{{ log.user }}</span>
-            {{ log.action.toLowerCase() }}
-            <span v-if="getSecretLabel(log)" class="font-medium text-ink-gray-9">{{ getSecretLabel(log) }}</span>
-          </p>
-          <p class="text-xs text-ink-gray-4">{{ formatTime(log.timestamp) }} · {{ log.ip_address }}</p>
-        </div>
+        <span class="ml-auto text-xs text-ink-gray-4 shrink-0 whitespace-nowrap text-right pt-0.5">{{ formatTime(log.timestamp) }}</span>
       </div>
     </div>
     <EmptyState v-else icon="activity" title="No audit logs" description="Activity will be tracked here" />
@@ -27,7 +24,7 @@
 import { computed } from 'vue'
 import { FeatherIcon } from 'frappe-ui'
 import { useAuditLogs } from '../composables/vault'
-import { actionIcons, actionColors } from '../composables/constants'
+import { actionIcons, formatRelativeTime as formatTime } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 
 const logs = useAuditLogs()
@@ -55,6 +52,4 @@ function getSecretLabel(log) {
   }
   return ''
 }
-
-function formatTime(dt) { return dt ? new Date(dt).toLocaleString() : '' }
 </script>

@@ -71,13 +71,39 @@ export const actionIcons = {
   Generated: 'refresh-cw',
 }
 
-export const actionColors = {
-  Created: 'bg-green-100 text-green-600',
-  Deleted: 'bg-red-100 text-red-600',
-  Shared: 'bg-blue-100 text-blue-600',
-  Unshared: 'bg-orange-100 text-orange-600',
-  Updated: 'bg-purple-100 text-purple-600',
-  Copied: 'bg-teal-100 text-teal-600',
-  Generated: 'bg-yellow-100 text-yellow-600',
-  Viewed: 'bg-surface-gray-3 text-ink-gray-6',
+export const typeFilterOptions = [
+  { label: 'All Types', value: '' },
+  ...SECRET_TYPES.map(t => ({ label: t, value: t })),
+]
+
+export function formatDate(dt) {
+  if (!dt) return ''
+  const d = new Date(dt)
+  return d.toLocaleDateString()
+}
+
+export function formatDateTime(dt) {
+  if (!dt) return ''
+  const d = new Date(dt)
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+export function formatRelativeTime(dt) {
+  if (!dt) return ''
+  const now = new Date()
+  const date = new Date(dt)
+  const seconds = Math.floor((now - date) / 1000)
+  if (seconds < 60) return 'Just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} min${minutes > 1 ? 's' : ''} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 4) return `${weeks} week${weeks > 1 ? 's' : ''} ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`
+  const years = Math.floor(days / 365)
+  return `${years} year${years > 1 ? 's' : ''} ago`
 }

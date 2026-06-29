@@ -1,7 +1,7 @@
 <template>
   <div class="flex-1 flex flex-col overflow-hidden bg-surface-base">
     <!-- Header -->
-    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-2 bg-surface-base px-5 py-2.5 shrink-0">
+    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-1 bg-surface-base px-5 py-2.5 shrink-0">
       <div class="flex items-center gap-2 min-w-0 flex-1">
         <!-- Mobile Sidebar Trigger -->
         <Button
@@ -28,13 +28,11 @@
 
     <ViewControlsBar>
       <template #left>
-        <div class="w-44 shrink-0">
-          <TextInput
-            v-model="titleQuery"
-            placeholder="Title"
-            class="w-full"
-          />
-        </div>
+        <TextInput
+          v-model="titleQuery"
+          placeholder="Title"
+          class="w-44 shrink-0"
+        />
       </template>
       <template #right>
         <!-- Bulk Delete Button -->
@@ -71,7 +69,7 @@
           v-model:selections="selectedShares"
           class="flex-1 flex flex-col overflow-hidden bg-surface-base"
           :columns="columns"
-          :rows="formattedRows"
+          :rows="paginatedRows"
           row-key="name"
           :options="{
             selectable: true,
@@ -89,7 +87,7 @@
           </ListHeader>
           <ListRows class="sm:mx-5 mx-3">
             <ListRow
-              v-for="row in formattedRows"
+              v-for="row in paginatedRows"
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
@@ -99,13 +97,11 @@
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-2 shadow-sm bg-indigo-50 text-indigo-600">
+                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-sm bg-indigo-50 text-indigo-600">
                        <FeatherIcon name="folder" class="w-4 h-4" />
                     </div>
                     <SecretTypeIcon v-else :type="item.secret_type" />
-                    <div class="min-w-0 flex-1 truncate">
-                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600  cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
-                    </div>
+                    <span class="min-w-0 flex-1 font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -120,21 +116,18 @@
                   <span v-else-if="column.key === 'shared_with'" class="text-base text-ink-gray-9 font-semibold truncate">{{ item }}</span>
 
                   <!-- Target Type column -->
-                  <div v-else-if="column.key === 'share_type'">
-                    <Badge variant="subtle" theme="gray" size="sm">
-                      {{ item }}
-                    </Badge>
-                  </div>
+                  <Badge v-else-if="column.key === 'share_type'" variant="subtle" theme="gray" size="sm">
+                    {{ item }}
+                  </Badge>
 
                   <!-- Permission column -->
-                  <div v-else-if="column.key === 'permission_level'">
-                    <Badge
-                      :theme="permissionTheme[item] || 'gray'"
-                      variant="subtle"
-                    >
-                      {{ item }}
-                    </Badge>
-                  </div>
+                  <Badge
+                    v-else-if="column.key === 'permission_level'"
+                    :theme="permissionTheme[item] || 'gray'"
+                    variant="subtle"
+                  >
+                    {{ item }}
+                  </Badge>
 
                   <!-- Expires On column -->
                   <span v-else-if="column.key === 'expires_on'" class="text-base text-ink-gray-6">{{ item }}</span>
@@ -156,14 +149,15 @@
               </ListRowItem>
             </ListRow>
           </ListRows>
+          <ListSelectBanner />
         </ListView>
 
         <!-- Pagination Footer -->
         <ListFooter
           v-model="pageLength"
-          class="border-t border-outline-gray-2 px-5 py-2 bg-surface-base shrink-0"
+          class="border-t border-outline-gray-1 px-5 py-2 bg-surface-base shrink-0"
           :options="{
-            rowCount: filteredList.length,
+            rowCount: paginatedRows.length,
             totalCount: totalCount,
           }"
           @loadMore="pageLength += 20"
@@ -328,11 +322,11 @@ import ViewControlsBar from '../components/ViewControlsBar.vue'
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import RefreshIcon from '../components/RefreshIcon.vue'
-import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListFooter, Dialog, Breadcrumbs, toast, TabButtons } from 'frappe-ui'
+import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Dialog, Breadcrumbs, toast, TabButtons } from 'frappe-ui'
 import { mobileSidebarOpened, useSharedWithMe, useShareSecret, useUnshare, useShareOptions, useSecrets, useFolders, useBulkDeleteShares } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
-import { permissionTheme } from '../composables/constants'
+import { permissionTheme, formatDateTime as formatTime } from '../composables/constants'
 
 const router = useRouter()
 const shared = useSharedWithMe()
@@ -365,7 +359,7 @@ const showRevokeConfirm = ref(false)
 const shareToRevoke = ref(null)
 
 const list = computed(() => shared.data?.shared || [])
-const totalCount = computed(() => shared.data?.total || 0)
+const totalCount = computed(() => shared.data?.total || filteredList.value.length || 0)
 
 watch(pageLength, (newLength) => {
   shared.submit({
@@ -454,6 +448,8 @@ const formattedRows = computed(() => {
     }
   })
 })
+
+const paginatedRows = computed(() => formattedRows.value.slice(0, pageLength.value))
 
 function handleRowClick(row) {
   if (row.shared_doctype === 'Vault Folder') {
@@ -549,9 +545,4 @@ async function handleBulkDelete() {
   }
 }
 
-function formatTime(dt) {
-  if (!dt) return ''
-  const d = new Date(dt)
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
 </script>

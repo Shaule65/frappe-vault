@@ -1,7 +1,7 @@
 <template>
   <div class="flex-1 flex flex-col overflow-hidden bg-surface-base">
     <!-- Header -->
-    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-2 bg-surface-base px-5 py-2.5 shrink-0">
+    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-1 bg-surface-base px-5 py-2.5 shrink-0">
       <div class="flex items-center gap-2 min-w-0 flex-1">
         <!-- Mobile Sidebar Trigger -->
         <Button
@@ -39,13 +39,11 @@
         <div class="flex flex-col sm:flex-row items-center gap-6">
           <div class="relative w-24 h-24 shrink-0 flex items-center justify-center">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="42" class="stroke-outline-gray-2" stroke-width="8" fill="none" />
+              <circle cx="50" cy="50" r="42" class="stroke-outline-gray-1" stroke-width="8" fill="none" />
               <circle cx="50" cy="50" r="42" :stroke="scoreColor" stroke-width="8" fill="none"
                       stroke-linecap="round" :stroke-dasharray="`${(securityScore?.score || 0) * 2.64} 264`" />
             </svg>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <span class="text-2xl font-bold text-ink-gray-9">{{ securityScore?.score || 0 }}</span>
-            </div>
+            <span class="absolute inset-0 flex items-center justify-center text-2xl font-bold text-ink-gray-9">{{ securityScore?.score || 0 }}</span>
           </div>
           <div class="flex-1 w-full mt-4 sm:mt-0">
             <div v-for="s in securityScore?.suggestions || []" :key="s" class="flex items-start gap-2 mb-3">
@@ -62,10 +60,8 @@
 
       <!-- Recent Secrets -->
       <div class="bg-surface-elevation-1 rounded-lg shadow-sm p-0 overflow-hidden mb-4">
-        <div class="px-5 py-4 border-b border-outline-gray-2">
-          <h2 class="text-base font-medium text-ink-gray-9">Recently Accessed</h2>
-        </div>
-        <div v-if="recentSecrets.length" class="divide-y divide-outline-gray-2">
+        <h2 class="px-5 py-4 border-b border-outline-gray-1 text-base font-medium text-ink-gray-9">Recently Accessed</h2>
+        <div v-if="recentSecrets.length" class="divide-y divide-outline-gray-1">
           <router-link v-for="s in recentSecrets" :key="s.name" :to="`/secrets?secret=${s.name}`"
                        class="flex items-center py-3 px-5 hover:bg-surface-gray-2 transition-colors">
             <SecretTypeIcon :type="s.secret_type" class="mr-3" />

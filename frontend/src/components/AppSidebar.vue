@@ -132,7 +132,7 @@
         bare
       >
         <template #default="{ close }">
-          <div class="bg-surface-elevation-1 rounded-2xl p-6 shadow-xl border border-outline-gray-2 text-ink-gray-9">
+          <div class="bg-surface-elevation-1 rounded-2xl p-6 shadow-xl border border-outline-gray-1 text-ink-gray-9">
             <!-- App Logo and Title -->
             <div class="flex flex-col items-center justify-center pb-3">
               <img :src="sidebarConfig.header.logo" class="size-12 object-contain rounded-xl shadow-sm" />
@@ -140,7 +140,7 @@
             </div>
 
             <!-- Top Divider -->
-            <div class="border-t border-outline-gray-2 my-2" />
+            <div class="border-t border-outline-gray-1 my-2" />
 
             <!-- Links List -->
             <div class="flex flex-col py-1 space-y-0.5">
@@ -157,7 +157,7 @@
             </div>
 
             <!-- Bottom Divider -->
-            <div class="border-t border-outline-gray-2 my-2" />
+            <div class="border-t border-outline-gray-1 my-2" />
 
             <!-- Footer -->
             <div class="text-center text-xs text-ink-gray-5 pt-1">

@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-md border border-outline-gray-2 p-3 bg-surface-elevation-1">
+  <div class="rounded-md border border-outline-gray-1 p-3 bg-surface-elevation-1">
     <div class="mb-1 flex items-center justify-between gap-3">
       <span class="text-xs font-medium uppercase text-ink-gray-5">{{ label }}</span>
       <Button

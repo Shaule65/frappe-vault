@@ -2,7 +2,7 @@
   <div class="flex-1 flex flex-col overflow-hidden bg-surface-base">
     
     <!-- Page Header -->
-    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-2 bg-surface-base px-5 py-2.5 shrink-0">
+    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-1 bg-surface-base px-5 py-2.5 shrink-0">
       <!-- Breadcrumbs -->
       <div class="flex items-center gap-2 text-lg font-medium min-w-0 flex-1">
         <Button
@@ -20,265 +20,220 @@
     <div v-if="secretData" class="flex-1 flex overflow-hidden min-h-0">
       
       <!-- LEFT PANE: Tab navigation & Activity timeline feed -->
-      <div class="flex-1 flex flex-col overflow-hidden bg-surface-base border-r border-outline-gray-2">
-        <!-- Borderless navigation tabs (matching CRM layout) -->
-        <div class="flex items-center gap-7.5 px-6 border-b border-outline-gray-2 bg-surface-base shrink-0 min-h-[45px]">
-          <button
-            v-for="t in tabs"
-            :key="t.name"
-            class="py-3.5 text-sm font-medium relative focus:outline-none transition-colors"
-            :class="activeTab === t.name ? 'text-ink-gray-9 font-semibold' : 'text-ink-gray-5 hover:text-ink-gray-9'"
-            @click="activeTab = t.name"
-          >
-            <span>{{ t.label }}</span>
-            <span
-              v-if="activeTab === t.name"
-              class="absolute bottom-0 left-0 right-0 h-0.5 bg-ink-gray-9 rounded-full"
-            />
-          </button>
-        </div>
-
-        <!-- Tab Panel content container -->
-        <div class="flex-1 flex flex-col overflow-y-auto p-6 min-h-0">
-          
-          <!-- Activity feed timeline panel -->
-          <div v-if="activeTab === 'activity'" class="flex-1 flex flex-col max-w-3xl">
-            <div class="flex items-center justify-between border-b border-outline-gray-2 pb-4 mb-6">
-              <h3 class="text-lg font-bold text-ink-gray-9">Activity</h3>
-            </div>
-            
-            <div v-if="activity.loading" class="space-y-4">
-              <div v-for="i in 3" :key="i" class="h-16 bg-surface-gray-2 border border-outline-gray-2 rounded-xl animate-pulse" />
-            </div>
-            
-            <div v-else-if="activityList.length" class="relative space-y-6 before:absolute before:top-3 before:bottom-3 before:left-[15px] before:w-px before:bg-outline-gray-2 pl-1 py-1">
-              <div v-for="item in activityList" :key="item.name" class="relative flex items-start gap-4">
-                <!-- Single clean icon circle centered on the line -->
-                <div class="w-8 h-8 rounded-full border border-outline-gray-2 bg-surface-base flex items-center justify-center shrink-0 shadow-2xs z-10 text-ink-gray-7">
-                  <FeatherIcon :name="actionIcons[item.action] || 'activity'" class="w-3.5 h-3.5" />
+      <div class="flex-1 flex flex-col overflow-hidden bg-surface-base border-r border-outline-gray-1">
+        <Tabs v-model="activeTabIndex" :tabs="tabsList" class="flex flex-1 flex-col overflow-hidden">
+          <template #tab-panel="{ tab }">
+            <!-- Activity feed timeline panel -->
+            <div v-if="activeTabIndex === 0" class="p-6 overflow-y-auto flex-1">
+              <div class="w-full pt-1">
+                <div class="flex items-center justify-between mb-6 pb-2.5 border-b border-outline-gray-1">
+                  <h2 class="text-base font-bold text-ink-gray-9">Activity</h2>
+                  <Button variant="ghost" icon="lucide-refresh-cw" size="sm" @click="activity.reload()" title="Refresh Activity" />
                 </div>
-                <div class="min-w-0 flex-1 pt-1 flex items-baseline justify-between gap-4">
-                  <p class="text-sm text-ink-gray-8 leading-snug">
-                    <span class="font-bold text-ink-gray-9">{{ item.user }}</span>
-                    <span class="text-ink-gray-6 ml-1.5">{{ getActivityText(item) }}</span>
-                  </p>
-                  <span class="text-xs text-ink-gray-4 font-normal shrink-0">{{ formatTime(item.timestamp) }}</span>
+
+                <div v-if="activity.loading" class="space-y-4">
+                  <div v-for="i in 3" :key="i" class="h-14 bg-surface-gray-2 border border-outline-gray-1 rounded-xl animate-pulse" />
                 </div>
-              </div>
-            </div>
-            
-            <EmptyState v-else icon="activity" title="No activity recorded" />
-          </div>
-
-          <!-- Sharing config panel -->
-          <div v-else-if="activeTab === 'sharing'" class="space-y-5 max-w-xl">
-            <div class="flex items-center justify-between border-b border-outline-gray-2 pb-3 shrink-0">
-              <h3 class="text-base font-semibold text-ink-gray-9">Sharing Settings</h3>
-              
-              <!-- Share Secret Button (Visible if Owner or Admin) -->
-              <Button
-                v-if="isOwnerOrAdmin"
-                variant="solid"
-                size="sm"
-                class="shadow-sm font-semibold"
-                iconLeft="lucide-user-plus"
-                label="Share Secret"
-                @click="openShareDialog"
-              />
-            </div>
-
-            <!-- If Not Owner or Admin, show who shared it with them -->
-            <div v-if="!isOwnerOrAdmin" class="p-4 bg-surface-gray-2 border border-outline-gray-2 rounded-xl text-sm leading-relaxed text-ink-gray-7 font-medium shadow-sm flex items-start gap-3">
-              <div class="w-9 h-9 rounded-full bg-blue-50 border border-blue-100/50 text-blue-650 flex items-center justify-center shrink-0">
-                <FeatherIcon name="share-2" class="w-4.5 h-4.5" />
-              </div>
-              <div>
-                <p class="font-bold text-ink-gray-9 leading-normal">Shared Secret Access</p>
-                <p class="mt-1 text-ink-gray-6 font-normal">
-                  This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
-                </p>
-              </div>
-            </div>
-
-            <div v-else class="space-y-4">
-              <!-- Active Shares List -->
-              <div class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider pl-0.5">Active Shares</div>
-
-              <div v-if="sharesList.length" class="space-y-3">
-                <div
-                  v-for="item in sharesList"
-                  :key="item.name"
-                  class="flex items-center justify-between p-3.5 bg-surface-elevation-1 border border-outline-gray-2 rounded-xl shadow-sm hover:border-outline-gray-3 transition-colors"
-                >
-                  <div class="flex items-center gap-3.5 min-w-0">
-                    <div class="w-9 h-9 rounded-full bg-surface-gray-2 border border-outline-gray-2 shadow-sm flex items-center justify-center shrink-0">
-                      <FeatherIcon
-                        :name="item.share_type === 'User' ? 'user' : item.share_type === 'Group' ? 'users' : 'shield'"
-                        class="w-4.5 h-4.5 text-ink-gray-5"
-                      />
+                
+                <div v-else-if="activityList.length" class="relative space-y-6 before:absolute before:top-2 before:bottom-2 before:left-2.5 before:w-px before:bg-outline-gray-2 py-1">
+                  <div v-for="item in activityList" :key="item.name" class="relative flex items-start gap-3.5">
+                    <!-- Clean icon without background/border/shadow -->
+                    <div class="w-5 h-5 flex items-center justify-center shrink-0 z-10 text-ink-gray-5 bg-surface-base mt-0.5">
+                      <FeatherIcon :name="actionIcons[item.action] || 'activity'" class="w-4 h-4" />
                     </div>
-                    <div class="min-w-0">
-                      <p class="text-sm font-semibold text-ink-gray-9 truncate leading-snug">
-                        {{ item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role }}
-                      </p>
-                      <p class="text-xs text-ink-gray-4 mt-1 font-medium flex items-center gap-1.5 leading-none">
-                        <span>{{ item.share_type }}</span>
-                        <span class="w-1 h-1 rounded-full bg-surface-gray-4" />
-                        <span v-if="item.expires_on">Expires {{ formatTime(item.expires_on) }}</span>
-                        <span v-else>Never expires</span>
-                      </p>
+                    <!-- Content aligned with right-aligned timestamp -->
+                    <div class="min-w-0 flex-1 flex flex-col gap-1.5">
+                      <div class="flex items-start justify-between w-full gap-4">
+                        <div class="text-sm leading-relaxed text-ink-gray-8">
+                          <span class="font-bold text-ink-gray-9">{{ item.user }}</span>
+                          <span class="text-ink-gray-6 ml-1.5">{{ getActionMainText(item) }}</span>
+                        </div>
+                        <span class="ml-auto text-xs text-ink-gray-4 shrink-0 whitespace-nowrap text-right pt-0.5">{{ formatRelativeTime(item.timestamp) }}</span>
+                      </div>
+                      
+                      <!-- Activity Details Card / Bubble (matching CRM lead comment box) -->
+                      <div v-if="hasActivityDetails(item)" class="mt-1.5 p-3 rounded-lg bg-surface-gray-2 border border-outline-gray-1 text-sm text-ink-gray-8 leading-relaxed w-full font-normal shadow-2xs">
+                        {{ getActivityDetailText(item) }}
+                      </div>
                     </div>
                   </div>
+                </div>
+                
+                <EmptyState v-else icon="activity" title="No activity recorded" />
+              </div>
+            </div>
 
-                  <div class="flex items-center gap-3 shrink-0">
-                    <Badge
-                      :theme="permissionTheme[item.permission_level] || 'gray'"
-                      variant="subtle"
-                      size="sm"
+            <!-- Sharing config panel -->
+            <div v-else-if="activeTabIndex === 1" class="p-6 overflow-y-auto flex-1">
+              <div class="space-y-5 w-full">
+                <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3 shrink-0">
+                  <h3 class="text-base font-semibold text-ink-gray-9">Sharing Settings</h3>
+                  
+                  <!-- Share Secret Button (Visible if Owner or Admin) -->
+                  <Button
+                    v-if="isOwnerOrAdmin"
+                    variant="solid"
+                    size="sm"
+                    class="shadow-sm font-semibold"
+                    iconLeft="lucide-user-plus"
+                    label="Share Secret"
+                    @click="openShareDialog"
+                  />
+                </div>
+
+                <!-- If Not Owner or Admin, show who shared it with them -->
+                <div v-if="!isOwnerOrAdmin" class="p-4 bg-surface-gray-2 border border-outline-gray-1 rounded-xl text-sm leading-relaxed text-ink-gray-7 font-medium shadow-sm flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-full bg-blue-50 border border-blue-100/50 text-blue-650 flex items-center justify-center shrink-0">
+                    <FeatherIcon name="share-2" class="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <p class="font-bold text-ink-gray-9 leading-normal">Shared Secret Access</p>
+                    <p class="mt-1 text-ink-gray-6 font-normal">
+                      This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
+                    </p>
+                  </div>
+                </div>
+
+                <div v-else class="space-y-4">
+                  <!-- Active Shares List -->
+                  <div class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider pl-0.5">Active Shares</div>
+
+                  <div v-if="sharesList.length" class="space-y-3">
+                    <div
+                      v-for="item in sharesList"
+                      :key="item.name"
+                      class="flex items-center justify-between p-3.5 bg-surface-elevation-1 border border-outline-gray-1 rounded-xl shadow-sm hover:border-outline-gray-3 transition-colors"
                     >
-                      {{ item.permission_level }}
-                    </Badge>
+                      <div class="flex items-center gap-3.5 min-w-0">
+                        <div class="w-9 h-9 rounded-full bg-surface-gray-2 border border-outline-gray-1 shadow-sm flex items-center justify-center shrink-0">
+                          <FeatherIcon
+                            :name="item.share_type === 'User' ? 'user' : item.share_type === 'Group' ? 'users' : 'shield'"
+                            class="w-4.5 h-4.5 text-ink-gray-5"
+                          />
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-sm font-semibold text-ink-gray-9 truncate leading-snug">
+                            {{ item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role }}
+                          </p>
+                          <p class="text-xs text-ink-gray-4 mt-1 font-medium flex items-center gap-1.5 leading-none">
+                            <span>{{ item.share_type }}</span>
+                            <span class="w-1 h-1 rounded-full bg-surface-gray-4" />
+                            <span v-if="item.expires_on">Expires {{ formatTime(item.expires_on) }}</span>
+                            <span v-else>Never expires</span>
+                          </p>
+                        </div>
+                      </div>
 
-                    <!-- Revoke Access Action -->
-                    <Button
-                      variant="ghost"
-                      icon="lucide-trash-2"
-                      class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-red-50"
-                      title="Revoke Access"
-                      @click="handleRevokeShare(item.name, item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role)"
-                    />
+                      <div class="flex items-center gap-3 shrink-0">
+                        <Badge
+                          :theme="permissionTheme[item.permission_level] || 'gray'"
+                          variant="subtle"
+                          size="sm"
+                        >
+                          {{ item.permission_level }}
+                        </Badge>
+
+                        <!-- Revoke Access Action -->
+                        <Button
+                          variant="ghost"
+                          icon="lucide-trash-2"
+                          class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-red-50"
+                          title="Revoke Access"
+                          @click="handleRevokeShare(item.name, item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Active Shares Empty State -->
+                  <div v-else class="p-8 bg-surface-gray-2 border border-dashed border-outline-gray-1 rounded-2xl text-center shadow-sm">
+                    <div class="w-10 h-10 rounded-full bg-surface-gray-3 border border-outline-gray-1 flex items-center justify-center mx-auto text-ink-gray-4 mb-3 shrink-0">
+                      <FeatherIcon name="users" class="w-5 h-5" />
+                    </div>
+                    <p class="text-sm font-semibold text-ink-gray-9 leading-snug">Not Shared Yet</p>
+                    <p class="text-xs text-ink-gray-5 mt-1 max-w-[280px] mx-auto leading-normal font-medium">
+                      This secret is private. Use the Share button to give access to other users, groups, or roles.
+                    </p>
                   </div>
                 </div>
               </div>
-
-              <!-- Active Shares Empty State -->
-              <div v-else class="p-8 bg-surface-gray-2 border border-dashed border-outline-gray-2 rounded-2xl text-center shadow-sm">
-                <div class="w-10 h-10 rounded-full bg-surface-gray-3 border border-outline-gray-2 flex items-center justify-center mx-auto text-ink-gray-4 mb-3 shrink-0">
-                  <FeatherIcon name="users" class="w-5 h-5" />
-                </div>
-                <p class="text-sm font-semibold text-ink-gray-9 leading-snug">Not Shared Yet</p>
-                <p class="text-xs text-ink-gray-5 mt-1 max-w-[280px] mx-auto leading-normal font-medium">
-                  This secret is private. Use the Share button to give access to other users, groups, or roles.
-                </p>
-              </div>
             </div>
-          </div>
-        </div>
+          </template>
+        </Tabs>
       </div>
 
       <!-- RIGHT PANE: Resizable Side Panel Drawer (off-white bg, bordered) -->
-      <div class="w-[380px] shrink-0 flex flex-col overflow-y-auto border-l border-outline-gray-2 flex-1 lg:flex-none bg-surface-base">
+      <div class="w-[380px] shrink-0 flex flex-col overflow-y-auto flex-1 lg:flex-none bg-surface-base">
         
-        <!-- Sidebar ID Header (matching CRM top ID text) -->
-        <div class="px-6 pt-5 pb-1 flex items-center justify-between">
-          <span
-            class="text-sm font-mono font-medium text-ink-gray-5 hover:text-ink-gray-7 cursor-pointer select-none transition-colors"
-            @click="copyField(secretData.name, 'name')"
-            title="Click to copy ID"
-          >
-            {{ secretData.name }}
-          </span>
-        </div>
-
-        <!-- Avatar + Title + Quick Actions (matching CRM Lead detail panel) -->
-        <div class="px-6 pt-3 pb-6 flex items-start gap-4 border-b border-outline-gray-2">
-          <!-- Circular type avatar icon -->
-          <div :class="`size-12 rounded-full border flex items-center justify-center shrink-0 shadow-2xs ${typeMeta[secretData.secret_type || 'Other']?.bg}`">
-            <FeatherIcon :name="typeMeta[secretData.secret_type || 'Other']?.icon" class="w-6 h-6" />
+        <!-- Sidebar Header Box (exact match to CRM-DEAL right panel header) -->
+        <div class="border-b border-outline-gray-1 bg-surface-base">
+          <!-- Top ID row exactly matching TabsList height structure -->
+          <div class="flex h-[45px] cursor-copy items-center border-b px-5 py-2.5 text-lg-medium text-ink-gray-9 bg-surface-base">
+           {{ secretData.name }}
           </div>
-          
-          <div class="flex flex-col gap-2 min-w-0 flex-1 pt-0.5">
-            <Tooltip :text="secretData.title">
-              <h2 class="truncate text-xl font-bold text-ink-gray-9 leading-tight">
-                {{ secretData.title }}
-              </h2>
-            </Tooltip>
+
+          <!-- Avatar, Title & Individual Action Buttons Row -->
+          <div class="p-6 flex items-start gap-4">
+            <div :class="`size-14 rounded-full flex items-center justify-center shrink-0 shadow-sm border border-outline-gray-1 ${typeMeta[secretData.secret_type || 'Other']?.bg}`">
+              <FeatherIcon :name="typeMeta[secretData.secret_type || 'Other']?.icon || 'key'" class="w-6 h-6 text-ink-gray-7" />
+            </div>
             
-            <!-- Action buttons row (matching CRM rounded square / circular buttons) -->
-            <div class="flex items-center gap-1.5 pt-1">
-              <button
-                v-if="secretData.username"
-                title="Copy Username"
-                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
-                @click="copyField(secretData.username, 'username')"
-              >
-                <FeatherIcon name="user" class="w-3.5 h-3.5" />
-              </button>
-              <button
-                v-if="secretData.secret_type === 'Password' && canCopy"
-                title="Copy Password"
-                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
-                @click="copyPassword"
-              >
-                <FeatherIcon name="key" class="w-3.5 h-3.5" />
-              </button>
-              <button
-                v-if="secretData.secret_type === 'API Key' && canCopy"
-                title="Copy API Secret"
-                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
-                @click="copyAPISecret"
-              >
-                <FeatherIcon name="code" class="w-3.5 h-3.5" />
-              </button>
-              <button
-                v-if="secretData.url"
-                title="Open URL"
-                class="w-7.5 h-7.5 rounded-lg border border-outline-gray-2 bg-surface-base hover:bg-surface-gray-2 flex items-center justify-center text-ink-gray-7 transition-colors shadow-2xs"
-                @click="window.open(secretData.url, '_blank')"
-              >
-                <FeatherIcon name="external-link" class="w-3.5 h-3.5" />
-              </button>
-              <button
-                v-if="canDelete"
-                title="Delete Secret"
-                class="w-7.5 h-7.5 rounded-lg border border-red-100 bg-red-50 hover:bg-red-100/80 flex items-center justify-center text-red-600 transition-colors shadow-2xs ml-auto"
-                @click="showDeleteDialog = true"
-              >
-                <FeatherIcon name="trash-2" class="w-3.5 h-3.5" />
-              </button>
+            <div class="min-w-0 flex-1 pt-0.5">
+              <Tooltip :text="secretData.title">
+                <h2 class="truncate text-3xl-medium text-ink-gray-9 mb-2.5">
+                  {{ secretData.title }}
+                </h2>
+              </Tooltip>
+              
+              <!-- Action Button (Delete only, slightly smaller) -->
+              <div v-if="canDelete" class="flex items-center gap-2">
+                <Button
+                  variant="subtle"
+                  theme="red"
+                  size="xs"
+                  icon="trash-2"
+                  title="Delete Secret"
+                  @click="showDeleteDialog = true"
+                />
+              </div>
             </div>
           </div>
         </div>
 
         <div class="flex flex-1 flex-col justify-between overflow-hidden">
-          <div class="flex-1 overflow-y-auto">
           
-          <!-- Clipboard clear warning indicator -->
-          <div v-if="clipboard.copied.value" class="flex items-center gap-2.5 p-3 mx-4 my-2 bg-amber-50/70 text-amber-800 rounded-xl text-xs font-semibold border border-amber-100/40 shadow-sm transition-all duration-300">
-            <FeatherIcon name="shield" class="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
-            <span class="flex-1">Clipboard copied. Auto-clearing in <strong>{{ clipboard.countdown.value }}s</strong>.</span>
-          </div>
-
-          <!-- Collapsible DETAILS Accordion (matching CRM styling) -->
-          <div class="border-b border-outline-gray-2 py-3.5 px-6">
-            <div class="flex items-center justify-between select-none">
-              <div
-                class="flex items-center gap-2 cursor-pointer font-bold text-ink-gray-9 text-sm"
-                @click="detailsOpen = !detailsOpen"
-              >
-                <FeatherIcon
-                  name="chevron-right"
-                  class="h-4 w-4 transition-transform duration-200 text-ink-gray-5"
-                  :class="{ 'rotate-90': detailsOpen }"
-                />
-                <span>Details</span>
-              </div>
-
-              <!-- Edit toggle button aligned right inside accordion header matching CRM -->
-              <button
-                v-if="canEdit"
-                @click="toggleEditMode"
-                class="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-colors"
-                :class="isEditing ? 'bg-ink-gray-9 text-surface-white' : 'text-ink-gray-6 hover:bg-surface-gray-2 hover:text-ink-gray-9 border border-outline-gray-2'"
-              >
-                <FeatherIcon :name="isEditing ? 'eye' : 'edit-2'" class="w-3 h-3" />
-                <span>{{ isEditing ? 'View' : 'Edit' }}</span>
-              </button>
+          <!-- MAIN SCROLLABLE ATTRIBUTES AREA -->
+          <div class="flex-1 overflow-y-auto">
+            
+            <!-- Clipboard clear warning indicator -->
+            <div v-if="clipboard.copied.value" class="flex items-center gap-2.5 p-3 mx-4 my-2 bg-amber-50/70 text-amber-800 rounded-xl text-xs font-semibold border border-amber-100/40 shadow-sm transition-all duration-300">
+              <FeatherIcon name="shield" class="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
+              <span class="flex-1">Clipboard copied. Auto-clearing in <strong>{{ clipboard.countdown.value }}s</strong>.</span>
             </div>
+
+            <!-- Collapsible DETAILS Accordion -->
+            <div class="border-b border-outline-gray-1 py-4 px-6">
+              <div class="flex items-center justify-between select-none cursor-pointer" @click="detailsOpen = !detailsOpen">
+                <div class="flex items-center gap-2.5">
+                  <FeatherIcon name="chevron-down" class="h-5 w-5 text-ink-gray-5 transition-transform duration-200" :class="{ '-rotate-90': !detailsOpen }" />
+                  <h3 class="text-base font-bold text-ink-gray-9">Details</h3>
+                </div>
+
+                <!-- Edit icon button matching native CRM button box -->
+                <div v-if="canEdit" @click.stop>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    :icon="isEditing ? 'eye' : 'edit'"
+                    :title="isEditing ? 'View Details' : 'Edit Details'"
+                    @click="toggleEditMode"
+                  />
+                </div>
+              </div>
 
             <div v-show="detailsOpen" class="mt-3.5">
               <!-- EDIT VIEW FORM -->
-              <div v-if="isEditing" class="space-y-4 pt-1">
+              <div v-if="isEditing" class="space-y-4 pt-1 px-6">
                 <!-- Title -->
                 <div class="flex items-center justify-between gap-3 text-sm">
                   <label class="w-28 shrink-0 text-ink-gray-5 font-normal">Title <span class="text-red-550">*</span></label>
@@ -303,7 +258,7 @@
                   </div>
                 </div>
 
-                <div class="w-full border-t border-outline-gray-2 my-2" />
+                <div class="w-full border-t border-outline-gray-1 my-2" />
 
                 <!-- Dynamic type inputs -->
                 <div v-if="editForm.secret_type === 'Password'" class="space-y-3">
@@ -447,7 +402,7 @@
                 </div>
 
                 <!-- Edit Action Buttons -->
-                <div class="flex items-center justify-end gap-2 pt-4 border-t border-outline-gray-2">
+                <div class="flex items-center justify-end gap-2 pt-4 border-t border-outline-gray-1">
                   <Button variant="outline" size="sm" @click="isEditing = false">Cancel</Button>
                   <Button variant="solid" size="sm" @click="handleSave" :loading="updateResource.loading" class="font-semibold shadow-2xs">Save Changes</Button>
                 </div>
@@ -458,11 +413,7 @@
                 <!-- Secret Type -->
                 <div class="flex items-center justify-between py-1 text-sm">
                   <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Secret Type</span>
-                  <div class="min-w-0 flex-1 flex justify-end truncate">
-                    <Badge size="sm" variant="subtle" :theme="secretData.secret_type === 'Password' ? 'green' : 'gray'">
-                      {{ secretData.secret_type }}
-                    </Badge>
-                  </div>
+                  <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ secretData.secret_type }}</span>
                 </div>
 
                 <!-- Folder -->
@@ -619,9 +570,9 @@
                   </div>
                   <div v-if="secretData.ssh_private_key" class="pt-2">
                     <span class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">SSH Private Key</span>
-                    <div class="relative bg-surface-gray-2 border border-outline-gray-2 rounded-xl p-3 group shadow-inner">
+                    <div class="relative bg-surface-gray-2 border border-outline-gray-1 rounded-xl p-3 group shadow-inner">
                       <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-36 whitespace-pre select-all leading-normal">{{ secretData.ssh_private_key }}</pre>
-                      <button v-if="canCopy" type="button" @click="copyField(secretData.ssh_private_key, 'ssh_private_key')" class="absolute top-2 right-2 px-2 py-1 bg-surface-base border border-outline-gray-2 rounded-md text-xs font-medium text-ink-gray-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs flex items-center gap-1">
+                      <button v-if="canCopy" type="button" @click="copyField(secretData.ssh_private_key, 'ssh_private_key')" class="absolute top-2 right-2 px-2 py-1 bg-surface-base border border-outline-gray-1 rounded-md text-xs font-medium text-ink-gray-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs flex items-center gap-1">
                         <FeatherIcon :name="copiedField === 'ssh_private_key' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'ssh_private_key'}" />
                         <span>Copy</span>
                       </button>
@@ -633,9 +584,9 @@
                 <template v-else-if="secretData.secret_type === 'Certificate'">
                   <div v-if="secretData.certificate" class="pt-2">
                     <span class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">Certificate</span>
-                    <div class="relative bg-surface-gray-2 border border-outline-gray-2 rounded-xl p-3 group shadow-inner">
+                    <div class="relative bg-surface-gray-2 border border-outline-gray-1 rounded-xl p-3 group shadow-inner">
                       <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-36 whitespace-pre select-all leading-normal">{{ secretData.certificate }}</pre>
-                      <button v-if="canCopy" type="button" @click="copyField(secretData.certificate, 'certificate')" class="absolute top-2 right-2 px-2 py-1 bg-surface-base border border-outline-gray-2 rounded-md text-xs font-medium text-ink-gray-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs flex items-center gap-1">
+                      <button v-if="canCopy" type="button" @click="copyField(secretData.certificate, 'certificate')" class="absolute top-2 right-2 px-2 py-1 bg-surface-base border border-outline-gray-1 rounded-md text-xs font-medium text-ink-gray-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs flex items-center gap-1">
                         <FeatherIcon :name="copiedField === 'certificate' ? 'check' : 'copy'" class="w-3 h-3" :class="{'text-green-600': copiedField === 'certificate'}" />
                         <span>Copy</span>
                       </button>
@@ -647,37 +598,23 @@
           </div>
 
           <!-- Collapsible NOTES Accordion -->
-          <div v-if="secretData.notes" class="border-b border-outline-gray-2 py-3.5 px-6">
-            <div class="flex items-center justify-between select-none">
-              <div
-                class="flex items-center gap-2 cursor-pointer font-bold text-ink-gray-9 text-sm"
-                @click="notesOpen = !notesOpen"
-              >
-                <FeatherIcon
-                  name="chevron-right"
-                  class="h-4 w-4 transition-transform duration-200 text-ink-gray-5"
-                  :class="{ 'rotate-90': notesOpen }"
-                />
-                <span>Notes</span>
+          <div v-if="secretData.notes" class="border-b border-outline-gray-1 py-4 px-6">
+            <div class="flex items-center justify-between select-none cursor-pointer" @click="notesOpen = !notesOpen">
+              <div class="flex items-center gap-2.5">
+                <FeatherIcon name="chevron-down" class="h-5 w-5 text-ink-gray-5 transition-transform duration-200" :class="{ '-rotate-90': !notesOpen }" />
+                <h3 class="text-base font-bold text-ink-gray-9">Notes</h3>
               </div>
             </div>
             
-            <div v-show="notesOpen" class="mt-3 p-3.5 bg-surface-gray-2 rounded-xl text-sm text-ink-gray-8 border border-outline-gray-2 leading-relaxed whitespace-pre-wrap font-normal" v-html="secretData.notes" />
+            <div v-show="notesOpen" class="mt-2.5 py-1 text-sm text-ink-gray-8 leading-relaxed whitespace-pre-wrap font-normal" v-html="secretData.notes" />
           </div>
 
           <!-- Collapsible METADATA Accordion -->
-          <div class="border-b border-outline-gray-2 py-3.5 px-6">
-            <div class="flex items-center justify-between select-none">
-              <div
-                class="flex items-center gap-2 cursor-pointer font-bold text-ink-gray-9 text-sm"
-                @click="metaOpen = !metaOpen"
-              >
-                <FeatherIcon
-                  name="chevron-right"
-                  class="h-4 w-4 transition-transform duration-200 text-ink-gray-5"
-                  :class="{ 'rotate-90': metaOpen }"
-                />
-                <span>Metadata</span>
+          <div class="border-b border-outline-gray-1 py-4 px-6">
+            <div class="flex items-center justify-between select-none cursor-pointer" @click="metaOpen = !metaOpen">
+              <div class="flex items-center gap-2.5">
+                <FeatherIcon name="chevron-down" class="h-5 w-5 text-ink-gray-5 transition-transform duration-200" :class="{ '-rotate-90': !metaOpen }" />
+                <h3 class="text-base font-bold text-ink-gray-9">Metadata</h3>
               </div>
             </div>
 
@@ -810,14 +747,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive, nextTick } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Badge, FeatherIcon, TextInput, FormControl, Dialog, ErrorMessage, Breadcrumbs, Tooltip, toast, TabButtons } from 'frappe-ui'
-import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useFolders, useVerifyMasterPassword, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats } from '../composables/vault'
+import { Button, Badge, FeatherIcon, TextInput, FormControl, Dialog, ErrorMessage, Breadcrumbs, Tooltip, toast, TabButtons, Tabs } from 'frappe-ui'
+import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
 import StrengthBadge from '../components/StrengthBadge.vue'
-import { actionIcons, secretTypeOptions, permissionTheme, typeMeta } from '../composables/constants'
+import { actionIcons, secretTypeOptions, permissionTheme, typeMeta, formatRelativeTime } from '../composables/constants'
 
 const props = defineProps({
   name: {
@@ -828,7 +765,11 @@ const props = defineProps({
 
 const router = useRouter()
 
-const activeTab = ref('activity')
+const activeTabIndex = ref(0)
+const tabsList = computed(() => [
+  { label: 'Activity', icon: 'lucide-sparkles' },
+  { label: sharesList.value.length ? `Sharing (${sharesList.value.length})` : 'Sharing', icon: 'lucide-share-2' },
+])
 const isEditing = ref(false)
 
 // Collapsible blocks
@@ -1005,10 +946,7 @@ async function handleRevokeShare(shareName, recipientName) {
   }
 }
 
-const tabs = [
-  { name: 'activity', label: 'Activity' },
-  { name: 'sharing', label: 'Sharing' },
-]
+
 
 const folderOptions = computed(() => {
   const options = [{ label: 'No Folder', value: '' }]
@@ -1363,6 +1301,53 @@ function getActivityText(item) {
     }
     default:
       return `${item.action.toLowerCase()} this secret`
+  }
+}
+
+function getActionMainText(item) {
+  switch (item.action) {
+    case 'Created': return 'created this secret'
+    case 'Updated': return 'updated this secret'
+    case 'Deleted': return 'deleted this secret'
+    case 'Viewed': return 'viewed this secret'
+    case 'Copied': return 'copied secret credentials'
+    case 'Shared': return 'shared access to this secret'
+    case 'Unshared': return 'revoked secret access'
+    default: return `${item.action.toLowerCase()} this secret`
+  }
+}
+
+function hasActivityDetails(item) {
+  return ['Copied', 'Shared', 'Unshared'].includes(item.action)
+}
+
+function getDetailIcon(item) {
+  switch (item.action) {
+    case 'Copied': return 'copy'
+    case 'Shared': return 'share-2'
+    case 'Unshared': return 'shield-off'
+    default: return 'info'
+  }
+}
+
+function getActivityDetailText(item) {
+  const details = parseDetails(item.details)
+  switch (item.action) {
+    case 'Copied': {
+      const field = details.field || 'password'
+      return `Field: ${field}`
+    }
+    case 'Shared': {
+      const recipient = details.recipient || 'Unknown'
+      const permission = details.permission || 'View Only'
+      const expiresOn = details.expires_on ? ` • Expires ${formatTime(details.expires_on)}` : ''
+      return `${recipient} (${permission})${expiresOn}`
+    }
+    case 'Unshared': {
+      const recipient = details.recipient || 'Unknown'
+      return `Recipient: ${recipient}`
+    }
+    default: return ''
   }
 }
 </script>

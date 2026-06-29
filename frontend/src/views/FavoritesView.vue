@@ -1,7 +1,7 @@
 <template>
   <div class="flex-1 flex flex-col overflow-hidden bg-surface-base">
     <!-- Header -->
-    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-2 bg-surface-base px-5 py-2.5 shrink-0">
+    <header class="flex h-10.5 items-center justify-between border-b border-outline-gray-1 bg-surface-base px-5 py-2.5 shrink-0">
       <div class="flex items-center gap-2 min-w-0 flex-1">
         <!-- Mobile Sidebar Trigger -->
         <Button
@@ -19,13 +19,11 @@
     <ViewControlsBar>
       <template #left>
         <!-- Title Quick Filter -->
-        <div class="w-44 shrink-0">
-          <TextInput
-            v-model="titleQuery"
-            placeholder="Title"
-            class="w-full"
-          />
-        </div>
+        <TextInput
+          v-model="titleQuery"
+          placeholder="Title"
+          class="w-44 shrink-0"
+        />
 
         <!-- Type Quick Filter Dropdown -->
         <Select
@@ -89,7 +87,7 @@
         <ListView
           class="flex-1 flex flex-col overflow-hidden bg-surface-base"
           :columns="columns"
-          :rows="formattedRows"
+          :rows="paginatedRows"
           row-key="name"
           :options="{
             selectable: true,
@@ -107,7 +105,7 @@
           </ListHeader>
           <ListRows class="sm:mx-5 mx-3">
             <ListRow
-              v-for="row in formattedRows"
+              v-for="row in paginatedRows"
               :key="row.name"
               v-slot="{ column, item }"
               :row="row"
@@ -118,9 +116,7 @@
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
                     <SecretTypeIcon :type="item.secret_type" />
-                    <div class="min-w-0">
-                      <span class="font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
-                    </div>
+                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -136,10 +132,8 @@
                   </div>
 
                   <!-- Strength column -->
-                  <div v-else-if="column.key === 'password_strength'">
-                    <StrengthBadge v-if="item" :strength="item" size="sm" />
-                    <span class="text-base text-ink-gray-4" v-else>—</span>
-                  </div>
+                  <StrengthBadge v-else-if="column.key === 'password_strength' && item" :strength="item" size="sm" />
+                  <span v-else-if="column.key === 'password_strength'" class="text-base text-ink-gray-4">—</span>
 
                   <!-- Modified column -->
                   <span v-else-if="column.key === 'modified'" class="text-base text-ink-gray-6">{{ item.formatted }}</span>
@@ -166,14 +160,15 @@
               </ListRowItem>
             </ListRow>
           </ListRows>
+          <ListSelectBanner />
         </ListView>
 
         <!-- Pagination Footer -->
         <ListFooter
           v-model="pageLength"
-          class="border-t border-outline-gray-2 px-5 py-2 bg-surface-base shrink-0"
+          class="border-t border-outline-gray-1 px-5 py-2 bg-surface-base shrink-0"
           :options="{
-            rowCount: secretsList.length,
+            rowCount: paginatedRows.length,
             totalCount: totalCount,
           }"
           @loadMore="pageLength += 20"
@@ -193,9 +188,9 @@ import { useRouter } from 'vue-router'
 import SortIcon from '../components/SortIcon.vue'
 import ColumnsIcon from '../components/ColumnsIcon.vue'
 import RefreshIcon from '../components/RefreshIcon.vue'
-import { Badge, Button, Dropdown, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListFooter, Breadcrumbs, Select } from 'frappe-ui'
+import { Button, Dropdown, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Breadcrumbs, Select } from 'frappe-ui'
 import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
-import { SECRET_TYPES } from '../composables/constants'
+import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
 import StrengthBadge from '../components/StrengthBadge.vue'
@@ -218,7 +213,7 @@ const foldersResource = useFolders()
 const toggleFav = useToggleFavorite()
 
 const secretsList = computed(() => secrets.data?.secrets || [])
-const totalCount = computed(() => secrets.data?.total || 0)
+const totalCount = computed(() => secrets.data?.total || secretsList.value.length || 0)
 const breadcrumbs = computed(() => [{ label: 'Favorites' }])
 
 
@@ -306,10 +301,7 @@ const formattedRows = computed(() => {
   })
 })
 
-const typeFilterOptions = computed(() => [
-  { label: 'All Types', value: '' },
-  ...SECRET_TYPES.map(t => ({ label: t, value: t })),
-])
+const paginatedRows = computed(() => formattedRows.value.slice(0, pageLength.value))
 
 function refreshSecrets() {
   secrets.submit({
@@ -328,7 +320,6 @@ function clearFilters() {
   pageLength.value = 20
 }
 
-function formatTime(dt) { if (!dt) return ''; const d = new Date(dt); return d.toLocaleDateString() }
 async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
 
 function copyToClipboard(text) {

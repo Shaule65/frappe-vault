@@ -3,11 +3,9 @@
     <h1 class="text-xl font-semibold text-ink-gray-9 mb-6">Password Generator</h1>
 
     <div class="max-w-xl">
-      <div class="bg-surface-elevation-1 rounded-xl border border-outline-gray-2 p-6 mb-6">
+      <div class="bg-surface-elevation-1 rounded-xl border border-outline-gray-1 p-6 mb-6">
         <!-- Generated password display -->
-        <div class="bg-surface-gray-2 rounded-lg p-4 mb-4">
-          <p class="font-mono text-lg text-ink-gray-9 break-all select-all">{{ generatedPassword || 'Click Generate' }}</p>
-        </div>
+        <p class="bg-surface-gray-2 rounded-lg p-4 mb-4 font-mono text-lg text-ink-gray-9 break-all select-all">{{ generatedPassword || 'Click Generate' }}</p>
 
         <div class="flex gap-3 mb-6">
           <Button variant="solid" class="flex-1" iconLeft="lucide-refresh-cw" label="Generate" @click="handleGenerate" :loading="generator.loading" />
@@ -15,9 +13,7 @@
         </div>
 
         <!-- Strength indicator -->
-        <div v-if="strength" class="mb-6">
-          <PasswordStrength :level="strength.level" />
-        </div>
+        <PasswordStrength v-if="strength" class="mb-6" :level="strength.level" />
 
         <!-- Options -->
         <div class="space-y-4">

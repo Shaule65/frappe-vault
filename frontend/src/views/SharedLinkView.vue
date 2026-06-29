@@ -11,11 +11,9 @@
         </div>
       </div>
 
-      <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5 shadow-sm">
+      <div class="rounded-lg border border-outline-gray-1 bg-surface-elevation-1 p-5 shadow-sm">
         <div v-if="!secret && !errorMessage" class="space-y-4">
-          <div v-if="needsPassphrase">
-            <TextInput v-model="passphrase" type="password" placeholder="Enter passphrase" autofocus @keyup.enter="openLink" />
-          </div>
+          <TextInput v-if="needsPassphrase" v-model="passphrase" type="password" placeholder="Enter passphrase" autofocus @keyup.enter="openLink" />
           <Button
             variant="solid"
             theme="blue"
