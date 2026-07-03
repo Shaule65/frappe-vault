@@ -5,7 +5,7 @@
 
 # Frappe Vault
 
-Password and secrets management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext portal.
+Secrets and password management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext portal.
 
 ## Features
 
@@ -31,7 +31,7 @@ Password and secrets management application. Securely store, share, and manage s
 bench get-app https://github.com/lubusIN/frappe-vault.git
 
 # Install on your site
-bench --site your-site.local install-app frappe-vault
+bench --site your-site.local install-app frappe_vault
 ```
 
 ### Development Installation
@@ -42,7 +42,7 @@ cd ~/frappe-bench/apps
 git clone https://github.com/lubusIN/frappe-vault.git
 
 # Install the app
-bench --site your-site.local install-app frappe-vault
+bench --site your-site.local install-app frappe_vault
 
 # Enable developer mode (optional, for development)
 bench --site your-site.local set-config developer_mode 1

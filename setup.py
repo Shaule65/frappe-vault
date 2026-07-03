@@ -9,9 +9,9 @@ from frappe_vault import __version__ as version
 setup(
     name="frappe_vault",
     version=version,
-    description="A Frappe-based password and secrets management application",
-    author="Frappe Vault",
-    author_email="hello@example.com",
+    description="Secrets and password management application",
+    author="lubus",
+    author_email="info@lubus.in",
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
