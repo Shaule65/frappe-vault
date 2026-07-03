@@ -12,6 +12,7 @@ frontend/dist/
 frontend/node_modules/
 frontend/.vite/
 frappe_vault/public/frontend/
+frappe_vault/www/vault.html
 
 # Environment
 .env
