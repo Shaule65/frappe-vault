@@ -35,6 +35,14 @@ def delete(name):
 
 
 @frappe.whitelist()
+def bulk_delete(secret_names):
+    from frappe_vault.services.secret_service import bulk_delete as _delete
+    if isinstance(secret_names, str):
+        secret_names = frappe.parse_json(secret_names)
+    return _delete(secret_names)
+
+
+@frappe.whitelist()
 def toggle_favorite(name):
     from frappe_vault.services.secret_service import toggle_favorite as _toggle
     return _toggle(name)

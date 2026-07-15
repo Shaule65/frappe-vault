@@ -242,7 +242,8 @@ def update_secret(name: str, data: dict) -> dict:
 
 def delete_secret(name: str) -> dict:
     """Delete a vault secret."""
-    if not frappe.has_permission("Vault Secret", "delete", name):
+    from frappe_vault.utils.permissions import has_secret_permission
+    if not has_secret_permission(name, ptype="delete"):
         frappe.throw(_("You don't have permission to delete this secret"), frappe.PermissionError)
 
     title = frappe.db.get_value("Vault Secret", name, "title")
@@ -250,24 +251,46 @@ def delete_secret(name: str) -> dict:
     # 1. Clean up associated shareable One Time Links
     one_time_links = frappe.get_all("Vault One Time Link", filters={"secret": name}, pluck="name")
     for link_name in one_time_links:
-        frappe.delete_doc("Vault One Time Link", link_name, force=True)
+        frappe.delete_doc("Vault One Time Link", link_name, force=True, ignore_permissions=True)
 
     # 2. Delete associated share settings
     shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
     for share_name in shares:
-        frappe.delete_doc("Vault Share", share_name, force=True)
+        frappe.delete_doc("Vault Share", share_name, force=True, ignore_permissions=True)
 
     # 3. Clean up associated favorites
     favorites = frappe.get_all("Vault Favorite", filters={"secret": name}, pluck="name")
     for fav_name in favorites:
-        frappe.delete_doc("Vault Favorite", fav_name, force=True)
+        frappe.delete_doc("Vault Favorite", fav_name, force=True, ignore_permissions=True)
 
     # 4. Finally delete the Vault Secret document itself.
-    # We bypass link verification (force=True) so we can keep the historical
+    # We bypass link verification for Vault Audit Log so we can keep the historical
     # Vault Audit Logs intact and displaying the raw secret ID in list views!
-    frappe.delete_doc("Vault Secret", name, force=True)
+    frappe.delete_doc("Vault Secret", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True)
 
     return {"name": name, "title": title}
+
+
+def bulk_delete(secret_names: list) -> dict:
+    """Delete multiple vault secrets. Skips any the user lacks permission for."""
+    deleted = 0
+    skipped = 0
+    failed = 0
+    error = None
+    for name in secret_names:
+        if not frappe.db.exists("Vault Secret", name):
+            continue  # already deleted
+        try:
+            delete_secret(name)
+            deleted += 1
+        except frappe.PermissionError:
+            # User doesn't own this secret and doesn't have Full Control — skip gracefully
+            skipped += 1
+        except Exception as e:
+            failed += 1
+            error = str(e)
+
+    return {"deleted": deleted, "skipped": skipped, "failed": failed, "error": error}
 
 
 def toggle_favorite(name: str) -> dict:
@@ -278,7 +301,7 @@ def toggle_favorite(name: str) -> dict:
     user = frappe.session.user
     fav_exists = frappe.db.exists("Vault Favorite", {"user": user, "secret": name})
     if fav_exists:
-        frappe.delete_doc("Vault Favorite", fav_exists, force=True)
+        frappe.delete_doc("Vault Favorite", fav_exists, force=True, ignore_permissions=True)
         is_favorite = 0
     else:
         fav_doc = frappe.get_doc({
