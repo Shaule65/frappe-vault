@@ -47,7 +47,6 @@ function getSecretLabel(log) {
         return detailsObj.deleted_secret_name
       }
     } catch (e) {
-      console.error('Failed to parse log details:', e)
     }
   }
   return ''

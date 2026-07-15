@@ -341,7 +341,6 @@ async function handleGenerateDemo() {
     secrets.reload()
     stats.reload()
   } catch (err) {
-    console.error(err)
   }
 }
 
@@ -547,7 +546,6 @@ async function handleDeleteSecret() {
       typeof item === 'object' && item !== null ? item.name : item
     )
     const res = await deleteResource.submit({ secret_names: JSON.stringify(secret_names) })
-    console.log('Bulk delete result:', res)
 
     if (res && res.deleted > 0) {
       // At least some secrets were deleted — close dialog, refresh list
@@ -562,7 +560,6 @@ async function handleDeleteSecret() {
       deleteError.value = res.error || 'An unexpected error occurred while deleting.'
     }
   } catch (error) {
-    console.error('Delete error:', error)
     deleteError.value = parseFrappeError(error)
   }
 }

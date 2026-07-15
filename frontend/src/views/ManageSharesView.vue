@@ -500,7 +500,6 @@ async function handleShareSecret() {
     showShareDialog.value = false
     shared.reload()
   } catch (err) {
-    console.error(err)
     toast.error(err.messages?.[0] || err.message || 'Failed to share access')
   } finally {
     isSharing.value = false
@@ -522,7 +521,6 @@ async function handleRevokeShare() {
     shareToRevoke.value = null
     shared.reload()
   } catch (err) {
-    console.error(err)
     toast.error(err.message || 'Failed to revoke access')
   }
 }

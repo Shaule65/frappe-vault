@@ -430,7 +430,6 @@ async function handleCreateFolder() {
     foldersResource.reload()
     stats.reload()
   } catch (err) {
-    console.error(err)
   }
 }
 
@@ -481,7 +480,6 @@ async function handleEditFolder() {
     folderToEdit.value = null
     foldersResource.reload()
   } catch (err) {
-    console.error(err)
   }
 }
 
@@ -502,7 +500,6 @@ async function handleDeleteFolder() {
     foldersResource.reload()
     stats.reload()
   } catch (err) {
-    console.error(err)
     deleteFolderError.value = parseFrappeError(err)
   }
 }
@@ -516,7 +513,6 @@ async function handleGenerateDemo() {
       router.push('/')
     }
   } catch (err) {
-    console.error(err)
   }
 }
 
@@ -528,7 +524,6 @@ async function handleClearDemo() {
     foldersResource.reload()
     router.push('/')
   } catch (err) {
-    console.error(err)
   }
 }
 

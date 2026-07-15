@@ -967,7 +967,6 @@ async function handleShareSecret() {
     await sharesResource.fetch({ secret_name: props.name })
     activity.reload()
   } catch (err) {
-    console.error(err)
     toast.error(err.messages?.[0] || err.message || 'Failed to share secret')
   } finally {
     isSharing.value = false
@@ -990,7 +989,6 @@ async function handleRevokeShare() {
     await sharesResource.fetch({ secret_name: props.name })
     activity.reload()
   } catch (err) {
-    console.error(err)
     toast.error(err.message || 'Failed to revoke access')
   }
 }
@@ -1271,7 +1269,6 @@ async function handleSave() {
     await activity.submit({ secret_name: props.name })
     decryptResource.submit({ name: props.name })
   } catch (e) {
-    console.error('Save failed:', e)
     toast.error(e.messages?.[0] || e.message || 'Failed to save changes')
   }
 }
@@ -1287,7 +1284,6 @@ async function confirmDelete() {
     toast.success('Secret deleted successfully')
     router.push('/secrets')
   } catch (err) {
-    console.error('Delete failed:', err)
     deleteError.value = err.messages?.[0] || err.message || 'Failed to delete secret'
     toast.error(deleteError.value)
   }
