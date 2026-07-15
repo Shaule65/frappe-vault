@@ -24,7 +24,10 @@ def _create_log(action: str, secret: str = None, folder: str = None, details: di
         })
         log.insert(ignore_permissions=True)
     except Exception as e:
-        frappe.log_error(f"Vault audit log failed: {e}", "Vault Audit Log Error")
+        try:
+            frappe.log_error(f"Vault audit log failed: {e}", "Vault Audit Log Error")
+        except Exception:
+            pass
 
 
 # --- Doc event hooks (called from hooks.py doc_events) ---

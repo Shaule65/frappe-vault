@@ -17,3 +17,8 @@ frappe_vault/www/vault.html
 # Environment
 .env
 .env.local
+
+# Auto-generated files
+frontend/auto-imports.d.ts
+frontend/components.d.ts
+frappe_vault/public/node_modules

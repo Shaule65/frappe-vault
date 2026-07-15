@@ -29,6 +29,11 @@ def share_secret(
         if not frappe.has_permission("Vault Folder", "share", shared_name):
             frappe.throw(_("You don't have permission to share this folder"), frappe.PermissionError)
 
+    if share_type == "User" and user:
+        owner = frappe.db.get_value(shared_doctype, shared_name, "owner")
+        if user == owner:
+            frappe.throw(_("You cannot share an item with its owner"))
+
     doc = frappe.get_doc({
         "doctype": "Vault Share",
         "share_type": share_type,
@@ -63,12 +68,17 @@ def unshare(share_name: str) -> dict:
         "is_revoked": 1,
         "revoked_by": frappe.session.user
     })
+    
+    # Log the activity
+    from frappe_vault.services.audit_service import log_share_removed
+    log_share_removed(doc, None)
+    
     frappe.db.commit()
     return {"removed": share_name}
 
 
 def get_shares_for_secret(secret_name: str) -> list:
-    """Get all active shares for a secret."""
+    """Get all shares for a secret."""
     shares = frappe.get_all(
         "Vault Share",
         filters={
@@ -76,7 +86,7 @@ def get_shares_for_secret(secret_name: str) -> list:
             "shared_name": secret_name,
         },
         fields=["name", "share_type", "user", "group", "frappe_role",
-                "permission_level", "expires_on", "shared_by"],
+                "permission_level", "expires_on", "shared_by", "is_revoked", "revoked_by"],
         order_by="creation desc",
     )
     return shares
@@ -112,7 +122,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
         FROM `tabVault Share` vs
         LEFT JOIN `tabVault Secret` sec ON vs.shared_name = sec.name AND vs.shared_doctype = 'Vault Secret'
         LEFT JOIN `tabVault Folder` fld ON vs.shared_name = fld.name AND vs.shared_doctype = 'Vault Folder'
-        WHERE ({where}) AND vs.is_revoked = 0 AND (sec.name IS NOT NULL OR fld.name IS NOT NULL)
+        WHERE ({where}) AND (sec.name IS NOT NULL OR fld.name IS NOT NULL)
         ORDER BY vs.creation DESC
         LIMIT %s OFFSET %s
     """, (limit, offset), as_dict=True)
@@ -122,7 +132,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
         FROM `tabVault Share` vs
         LEFT JOIN `tabVault Secret` sec ON vs.shared_name = sec.name AND vs.shared_doctype = 'Vault Secret'
         LEFT JOIN `tabVault Folder` fld ON vs.shared_name = fld.name AND vs.shared_doctype = 'Vault Folder'
-        WHERE ({where}) AND vs.is_revoked = 0 AND (sec.name IS NOT NULL OR fld.name IS NOT NULL)
+        WHERE ({where}) AND (sec.name IS NOT NULL OR fld.name IS NOT NULL)
     """)[0][0]
 
     return {"shared": secrets, "total": total, "limit": limit, "offset": offset}

@@ -28,7 +28,7 @@ const routes = [
     component: () => import('./views/SharedWithMeView.vue'),
   },
   {
-    path: '/manage-shares',
+    path: '/shares',
     name: 'ManageShares',
     component: () => import('./views/ManageSharesView.vue'),
   },
