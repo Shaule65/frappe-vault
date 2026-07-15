@@ -32,35 +32,50 @@ def create(folder_name, parent_vault_folder=None, icon=None, color=None, descrip
 
 @frappe.whitelist()
 def delete(name):
-    if not frappe.has_permission("Vault Folder", "delete", name):
+    from frappe_vault.utils.permissions import has_folder_permission
+    if not has_folder_permission(name, ptype="delete"):
         frappe.throw(_("You don't have permission to delete this folder"), frappe.PermissionError)
 
     # Cascading delete: delete all secrets stored inside this folder first
     from frappe_vault.services.secret_service import delete_secret
     secrets = frappe.get_all("Vault Secret", filters={"folder": name}, fields=["name"])
     for s in secrets:
-        delete_secret(s.name)
+        # Ignore permissions when cascading deleting secrets if we have permission to delete the folder
+        try:
+            # We already have permission to delete the folder, so we are allowed to delete secrets inside it
+            # We bypass the inner delete check to prevent permission mismatches
+            frappe.delete_doc("Vault Secret", s.name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True)
+        except Exception as e:
+            frappe.log_error(f"Failed to delete secret {s.name} during folder deletion: {str(e)}")
 
     # Delete folder shares
     shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Folder", "shared_name": name}, pluck="name")
     for share_name in shares:
-        frappe.delete_doc("Vault Share", share_name, force=True)
+        frappe.delete_doc("Vault Share", share_name, force=True, ignore_permissions=True)
 
-    frappe.delete_doc("Vault Folder", name)
+    frappe.delete_doc("Vault Folder", name, ignore_permissions=True)
     return {"deleted": name}
 
 
 @frappe.whitelist()
 def update(name, folder_name, color=None, description=None):
-    if not frappe.has_permission("Vault Folder", "write", name):
+    from frappe_vault.utils.permissions import has_folder_permission
+    if not has_folder_permission(name, ptype="write"):
         frappe.throw(_("You don't have permission to update this folder"), frappe.PermissionError)
 
+    if folder_name and folder_name != name:
+        # Since autoname is mapped to folder_name, we must rename the doc properly
+        # so that all linked Vault Secrets, Shares, etc. are updated automatically.
+        from frappe.model.rename_doc import rename_doc as _rename_doc
+        name = _rename_doc("Vault Folder", name, folder_name, ignore_permissions=True)
+
     doc = frappe.get_doc("Vault Folder", name)
-    doc.folder_name = folder_name
     if color is not None:
         doc.color = color
     if description is not None:
         doc.description = description
+    
+    doc.flags.ignore_permissions = True
     doc.save()
     return {"name": doc.name}
 

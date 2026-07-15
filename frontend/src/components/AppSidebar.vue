@@ -2,103 +2,113 @@
   <Sidebar
     v-model:collapsed="isSidebarCollapsed"
     :disable-collapse="isMobile"
-    :header="sidebarConfig.header"
-    :sections="sidebarConfig.sections"
     class="select-none"
   >
+    <div class="flex h-full flex-col p-2">
+      <!-- Header -->
+      <SidebarHeader
+        v-if="sidebarConfig.header"
+        :title="sidebarConfig.header.title"
+        :subtitle="sidebarConfig.header.subtitle"
+        :logo="sidebarConfig.header.logo"
+        :menu-items="sidebarConfig.header.menuItems"
+      />
 
-    <!-- Sidebar item slot — handles badges on nav items and custom folder rows -->
-    <template #sidebar-item="{ item, isCollapsed }">
-      <!-- Section Header row with + icon -->
-      <div
-        v-if="item.isHeader"
-        class="flex items-center justify-between px-2 pt-3 pb-1 mt-2 select-none"
-      >
-        <span
-          v-if="!isCollapsed"
-          class="text-xs font-semibold text-ink-gray-4 tracking-wider uppercase transition-opacity duration-200 truncate"
-        >
-          {{ item.label }}
-        </span>
-        <Tooltip text="Create Folder" placement="right">
-          <button
-            class="flex items-center justify-center w-5 h-5 rounded hover:bg-surface-gray-3 text-ink-gray-6 hover:text-ink-gray-8 transition-colors shrink-0"
-            :class="{ 'mx-auto': isCollapsed }"
-            @click.prevent.stop="openCreateFolderDialog"
+      <div class="flex-1 overflow-y-auto overflow-x-hidden">
+        <!-- Main Links Section -->
+        <nav class="flex flex-col gap-0.5 mt-2">
+          <SidebarItem
+            v-for="item in sidebarConfig.sections[0].items"
+            :key="item.label"
+            :label="item.label"
+            :icon="item.icon"
+            :to="item.to"
+            :isActive="item.isActive"
           >
-            <FeatherIcon name="plus" class="w-3.5 h-3.5" />
-          </button>
-        </Tooltip>
+            <template v-if="item.count" #suffix>
+              <Badge :label="String(item.count)" variant="subtle" theme="gray" />
+            </template>
+          </SidebarItem>
+        </nav>
+
+        <!-- Folders Section -->
+        <div class="mt-4 flex flex-col gap-0.5">
+          <div class="flex items-center justify-between px-2 pt-3 pb-1 mb-1 select-none">
+            <span
+              v-if="!isSidebarCollapsed"
+              class="text-xs font-semibold text-ink-gray-4 tracking-wider uppercase transition-opacity duration-200 truncate"
+            >
+              Folders
+            </span>
+            <Tooltip text="Create Folder" placement="right">
+              <button
+                class="flex items-center justify-center w-5 h-5 rounded hover:bg-surface-gray-3 text-ink-gray-6 hover:text-ink-gray-8 transition-colors shrink-0"
+                :class="{ 'mx-auto': isSidebarCollapsed }"
+                @click.prevent.stop="openCreateFolderDialog"
+              >
+                <FeatherIcon name="plus" class="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
+          </div>
+
+          <SidebarItem
+            v-for="folder in folders"
+            :key="folder.name"
+            :label="folder.folder_name"
+            :to="`/secrets?folder=${encodeURIComponent(folder.name)}`"
+            :isActive="checkActive(`/secrets?folder=${encodeURIComponent(folder.name)}`)"
+            class="group"
+          >
+            <template #prefix>
+              <div class="flex items-center justify-center w-4 h-4">
+                <div
+                  class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5"
+                  :style="{ backgroundColor: folder.color || '#6b7280' }"
+                />
+              </div>
+            </template>
+            <template #suffix>
+              <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-150" @click.prevent.stop>
+                <Dropdown :options="getFolderOptions(folder)">
+                  <template #default="{ open }">
+                    <Button
+                      variant="ghost"
+                      icon="lucide-more-horizontal"
+                      class="!p-0.5 h-auto text-ink-gray-6"
+                      :class="{ 'bg-surface-gray-3': open }"
+                    />
+                  </template>
+                </Dropdown>
+              </div>
+            </template>
+          </SidebarItem>
+        </div>
       </div>
 
-      <!-- Folder items: colored dot icon + context menu -->
-      <SidebarItem
-        v-else-if="item.folder"
-        :label="item.label"
-        :to="item.to"
-        :isActive="item.isActive"
-        class="group"
-      >
-        <template #icon>
-          <div class="flex items-center justify-center w-4 h-4">
-            <div
-              class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5"
-              :style="{ backgroundColor: item.color || '#6b7280' }"
-            />
-          </div>
-        </template>
-        <template #suffix>
-          <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-150" @click.prevent.stop>
-            <Dropdown :options="getFolderOptions(item.folder)">
-              <template #default="{ open }">
-                <Button
-                  variant="ghost"
-                  icon="lucide-more-horizontal"
-                  class="!p-0.5 h-auto text-ink-gray-6"
-                  :class="{ 'bg-surface-gray-3': open }"
-                />
-              </template>
-            </Dropdown>
-          </div>
-        </template>
-      </SidebarItem>
-
-      <!-- Standard nav items: badge count suffix -->
-      <SidebarItem
-        v-else
-        :label="item.label"
-        :icon="item.icon"
-        :to="item.to"
-        :isActive="item.isActive"
-      >
-        <template v-if="item.count" #suffix>
-          <Badge :label="String(item.count)" variant="subtle" theme="gray" />
-        </template>
-      </SidebarItem>
-    </template>
-
-    <!-- Footer items slot (holds dialogs since Sidebar has no default slot) -->
-    <template #footer-items="{ isCollapsed }">
-      <SidebarItem
-        v-if="stats.data?.has_demo_data"
-        label="Clear Demo Data"
-        class="hover:!bg-red-100/80 !text-red-600 transition-colors cursor-pointer font-medium"
-        @click="showClearDemoConfirm = true"
-      >
-        <template #icon>
-          <BrushCleaningIcon class="size-4 text-red-600 shrink-0" />
-        </template>
-      </SidebarItem>
-      <SidebarItem
-        v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
-        label="Load Demo Data"
-        class="hover:!bg-blue-100/80 !text-blue-600 transition-colors cursor-pointer font-medium"
-        @click="handleGenerateDemo"
-      >
-        <template #icon>
-          <SparklesIcon class="size-4 text-blue-600 shrink-0" />
-        </template>
-      </SidebarItem>
+      <div class="mt-auto">
+        <SidebarItem
+          v-if="stats.data?.has_demo_data"
+          label="Clear Demo Data"
+          class="hover:!bg-red-100/80 !text-red-600 transition-colors cursor-pointer font-medium"
+          @click="showClearDemoConfirm = true"
+        >
+          <template #icon>
+            <BrushCleaningIcon class="size-4 text-red-600 shrink-0" />
+          </template>
+        </SidebarItem>
+        <SidebarItem
+          v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
+          label="Load Demo Data"
+          class="hover:!bg-blue-100/80 !text-blue-600 transition-colors cursor-pointer font-medium"
+          @click="handleGenerateDemo"
+        >
+          <template #icon>
+            <SparklesIcon class="size-4 text-blue-600 shrink-0" />
+          </template>
+        </SidebarItem>
+        <SidebarCollapseToggle v-if="!isMobile" />
+      </div>
+    </div>
 
       <!-- Clear Demo Data Confirmation Dialog -->
       <Dialog
@@ -283,6 +293,9 @@
                   Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
                 </p>
               </div>
+              <div v-if="deleteFolderError" class="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 mt-2">
+                {{ deleteFolderError }}
+              </div>
             </template>
           </div>
         </template>
@@ -300,14 +313,13 @@
           </div>
         </template>
       </Dialog>
-    </template>
   </Sidebar>
 </template>
 
 <script setup>
 import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, createResource } from 'frappe-ui'
+import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData } from '../composables/vault'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import GlobeIcon from '~icons/lucide/globe'
@@ -374,6 +386,23 @@ const showDeleteFolderDialog = ref(false)
 const folderToDelete = ref(null)
 const deleteSecretsCount = ref(0)
 const loadingCount = ref(false)
+const deleteFolderError = ref('')
+
+function parseFrappeError(error) {
+  if (error?.message && !error.message.includes('Traceback')) {
+    return error.message
+  }
+  if (Array.isArray(error?.messages) && error.messages.length) {
+    const msg = error.messages[0]
+    if (msg && !msg.includes('Traceback')) return msg
+  }
+  if (error?.exc) {
+    const lines = error.exc.split('\n').map(l => l.trim()).filter(Boolean)
+    const last = lines[lines.length - 1]
+    if (last) return last.replace(/^frappe\.\w+\.\w+:\s*/, '')
+  }
+  return 'Failed to delete folder. Please try again.'
+}
 
 const curatedColors = [
   '#3b82f6', // Blue
@@ -429,6 +458,7 @@ function openDeleteFolderDialog(folder) {
   folderToDelete.value = folder
   deleteSecretsCount.value = 0
   loadingCount.value = true
+  deleteFolderError.value = ''
   showDeleteFolderDialog.value = true
 
   folderSecretsResource.submit({ folder_name: folder.name }).then((res) => {
@@ -457,6 +487,7 @@ async function handleEditFolder() {
 
 async function handleDeleteFolder() {
   if (!folderToDelete.value) return
+  deleteFolderError.value = ''
   try {
     await deleteFolderResource.submit({
       name: folderToDelete.value.name,
@@ -472,6 +503,7 @@ async function handleDeleteFolder() {
     stats.reload()
   } catch (err) {
     console.error(err)
+    deleteFolderError.value = parseFrappeError(err)
   }
 }
 
@@ -550,8 +582,13 @@ function checkActive(to) {
 
   if (pathStr.includes('?')) {
     const [path, queryString] = pathStr.split('?')
-    const currentSearch = window.location.search || ''
-    return route.path === path && currentSearch.includes(queryString)
+    if (route.path !== path) return false
+    
+    const urlParams = new URLSearchParams(queryString)
+    for (const [key, value] of urlParams.entries()) {
+      if (route.query[key] !== value) return false
+    }
+    return true
   }
 
   if (pathStr === '/') {
@@ -630,8 +667,8 @@ const sidebarConfig = reactive({
         {
           label: isAdmin.value ? 'Shares' : 'Shared with Me',
           icon: 'lucide-share-2',
-          to: isAdmin.value ? '/manage-shares' : '/shared',
-          isActive: checkActive(isAdmin.value ? '/manage-shares' : '/shared'),
+          to: isAdmin.value ? '/shares' : '/shared',
+          isActive: checkActive(isAdmin.value ? '/shares' : '/shared'),
         },
       ],
     },
