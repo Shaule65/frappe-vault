@@ -102,7 +102,9 @@ const foldersResource = useFolders()
 const folderOptions = computed(() => {
   const opts = [{ label: 'None', value: '' }]
   for (const f of foldersResource.data || []) {
-    opts.push({ label: f.folder_name, value: f.name })
+    if (f.can_write) {
+      opts.push({ label: f.folder_name, value: f.name })
+    }
   }
   return opts
 })

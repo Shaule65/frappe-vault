@@ -6,11 +6,15 @@ from frappe import _
 
 @frappe.whitelist()
 def get_all():
-    return frappe.get_list(
+    folders = frappe.get_list(
         "Vault Folder",
-        fields=["name", "folder_name", "parent_vault_folder", "is_group", "icon", "color", "description"],
+        fields=["name", "folder_name", "parent_vault_folder", "is_group", "icon", "color", "description", "owner"],
         order_by="lft"
     )
+    from frappe_vault.utils.permissions import has_folder_permission
+    for f in folders:
+        f["can_write"] = 1 if has_folder_permission(f.name, ptype="write") else 0
+    return folders
 
 
 @frappe.whitelist()

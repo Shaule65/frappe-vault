@@ -103,7 +103,14 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
     roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in roles or "System Manager" in roles
 
-    if is_admin or doc.owner == user:
+    is_folder_owner = False
+    if doc.folder:
+        folder_owner = frappe.db.get_value("Vault Folder", doc.folder, "owner")
+        if folder_owner == user:
+            is_folder_owner = True
+
+    shared_by = None
+    if is_admin or doc.owner == user or is_folder_owner:
         user_permission = "Full Control"
     else:
         conditions = [
@@ -129,7 +136,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         conditions.append("(" + " OR ".join(share_conds) + ")")
         
         shares = frappe.db.sql(f"""
-            SELECT permission_level FROM `tabVault Share`
+            SELECT permission_level, shared_by FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}
         """, as_dict=True)
         
@@ -142,8 +149,10 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
             }
             highest_share = max(shares, key=lambda s: perm_map.get(s.permission_level, 0))
             user_permission = highest_share.permission_level
+            shared_by = highest_share.shared_by
         else:
             user_permission = "View Only"
+            shared_by = doc.owner
 
     result = {
         "name": doc.name,
@@ -162,6 +171,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "expires_on": str(doc.expires_on) if doc.expires_on else None,
         "tags": [t.tag for t in (doc.tags or [])],
         "owner": doc.owner,
+        "shared_by": shared_by,
         "modified": str(doc.modified),
         "user_permission": user_permission,
     }
@@ -200,6 +210,12 @@ def create_secret(data: dict) -> dict:
     if not frappe.has_permission("Vault Secret", "create"):
         frappe.throw(_("You don't have permission to create secrets"), frappe.PermissionError)
 
+    folder = data.get("folder")
+    if folder:
+        from frappe_vault.utils.permissions import has_folder_permission
+        if not has_folder_permission(folder, ptype="write"):
+            frappe.throw(_("You don't have permission to add secrets to this folder"), frappe.PermissionError)
+
     doc = frappe.get_doc({
         "doctype": "Vault Secret",
         **{k: v for k, v in data.items() if k not in ("doctype", "name")},
@@ -223,6 +239,12 @@ def update_secret(name: str, data: dict) -> dict:
         frappe.throw(_("You don't have permission to update this secret"), frappe.PermissionError)
 
     doc = frappe.get_doc("Vault Secret", name)
+
+    new_folder = data.get("folder")
+    if new_folder and new_folder != doc.folder:
+        from frappe_vault.utils.permissions import has_folder_permission
+        if not has_folder_permission(new_folder, ptype="write"):
+            frappe.throw(_("You don't have permission to move secrets to this folder"), frappe.PermissionError)
 
     allowed_fields = [
         "title", "secret_type", "folder", "url", "username", "email",

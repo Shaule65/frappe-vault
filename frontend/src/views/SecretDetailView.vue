@@ -89,7 +89,7 @@
                   <div>
                     <p class="font-bold text-ink-gray-9 leading-normal">Shared Secret Access</p>
                     <p class="mt-1 text-ink-gray-6 font-normal">
-                      This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
+                      This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.shared_by || secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
                     </p>
                   </div>
                 </div>
@@ -896,7 +896,7 @@ const isOwnerOrAdmin = computed(() => {
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
   if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
-  return secretData.value?.owner === currentSessionUser.value
+  return secretData.value?.owner === currentSessionUser.value || secretData.value?.user_permission === 'Full Control'
 })
 
 const userPermission = computed(() => secretData.value?.user_permission || 'View Only')
@@ -999,7 +999,9 @@ const folderOptions = computed(() => {
   const options = [{ label: 'No Folder', value: '' }]
   if (folders.data) {
     folders.data.forEach(f => {
-      options.push({ label: f.folder_name, value: f.name })
+      if (f.can_write || f.name === secretData.value?.folder) {
+        options.push({ label: f.folder_name, value: f.name })
+      }
     })
   }
   return options
