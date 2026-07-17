@@ -36,7 +36,6 @@ export function useClipboard(clearAfterMs = 30000) {
 
       return true
     } catch (e) {
-      console.error('Clipboard copy failed:', e)
       return false
     }
   }

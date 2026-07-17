@@ -103,7 +103,14 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
     roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in roles or "System Manager" in roles
 
-    if is_admin or doc.owner == user:
+    is_folder_owner = False
+    if doc.folder:
+        folder_owner = frappe.db.get_value("Vault Folder", doc.folder, "owner")
+        if folder_owner == user:
+            is_folder_owner = True
+
+    shared_by = None
+    if is_admin or doc.owner == user or is_folder_owner:
         user_permission = "Full Control"
     else:
         conditions = [
@@ -129,7 +136,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         conditions.append("(" + " OR ".join(share_conds) + ")")
         
         shares = frappe.db.sql(f"""
-            SELECT permission_level FROM `tabVault Share`
+            SELECT permission_level, shared_by FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}
         """, as_dict=True)
         
@@ -142,8 +149,10 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
             }
             highest_share = max(shares, key=lambda s: perm_map.get(s.permission_level, 0))
             user_permission = highest_share.permission_level
+            shared_by = highest_share.shared_by
         else:
             user_permission = "View Only"
+            shared_by = doc.owner
 
     result = {
         "name": doc.name,
@@ -162,6 +171,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "expires_on": str(doc.expires_on) if doc.expires_on else None,
         "tags": [t.tag for t in (doc.tags or [])],
         "owner": doc.owner,
+        "shared_by": shared_by,
         "modified": str(doc.modified),
         "user_permission": user_permission,
     }
@@ -200,6 +210,12 @@ def create_secret(data: dict) -> dict:
     if not frappe.has_permission("Vault Secret", "create"):
         frappe.throw(_("You don't have permission to create secrets"), frappe.PermissionError)
 
+    folder = data.get("folder")
+    if folder:
+        from frappe_vault.utils.permissions import has_folder_permission
+        if not has_folder_permission(folder, ptype="write"):
+            frappe.throw(_("You don't have permission to add secrets to this folder"), frappe.PermissionError)
+
     doc = frappe.get_doc({
         "doctype": "Vault Secret",
         **{k: v for k, v in data.items() if k not in ("doctype", "name")},
@@ -224,6 +240,12 @@ def update_secret(name: str, data: dict) -> dict:
 
     doc = frappe.get_doc("Vault Secret", name)
 
+    new_folder = data.get("folder")
+    if new_folder and new_folder != doc.folder:
+        from frappe_vault.utils.permissions import has_folder_permission
+        if not has_folder_permission(new_folder, ptype="write"):
+            frappe.throw(_("You don't have permission to move secrets to this folder"), frappe.PermissionError)
+
     allowed_fields = [
         "title", "secret_type", "folder", "url", "username", "email",
         "password", "api_key", "api_secret", "notes", "is_favorite",
@@ -242,7 +264,8 @@ def update_secret(name: str, data: dict) -> dict:
 
 def delete_secret(name: str) -> dict:
     """Delete a vault secret."""
-    if not frappe.has_permission("Vault Secret", "delete", name):
+    from frappe_vault.utils.permissions import has_secret_permission
+    if not has_secret_permission(name, ptype="delete"):
         frappe.throw(_("You don't have permission to delete this secret"), frappe.PermissionError)
 
     title = frappe.db.get_value("Vault Secret", name, "title")
@@ -250,24 +273,46 @@ def delete_secret(name: str) -> dict:
     # 1. Clean up associated shareable One Time Links
     one_time_links = frappe.get_all("Vault One Time Link", filters={"secret": name}, pluck="name")
     for link_name in one_time_links:
-        frappe.delete_doc("Vault One Time Link", link_name, force=True)
+        frappe.delete_doc("Vault One Time Link", link_name, force=True, ignore_permissions=True)
 
     # 2. Delete associated share settings
     shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
     for share_name in shares:
-        frappe.delete_doc("Vault Share", share_name, force=True)
+        frappe.delete_doc("Vault Share", share_name, force=True, ignore_permissions=True)
 
     # 3. Clean up associated favorites
     favorites = frappe.get_all("Vault Favorite", filters={"secret": name}, pluck="name")
     for fav_name in favorites:
-        frappe.delete_doc("Vault Favorite", fav_name, force=True)
+        frappe.delete_doc("Vault Favorite", fav_name, force=True, ignore_permissions=True)
 
     # 4. Finally delete the Vault Secret document itself.
-    # We bypass link verification (force=True) so we can keep the historical
+    # We bypass link verification for Vault Audit Log so we can keep the historical
     # Vault Audit Logs intact and displaying the raw secret ID in list views!
-    frappe.delete_doc("Vault Secret", name, force=True)
+    frappe.delete_doc("Vault Secret", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True)
 
     return {"name": name, "title": title}
+
+
+def bulk_delete(secret_names: list) -> dict:
+    """Delete multiple vault secrets. Skips any the user lacks permission for."""
+    deleted = 0
+    skipped = 0
+    failed = 0
+    error = None
+    for name in secret_names:
+        if not frappe.db.exists("Vault Secret", name):
+            continue  # already deleted
+        try:
+            delete_secret(name)
+            deleted += 1
+        except frappe.PermissionError:
+            # User doesn't own this secret and doesn't have Full Control — skip gracefully
+            skipped += 1
+        except Exception as e:
+            failed += 1
+            error = str(e)
+
+    return {"deleted": deleted, "skipped": skipped, "failed": failed, "error": error}
 
 
 def toggle_favorite(name: str) -> dict:
@@ -278,7 +323,7 @@ def toggle_favorite(name: str) -> dict:
     user = frappe.session.user
     fav_exists = frappe.db.exists("Vault Favorite", {"user": user, "secret": name})
     if fav_exists:
-        frappe.delete_doc("Vault Favorite", fav_exists, force=True)
+        frappe.delete_doc("Vault Favorite", fav_exists, force=True, ignore_permissions=True)
         is_favorite = 0
     else:
         fav_doc = frappe.get_doc({

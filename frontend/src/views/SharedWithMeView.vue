@@ -26,16 +26,6 @@
         />
       </template>
       <template #right>
-        <!-- Bulk Delete Button -->
-        <Button
-          v-if="selectedShares.size > 0"
-          variant="solid"
-          theme="red"
-          class="h-8 px-3 text-sm focus:outline-none font-medium"
-          @click="showBulkDeleteDialog = true"
-        >
-          Delete Logs ({{ selectedShares.size }})
-        </Button>
 
         <!-- Refresh Button -->
         <Button
@@ -118,7 +108,17 @@
               </ListRowItem>
             </ListRow>
           </ListRows>
-          <ListSelectBanner />
+          <ListSelectBanner>
+            <template #actions="{ unselectAll }">
+              <Button
+                variant="solid"
+                theme="red"
+                iconLeft="trash-2"
+                label="Delete"
+                @click="showBulkDeleteDialog = true"
+              />
+            </template>
+          </ListSelectBanner>
         </ListView>
 
         <!-- Pagination Footer -->
@@ -207,6 +207,7 @@ const filteredList = computed(() => {
       (item.shared_by && item.shared_by.toLowerCase().includes(q))
     )
   }
+  return result || []
 })
 
 const columns = ref([

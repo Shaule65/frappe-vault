@@ -10,7 +10,7 @@ Secrets and password management application. Securely store, share, and manage s
 ## Features
 
 - **Secure Storage**: Store passwords, API keys, SSH keys, certificates, and notes with encryption
-- **Categories**: Organize secrets in a tree-based category structure
+- **Folders**: Organize secrets in a tree-based folder structure
 - **Access Logging**: Track who accessed which secrets and when
 - **Sharing**: Share secrets with specific users or roles
 - **Favorites**: Mark frequently used secrets as favorites
@@ -86,7 +86,7 @@ Assign these roles to users through the User DocType or Role Permissions Manager
 1. Navigate to **Frappe Vault > Vault Secret > New**
 2. Enter a title and select the secret type
 3. Fill in the credentials (password, API key, etc.)
-4. Optionally assign a category and tags
+4. Optionally assign a folder and tags
 5. Save
 
 ### Sharing Secrets
@@ -131,7 +131,7 @@ Main document for storing credentials.
 |-------|------|-------------|
 | title | Data | Name/title of the secret |
 | secret_type | Select | Password, API Key, Note, SSH Key, Certificate, Other |
-| category | Link | Reference to Vault Category |
+| folder | Link | Reference to Vault Folder |
 | url | Data | Associated website/service URL |
 | username | Data | Username for the credential |
 | password | Password | Encrypted password field |
@@ -141,7 +141,7 @@ Main document for storing credentials.
 | is_favorite | Check | Mark as favorite |
 | password_strength | Select | Calculated password strength |
 
-### Vault Category
+### Vault Folder
 
 Tree-based organization for secrets.
 

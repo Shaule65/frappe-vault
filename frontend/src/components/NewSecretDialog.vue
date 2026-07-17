@@ -7,8 +7,8 @@
         <FormControl label="Secret Type" type="select" v-model="form.secret_type" :options="SECRET_TYPES" />
 
         <div class="grid grid-cols-2 gap-4">
-          <FormControl label="Folder" type="select" v-model="form.folder" :options="folderOptions" />
-          <FormControl label="URL" v-model="form.url" placeholder="https://..." />
+          <FormControl label="Folder" type="select" v-model="form.folder" :options="folderOptions" :class="form.secret_type === 'Credit Card' ? 'col-span-2' : ''" />
+          <FormControl v-if="form.secret_type !== 'Credit Card'" label="URL" v-model="form.url" placeholder="https://..." />
         </div>
 
         <!-- Password fields -->
@@ -17,21 +17,37 @@
             <FormControl label="Username" v-model="form.username" />
             <FormControl label="Email" v-model="form.email" type="email" />
           </div>
-          <FormControl label="Password" v-model="form.password" type="password" />
+          <FormControl label="Password" v-model="form.password" :type="showSecrets ? 'text' : 'password'">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
         </template>
 
         <!-- API Key fields -->
         <template v-if="form.secret_type === 'API Key'">
           <FormControl label="API Key" v-model="form.api_key" />
-          <FormControl label="API Secret" v-model="form.api_secret" type="password" />
+          <FormControl label="API Secret" v-model="form.api_secret" :type="showSecrets ? 'text' : 'password'">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
         </template>
 
         <!-- Credit Card fields -->
         <template v-if="form.secret_type === 'Credit Card'">
           <FormControl label="Card Holder" v-model="form.card_holder" />
           <div class="grid grid-cols-3 gap-4">
-            <FormControl label="Card Number" v-model="form.card_number" type="password" class="col-span-2" />
-            <FormControl label="CVV" v-model="form.card_cvv" type="password" />
+            <FormControl label="Card Number" v-model="form.card_number" :type="showSecrets ? 'text' : 'password'" class="col-span-2">
+              <template #suffix>
+                <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+              </template>
+            </FormControl>
+            <FormControl label="CVV" v-model="form.card_cvv" :type="showSecrets ? 'text' : 'password'">
+              <template #suffix>
+                <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+              </template>
+            </FormControl>
           </div>
           <FormControl label="Expiry (MM/YY)" v-model="form.card_expiry" placeholder="12/28" />
         </template>
@@ -46,7 +62,11 @@
             <FormControl label="Database Name" v-model="form.db_name" />
             <FormControl label="Username" v-model="form.username" />
           </div>
-          <FormControl label="Password" v-model="form.db_password" type="password" />
+          <FormControl label="Password" v-model="form.db_password" :type="showSecrets ? 'text' : 'password'">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
         </template>
 
         <FormControl label="Notes" type="textarea" v-model="form.notes" :rows="3" />
@@ -82,7 +102,9 @@ const foldersResource = useFolders()
 const folderOptions = computed(() => {
   const opts = [{ label: 'None', value: '' }]
   for (const f of foldersResource.data || []) {
-    opts.push({ label: f.folder_name, value: f.name })
+    if (f.can_write) {
+      opts.push({ label: f.folder_name, value: f.name })
+    }
   }
   return opts
 })
@@ -94,8 +116,14 @@ const defaultForm = () => ({
 })
 
 const form = ref(defaultForm())
+const showSecrets = ref(false)
 
-watch(show, (v) => { if (v) form.value = defaultForm() })
+watch(show, (v) => { 
+  if (v) {
+    form.value = defaultForm()
+    showSecrets.value = false
+  } 
+})
 
 async function handleCreate() {
   const result = await createResource.submit(form.value)

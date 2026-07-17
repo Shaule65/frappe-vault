@@ -89,7 +89,7 @@
                   <div>
                     <p class="font-bold text-ink-gray-9 leading-normal">Shared Secret Access</p>
                     <p class="mt-1 text-ink-gray-6 font-normal">
-                      This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
+                      This secret was shared with you by <strong class="text-ink-gray-8">{{ secretData.shared_by || secretData.owner }}</strong>. You have <strong class="text-ink-gray-8">{{ secretData.permission_level || 'View Only' }}</strong> rights on this secret.
                     </p>
                   </div>
                 </div>
@@ -126,20 +126,21 @@
 
                       <div class="flex items-center gap-3 shrink-0">
                         <Badge
-                          :theme="permissionTheme[item.permission_level] || 'gray'"
+                          :theme="item.is_revoked ? 'red' : (permissionTheme[item.permission_level] || 'gray')"
                           variant="subtle"
                           size="sm"
                         >
-                          {{ item.permission_level }}
+                          {{ item.is_revoked ? 'Revoked' : item.permission_level }}
                         </Badge>
 
                         <!-- Revoke Access Action -->
                         <Button
+                          v-if="!item.is_revoked"
                           variant="ghost"
                           icon="lucide-trash-2"
                           class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-red-50"
                           title="Revoke Access"
-                          @click="handleRevokeShare(item.name, item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role)"
+                          @click="confirmRevokeShare(item)"
                         />
                       </div>
                     </div>
@@ -743,6 +744,37 @@
         />
       </template>
     </Dialog>
+
+    <!-- Revoke Confirmation Dialog -->
+    <Dialog
+      v-model="showRevokeConfirm"
+      :options="{
+        title: 'Revoke Share Access',
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="pt-2">
+          <p class="text-sm text-ink-gray-7">
+            Are you sure you want to revoke share access for
+            <span class="font-bold text-ink-gray-9">{{ shareToRevoke?.share_type === 'User' ? shareToRevoke?.user : shareToRevoke?.share_type === 'Group' ? shareToRevoke?.group : shareToRevoke?.frappe_role }}</span>?
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2 px-4 pb-4">
+          <Button variant="ghost" label="Cancel" @click="showRevokeConfirm = false" class="text-ink-gray-7 focus:outline-none" />
+          <Button
+            variant="solid"
+            theme="red"
+            label="Revoke Access"
+            :loading="unshareResource.loading"
+            @click="handleRevokeShare"
+            class="px-4 font-semibold shadow-sm focus:outline-none"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -792,6 +824,8 @@ const showEditCardCVV = ref(false)
 const showEditDBPassword = ref(false)
 
 const showShareDialog = ref(false)
+const showRevokeConfirm = ref(false)
+const shareToRevoke = ref(null)
 
 const secret = useSecret(props.name)
 const decryptResource = useDecryptSecret()
@@ -821,11 +855,17 @@ const sharesList = computed(() => sharesResource.data || [])
 const shareOptions = computed(() => shareOptionsResource.data || { users: [], groups: [], roles: [] })
 
 const recipientOptions = computed(() => {
-  const list = newShareType.value === 'User' 
+  const owner = secretData.value?.owner
+  let list = newShareType.value === 'User' 
     ? shareOptions.value.users 
     : newShareType.value === 'Group' 
       ? shareOptions.value.groups 
       : shareOptions.value.roles
+      
+  if (newShareType.value === 'User' && owner) {
+    list = list.filter(item => item.value !== owner)
+  }
+  
   return [{ label: 'Choose recipient...', value: '' }, ...list]
 })
 
@@ -856,7 +896,7 @@ const isOwnerOrAdmin = computed(() => {
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
   if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
-  return secretData.value?.owner === currentSessionUser.value
+  return secretData.value?.owner === currentSessionUser.value || secretData.value?.user_permission === 'Full Control'
 })
 
 const userPermission = computed(() => secretData.value?.user_permission || 'View Only')
@@ -927,21 +967,28 @@ async function handleShareSecret() {
     await sharesResource.fetch({ secret_name: props.name })
     activity.reload()
   } catch (err) {
-    console.error(err)
     toast.error(err.messages?.[0] || err.message || 'Failed to share secret')
   } finally {
     isSharing.value = false
   }
 }
 
-async function handleRevokeShare(shareName, recipientName) {
+function confirmRevokeShare(item) {
+  shareToRevoke.value = item
+  showRevokeConfirm.value = true
+}
+
+async function handleRevokeShare() {
+  if (!shareToRevoke.value) return
+  const recipientName = shareToRevoke.value.share_type === 'User' ? shareToRevoke.value.user : shareToRevoke.value.share_type === 'Group' ? shareToRevoke.value.group : shareToRevoke.value.frappe_role
   try {
-    await unshareResource.submit({ share_name: shareName })
+    await unshareResource.submit({ share_name: shareToRevoke.value.name })
     toast.success(`Revoked access for ${recipientName}`)
+    showRevokeConfirm.value = false
+    shareToRevoke.value = null
     await sharesResource.fetch({ secret_name: props.name })
     activity.reload()
   } catch (err) {
-    console.error(err)
     toast.error(err.message || 'Failed to revoke access')
   }
 }
@@ -952,7 +999,9 @@ const folderOptions = computed(() => {
   const options = [{ label: 'No Folder', value: '' }]
   if (folders.data) {
     folders.data.forEach(f => {
-      options.push({ label: f.folder_name, value: f.name })
+      if (f.can_write || f.name === secretData.value?.folder) {
+        options.push({ label: f.folder_name, value: f.name })
+      }
     })
   }
   return options
@@ -1222,7 +1271,6 @@ async function handleSave() {
     await activity.submit({ secret_name: props.name })
     decryptResource.submit({ name: props.name })
   } catch (e) {
-    console.error('Save failed:', e)
     toast.error(e.messages?.[0] || e.message || 'Failed to save changes')
   }
 }
@@ -1238,7 +1286,6 @@ async function confirmDelete() {
     toast.success('Secret deleted successfully')
     router.push('/secrets')
   } catch (err) {
-    console.error('Delete failed:', err)
     deleteError.value = err.messages?.[0] || err.message || 'Failed to delete secret'
     toast.error(deleteError.value)
   }

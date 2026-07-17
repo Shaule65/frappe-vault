@@ -131,6 +131,7 @@
           :columns="columns"
           :rows="paginatedRows"
           row-key="name"
+          v-model:selections="selectedSecrets"
           :options="{
             selectable: true,
             showTooltip: true,
@@ -193,17 +194,22 @@
                         :class="row.is_favorite ? 'text-yellow-500 fill-yellow-500' : 'text-ink-gray-4'"
                       />
                     </Button>
-                    <Dropdown :options="getRowActions(row)">
-                      <template #default="{ open }">
-                        <Button variant="ghost" icon="lucide-more-horizontal" :class="{ 'bg-surface-gray-2': open }" />
-                      </template>
-                    </Dropdown>
                   </div>
                 </template>
               </ListRowItem>
             </ListRow>
           </ListRows>
-          <ListSelectBanner />
+          <ListSelectBanner>
+            <template #actions="{ unselectAll }">
+              <Button
+                variant="solid"
+                theme="red"
+                iconLeft="trash-2"
+                label="Delete"
+                @click="showDeleteDialog = true"
+              />
+            </template>
+          </ListSelectBanner>
         </ListView>
 
         <!-- Pagination Footer -->
@@ -236,6 +242,35 @@
       </EmptyState>
     </div>
 
+    <!-- Delete Secret Dialog -->
+    <Dialog
+      v-model="showDeleteDialog"
+      :title="'Delete Secret'"
+      size="sm"
+    >
+      <template #default>
+        <div class="space-y-3 px-4 pb-6">
+          <p class="text-sm text-ink-gray-6 mt-1 leading-normal" v-if="selectedSecrets.size === 1">
+            Are you sure you want to permanently delete <strong>this secret</strong>? This action cannot be undone.
+          </p>
+          <p class="text-sm text-ink-gray-6 mt-1 leading-normal" v-else>
+            Are you sure you want to permanently delete <strong>{{ selectedSecrets.size }} secrets</strong>? This action cannot be undone.
+          </p>
+          <div v-if="deleteError" class="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+            {{ deleteError }}
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-4 pb-4">
+          <Button variant="outline" @click="showDeleteDialog = false">
+            Cancel
+          </Button>
+          <Button variant="solid" theme="red" @click="handleDeleteSecret" :loading="deleteResource.loading">
+            Delete
+          </Button>
+        </div>
+      </template>
+    </Dialog>
+
     <!-- New Secret Dialog -->
     <NewSecretDialog v-model="showNewDialog" :initial-folder="activeFilters.folder" @created="handleCreated" />
 
@@ -251,6 +286,7 @@ import FilterIcon from '../components/FilterIcon.vue'
 import RefreshIcon from '../components/RefreshIcon.vue'
 import {
   Button,
+  Dialog,
   TextInput,
   Dropdown,
   FeatherIcon,
@@ -265,7 +301,7 @@ import {
   Breadcrumbs,
   Select,
 } from 'frappe-ui'
-import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite, useGenerateDemoData, useVaultStats } from '../composables/vault'
+import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite, useGenerateDemoData, useVaultStats, useDeleteSecret, useBulkDeleteSecrets } from '../composables/vault'
 import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import NewSecretDialog from '../components/NewSecretDialog.vue'
@@ -277,9 +313,13 @@ const router = useRouter()
 const titleQuery = ref('')
 const selectedSecret = ref(null)
 const showNewDialog = ref(false)
+const selectedSecrets = ref(new Set())
 const activeFilters = ref({ secret_type: '', folder: route.query.folder || '', favorites_only: false })
 const pageLength = ref(20)
 const currentSort = ref('modified desc')
+const showDeleteDialog = ref(false)
+const deleteError = ref('')
+const secretToDelete = ref(null)
 
 const visibleColumns = ref({
   secret_type: true,
@@ -293,6 +333,7 @@ const foldersResource = useFolders()
 const toggleFav = useToggleFavorite()
 const stats = useVaultStats()
 const generateDemo = useGenerateDemoData()
+const deleteResource = useBulkDeleteSecrets()
 
 async function handleGenerateDemo() {
   try {
@@ -300,7 +341,6 @@ async function handleGenerateDemo() {
     secrets.reload()
     stats.reload()
   } catch (err) {
-    console.error(err)
   }
 }
 
@@ -474,34 +514,59 @@ function clearFilters() {
 
 async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
 function handleCreated(r) { showNewDialog.value = false; refreshSecrets(); router.push({ name: 'SecretDetail', params: { name: r.name } }) }
-function handleDeleted() { refreshSecrets() }
+
+// Extract a clean, human-readable message from a Frappe API error.
+// Frappe errors can have: error.message (from frappe.throw), error.messages[] (array),
+// or error.exc (full Python traceback as a string — never show this raw).
+function parseFrappeError(error) {
+  // frappe-ui wraps errors: the user-facing message is in error.message
+  // or error.messages[0]. error.exc is the raw traceback — skip it.
+  if (error?.message && !error.message.includes('Traceback')) {
+    return error.message
+  }
+  if (Array.isArray(error?.messages) && error.messages.length) {
+    const msg = error.messages[0]
+    if (msg && !msg.includes('Traceback')) return msg
+  }
+  // Fall back to extracting the last non-empty line from the traceback
+  if (error?.exc) {
+    const lines = error.exc.split('\n').map(l => l.trim()).filter(Boolean)
+    const last = lines[lines.length - 1]
+    if (last) return last.replace(/^frappe\.\w+\.\w+:\s*/, '')
+  }
+  return 'Failed to delete secret(s). Please try again.'
+}
+
+async function handleDeleteSecret() {
+  if (!selectedSecrets.value || selectedSecrets.value.size === 0) return
+
+  deleteError.value = ''
+  try {
+    const secret_names = Array.from(selectedSecrets.value).map((item) =>
+      typeof item === 'object' && item !== null ? item.name : item
+    )
+    const res = await deleteResource.submit({ secret_names: JSON.stringify(secret_names) })
+
+    if (res && res.deleted > 0) {
+      // At least some secrets were deleted — close dialog, refresh list
+      showDeleteDialog.value = false
+      selectedSecrets.value.clear()
+      refreshSecrets()
+      stats.reload()
+    } else if (res && res.skipped > 0 && res.deleted === 0) {
+      // Nothing was deleted — all skipped due to permissions
+      deleteError.value = `You don't have permission to delete the selected secret(s). Only the owner or someone with Full Control access can delete.`
+    } else if (res && res.failed > 0) {
+      deleteError.value = res.error || 'An unexpected error occurred while deleting.'
+    }
+  } catch (error) {
+    deleteError.value = parseFrappeError(error)
+  }
+}
 
 function copyToClipboard(text) {
   if (!text) return
   navigator.clipboard.writeText(text)
-}
-
-function getRowActions(secret) {
-  const actions = [
-    {
-      label: 'View Details',
-      icon: 'eye',
-      onClick: () => router.push({ name: 'SecretDetail', params: { name: secret.name } }),
-    },
-    {
-      label: 'Copy Username',
-      icon: 'copy',
-      onClick: () => copyToClipboard(secret.username),
-      condition: () => !!secret.username,
-    },
-    {
-      label: 'Open URL',
-      icon: 'external-link',
-      onClick: () => window.open(secret.url, '_blank'),
-      condition: () => !!secret.url,
-    },
-  ]
-  return actions.filter(a => !a.condition || a.condition())
 }
 
 watch([titleQuery, activeFilters, pageLength, currentSort], () => {

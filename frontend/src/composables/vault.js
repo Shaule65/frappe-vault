@@ -49,6 +49,12 @@ export function useDeleteSecret() {
   })
 }
 
+export function useBulkDeleteSecrets() {
+  return createResource({
+    url: 'frappe_vault.api.secrets.bulk_delete',
+  })
+}
+
 export function useToggleFavorite() {
   return createResource({
     url: 'frappe_vault.api.secrets.toggle_favorite',

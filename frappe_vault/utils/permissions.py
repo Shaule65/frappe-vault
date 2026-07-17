@@ -70,6 +70,13 @@ def get_secret_permission_query(user=None):
                 AND (vs.expires_on IS NULL OR vs.expires_on > NOW())
             )
         )
+        OR (
+            `tabVault Secret`.folder IS NOT NULL
+            AND `tabVault Secret`.folder IN (
+                SELECT name FROM `tabVault Folder`
+                WHERE owner = {user_escaped}
+            )
+        )
     )"""
 
 
@@ -112,6 +119,12 @@ def has_secret_permission(doc, ptype="read", user=None):
     # Owner always has access
     if doc_owner == user:
         return True
+
+    # Folder owner always has access to secrets inside
+    if doc_folder:
+        folder_owner = frappe.db.get_value("Vault Folder", doc_folder, "owner")
+        if folder_owner == user:
+            return True
 
     # Check active shares (secret itself or parent folder) applying to the user
     conditions = [

@@ -79,6 +79,5 @@ frappe_vault.update_session_indicator = async function(frm) {
             frm.dashboard.add_indicator(__("Master Password Disabled"), "grey");
         }
     } catch (error) {
-        console.error("Failed to check session status:", error);
     }
 };
