@@ -78,11 +78,11 @@
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-sm bg-indigo-50 text-indigo-600">
+                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-sm bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
                        <FeatherIcon name="folder" class="w-4 h-4" />
                     </div>
                     <SecretTypeIcon v-else :type="item.secret_type" />
-                    <span class="min-w-0 flex-1 font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 flex-1 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->

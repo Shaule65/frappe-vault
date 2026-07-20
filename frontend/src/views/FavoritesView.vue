@@ -116,7 +116,7 @@
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
                     <SecretTypeIcon :type="item.secret_type" />
-                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -147,7 +147,7 @@
                     >
                       <FeatherIcon
                         name="star"
-                        class="w-4 h-4 text-yellow-500 fill-yellow-500"
+                        class="w-4 h-4 text-ink-yellow-3 fill-current"
                       />
                     </Button>
                     <Dropdown :options="getRowActions(row)">
