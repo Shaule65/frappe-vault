@@ -47,11 +47,11 @@
           </div>
           <div class="flex-1 w-full mt-4 sm:mt-0">
             <div v-for="s in securityScore?.suggestions || []" :key="s" class="flex items-start gap-2 mb-3">
-              <FeatherIcon name="alert-circle" class="w-4 h-4 mt-0.5 text-yellow-500 shrink-0" />
+              <FeatherIcon name="alert-circle" class="w-4 h-4 mt-0.5 text-ink-warning shrink-0" />
               <p class="text-sm text-ink-gray-7 leading-tight">{{ s }}</p>
             </div>
             <div v-if="!securityScore?.suggestions?.length" class="flex items-center gap-2">
-              <FeatherIcon name="check-circle" class="w-4 h-4 text-green-500" />
+              <FeatherIcon name="check-circle" class="w-4 h-4 text-ink-green-3" />
               <p class="text-sm text-ink-gray-7">Your vault is in great shape! No critical security risks detected.</p>
             </div>
           </div>
@@ -102,9 +102,9 @@ const statCards = computed(() => [
 
 const scoreColor = computed(() => {
   const s = securityScore.value?.score || 0
-  if (s >= 80) return '#10b981'
-  if (s >= 60) return '#3b82f6'
-  if (s >= 40) return '#f59e0b'
-  return '#ef4444'
+  if (s >= 80) return 'var(--text-green-500, #10b981)'
+  if (s >= 60) return 'var(--text-blue-500, #3b82f6)'
+  if (s >= 40) return 'var(--text-yellow-500, #f59e0b)'
+  return 'var(--text-red-500, #ef4444)'
 })
 </script>
