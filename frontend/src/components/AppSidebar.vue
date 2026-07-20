@@ -41,13 +41,13 @@
               Folders
             </span>
             <Tooltip text="Create Folder" placement="right">
-              <button
+              <Button
                 class="flex items-center justify-center w-5 h-5 rounded hover:bg-surface-gray-3 text-ink-gray-6 hover:text-ink-gray-8 transition-colors shrink-0"
                 :class="{ 'mx-auto': isSidebarCollapsed }"
                 @click.prevent.stop="openCreateFolderDialog"
               >
                 <FeatherIcon name="plus" class="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </Tooltip>
           </div>
 
@@ -89,21 +89,21 @@
         <SidebarItem
           v-if="stats.data?.has_demo_data"
           label="Clear Demo Data"
-          class="hover:!bg-red-100/80 !text-red-600 transition-colors cursor-pointer font-medium"
+          class="hover:bg-surface-red-2 text-ink-red-3 transition-colors cursor-pointer font-medium"
           @click="showClearDemoConfirm = true"
         >
           <template #icon>
-            <BrushCleaningIcon class="size-4 text-red-600 shrink-0" />
+            <BrushCleaningIcon class="size-4 text-ink-red-3 shrink-0" />
           </template>
         </SidebarItem>
         <SidebarItem
           v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
           label="Load Demo Data"
-          class="hover:!bg-blue-100/80 !text-blue-600 transition-colors cursor-pointer font-medium"
+          class="hover:bg-surface-blue-2 text-ink-blue-3 transition-colors cursor-pointer font-medium"
           @click="handleGenerateDemo"
         >
           <template #icon>
-            <SparklesIcon class="size-4 text-blue-600 shrink-0" />
+            <SparklesIcon class="size-4 text-ink-blue-3 shrink-0" />
           </template>
         </SidebarItem>
         <SidebarCollapseToggle v-if="!isMobile" />
@@ -193,7 +193,7 @@
             <div>
               <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Color</label>
               <div class="flex items-center gap-2">
-                <button
+                <Button
                   v-for="color in curatedColors"
                   :key="color"
                   class="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center focus:outline-none transition-transform"
@@ -202,7 +202,7 @@
                   @click="newFolderColor = color"
                 >
                   <FeatherIcon v-if="newFolderColor === color" name="check" class="w-3.5 h-3.5 text-white" />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -237,7 +237,7 @@
             <div>
               <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Color</label>
               <div class="flex items-center gap-2">
-                <button
+                <Button
                   v-for="color in curatedColors"
                   :key="color"
                   class="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center focus:outline-none transition-transform"
@@ -246,7 +246,7 @@
                   @click="editFolderColor = color"
                 >
                   <FeatherIcon v-if="editFolderColor === color" name="check" class="w-3.5 h-3.5 text-white" />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -275,7 +275,7 @@
             <p class="text-sm text-ink-gray-7" v-if="loadingCount">Analyzing folder secrets...</p>
             <template v-else>
               <div class="space-y-3" v-if="deleteSecretsCount > 0">
-                <div class="p-3 bg-red-50 border border-red-100 rounded-lg text-ink-red-3 flex items-start gap-2.5">
+                <div class="p-3 bg-surface-red-2 border border-outline-red-1 rounded-lg text-ink-red-3 flex items-start gap-2.5">
                   <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5" />
                   <div class="text-sm">
                     <p class="font-semibold text-ink-red-4">Warning: Contains Secrets</p>
@@ -293,7 +293,7 @@
                   Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
                 </p>
               </div>
-              <div v-if="deleteFolderError" class="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 mt-2">
+              <div v-if="deleteFolderError" class="text-sm text-ink-red-3 bg-surface-red-2 p-3 rounded-lg border border-outline-red-1 mt-2">
                 {{ deleteFolderError }}
               </div>
             </template>
@@ -604,6 +604,7 @@ function toggleTheme() {
   const currentTheme = document.documentElement.getAttribute('data-theme')
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
   document.documentElement.setAttribute('data-theme', newTheme)
+  localStorage.setItem('theme', newTheme)
 }
 
 const sidebarConfig = reactive({

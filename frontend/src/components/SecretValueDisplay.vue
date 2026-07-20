@@ -5,7 +5,7 @@
       <Button
         v-if="sensitive"
         variant="ghost"
-        class="!p-1 h-auto !text-xs !font-medium text-blue-600 hover:text-blue-700"
+        class="!p-1 h-auto !text-xs !font-medium text-ink-blue-3 hover:text-ink-blue-4"
         @click="visible = !visible"
       >
         {{ visible ? 'Hide' : 'Show' }}
