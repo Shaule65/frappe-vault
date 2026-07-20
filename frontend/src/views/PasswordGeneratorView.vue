@@ -19,7 +19,7 @@
         <div class="space-y-4">
           <div>
             <label class="text-sm font-medium text-ink-gray-7 mb-2 block">Length: {{ options.length }}</label>
-            <input type="range" v-model.number="options.length" min="8" max="128" class="w-full accent-blue-600" />
+            <input type="range" v-model.number="options.length" min="8" max="128" class="w-full accent-current text-ink-blue-3" />
           </div>
 
           <div class="grid grid-cols-2 gap-3">
