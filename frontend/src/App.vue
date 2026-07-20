@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { computed, watchEffect } from 'vue'
+import { computed, watchEffect, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
 import { mobileSidebarOpened } from './composables/vault'
@@ -50,6 +50,11 @@ watchEffect(() => {
   if (user === 'Guest' && !isPublicRoute.value) {
     window.location.href = `/login?redirect-to=${encodeURIComponent(window.location.pathname)}`
   }
+})
+
+onMounted(() => {
+  const savedTheme = localStorage.getItem('theme') || 'light'
+  document.documentElement.setAttribute('data-theme', savedTheme)
 })
 </script>
 
