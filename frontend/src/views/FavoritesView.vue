@@ -16,16 +16,14 @@
     </header>
 
     
-    <ViewControlsBar>
+    <ViewControlsBar class="z-10">
       <template #left>
-        <!-- Title Quick Filter -->
         <TextInput
           v-model="titleQuery"
           placeholder="Title"
           class="w-44 shrink-0"
         />
 
-        <!-- Type Quick Filter Dropdown -->
         <Select
           v-model="activeFilters.secret_type"
           :options="typeFilterOptions"
@@ -33,7 +31,7 @@
         />
       </template>
       <template #right>
-        <!-- Refresh Button -->
+        <!-- Refresh -->
         <Button
           :tooltip="'Refresh'"
           :icon="RefreshIcon"
@@ -41,31 +39,28 @@
           @click="refreshSecrets()"
         />
 
-        <!-- Sort Button -->
-        <Dropdown :options="sortDropdownOptions">
-          <template #default="{ open }">
-            <Button label="Sort" @click="open">
-              <template #prefix>
-                <SortIcon class="h-4" />
-              </template>
-            </Button>
-          </template>
-        </Dropdown>
+        <!-- Filter Panel -->
+        <FilterPanel
+          :fields="filterableFields.data || []"
+          @update="onFilterUpdate"
+        />
 
-        <!-- Columns Button -->
-        <Dropdown :options="columnsDropdownOptions">
-          <template #default="{ open }">
-            <Button label="Columns" @click="open">
-              <template #prefix>
-                <ColumnsIcon class="h-4" />
-              </template>
-            </Button>
-          </template>
-        </Dropdown>
+        <!-- Sort Panel -->
+        <SortPanel
+          :fields="sortOptions.data || []"
+          @update="onSortUpdate"
+        />
 
-        <!-- Clear Button -->
+        <!-- Column Panel -->
+        <ColumnPanel
+          :defaultColumns="defaultColumns"
+          :allFields="filterableFields.data || []"
+          @update="onColumnsUpdate"
+        />
+
+        <!-- Clear -->
         <Button
-          v-if="titleQuery || activeFilters.secret_type || currentSort !== 'modified desc'"
+          v-if="titleQuery || activeFilters.secret_type || currentSort !== 'modified desc' || Object.keys(panelFilters).length"
           variant="ghost"
           class="h-8 px-2 text-sm text-ink-gray-6 hover:text-ink-gray-9 focus:outline-none font-medium"
           @click="clearFilters()"
@@ -76,7 +71,7 @@
     </ViewControlsBar>
 
     <!-- Favorite list -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden relative">
       <!-- Loading state -->
       <div v-if="secrets.loading && !secrets.data" class="p-6 space-y-3">
         <div v-for="i in 5" :key="i" class="h-16 bg-surface-gray-3 rounded-lg animate-pulse" />
@@ -96,7 +91,7 @@
             onRowClick: (row) => router.push({ name: 'SecretDetail', params: { name: row.name } }),
           }"
         >
-          <ListHeader class="sm:mx-5 mx-3 shrink-0">
+          <ListHeader class="sm:mx-5 mx-3 shrink-0 relative">
             <ListHeaderItem
               v-for="column in columns"
               :key="column.key"
@@ -156,6 +151,9 @@
                       </template>
                     </Dropdown>
                   </div>
+
+                  <!-- Dynamic columns (fallback) -->
+                  <span v-else class="text-base text-ink-gray-7 truncate">{{ item ?? '—' }}</span>
                 </template>
               </ListRowItem>
             </ListRow>
@@ -185,11 +183,12 @@
 import ViewControlsBar from '../components/ViewControlsBar.vue'
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import SortIcon from '../components/SortIcon.vue'
-import ColumnsIcon from '../components/ColumnsIcon.vue'
 import RefreshIcon from '../components/RefreshIcon.vue'
+import FilterPanel from '../components/FilterPanel.vue'
+import SortPanel from '../components/SortPanel.vue'
+import ColumnPanel from '../components/ColumnPanel.vue'
 import { Button, Dropdown, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Breadcrumbs, Select } from 'frappe-ui'
-import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite } from '../composables/vault'
+import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite, useFilterableFields, useSortOptions } from '../composables/vault'
 import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
@@ -198,86 +197,33 @@ import StrengthBadge from '../components/StrengthBadge.vue'
 const router = useRouter()
 const titleQuery = ref('')
 const activeFilters = ref({ secret_type: '' })
+const panelFilters = ref({})
 const currentSort = ref('modified desc')
 const pageLength = ref(20)
 
-const visibleColumns = ref({
-  secret_type: true,
-  folder: true,
-  password_strength: true,
-  modified: true,
-})
+const defaultColumns = [
+  { label: 'Type', key: 'secret_type', width: '10rem' },
+  { label: 'Folder', key: 'folder', width: '11rem' },
+  { label: 'Strength', key: 'password_strength', width: '10rem' },
+  { label: 'Last Modified', key: 'modified', width: '12rem' },
+]
+
+const activeColumnDefs = ref([...defaultColumns])
 
 const secrets = useSecrets({ favorites_only: 1 })
 const foldersResource = useFolders()
 const toggleFav = useToggleFavorite()
+const filterableFields = useFilterableFields()
+const sortOptions = useSortOptions()
 
 const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || secretsList.value.length || 0)
 const breadcrumbs = computed(() => [{ label: 'Favorites' }])
 
-
-const sortOptions = [
-  { label: 'Last Modified (Newest)', value: 'modified desc' },
-  { label: 'Last Modified (Oldest)', value: 'modified asc' },
-  { label: 'Title (A-Z)', value: 'title asc' },
-  { label: 'Title (Z-A)', value: 'title desc' },
-  { label: 'Last Accessed', value: 'last_accessed desc' },
-]
-
-const sortDropdownOptions = computed(() => {
-  return sortOptions.map(opt => ({
-    label: opt.label,
-    onClick: () => {
-      currentSort.value = opt.value
-    }
-  }))
-})
-
-const columnsDropdownOptions = computed(() => {
-  return [
-    {
-      group: 'Toggle Columns',
-      items: [
-        {
-          label: 'Type',
-          icon: visibleColumns.value.secret_type ? 'check' : '',
-          onClick: () => { visibleColumns.value.secret_type = !visibleColumns.value.secret_type }
-        },
-        {
-          label: 'Folder',
-          icon: visibleColumns.value.folder ? 'check' : '',
-          onClick: () => { visibleColumns.value.folder = !visibleColumns.value.folder }
-        },
-        {
-          label: 'Strength',
-          icon: visibleColumns.value.password_strength ? 'check' : '',
-          onClick: () => { visibleColumns.value.password_strength = !visibleColumns.value.password_strength }
-        },
-        {
-          label: 'Last Modified',
-          icon: visibleColumns.value.modified ? 'check' : '',
-          onClick: () => { visibleColumns.value.modified = !visibleColumns.value.modified }
-        },
-      ]
-    }
-  ]
-})
-
-const allColumns = ref([
-  { label: 'Title', key: 'title', width: '18rem' },
-  { label: 'Type', key: 'secret_type', width: '10rem' },
-  { label: 'Folder', key: 'folder', width: '11rem' },
-  { label: 'Strength', key: 'password_strength', width: '10rem' },
-  { label: 'Last Modified', key: 'modified', width: '12rem' },
-  { label: '', key: '_actions', width: '6rem', align: 'right' }
-])
-
 const columns = computed(() => {
-  return allColumns.value.filter(col => {
-    if (col.key === 'title' || col.key === '_actions') return true
-    return visibleColumns.value[col.key]
-  })
+  const titleCol = { label: 'Title', key: 'title', width: '18rem' }
+  const actionsCol = { label: '', key: '_actions', width: '6rem', align: 'right' }
+  return [titleCol, ...activeColumnDefs.value, actionsCol]
 })
 
 const formattedRows = computed(() => {
@@ -303,19 +249,38 @@ const formattedRows = computed(() => {
 
 const paginatedRows = computed(() => formattedRows.value.slice(0, pageLength.value))
 
+function onFilterUpdate(filters) {
+  panelFilters.value = filters
+}
+
+function onSortUpdate(orderBy) {
+  currentSort.value = orderBy
+}
+
+function onColumnsUpdate(cols) {
+  activeColumnDefs.value = cols
+}
+
 function refreshSecrets() {
-  secrets.submit({
+  const filters = {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
     favorites_only: 1,
     limit: pageLength.value,
     order_by: currentSort.value,
-  })
+  }
+  for (const [key, val] of Object.entries(panelFilters.value)) {
+    if (val !== undefined && val !== '') {
+      filters[key] = val
+    }
+  }
+  secrets.submit(filters)
 }
 
 function clearFilters() {
   titleQuery.value = ''
   activeFilters.value = { secret_type: '' }
+  panelFilters.value = {}
   currentSort.value = 'modified desc'
   pageLength.value = 20
 }
@@ -350,14 +315,20 @@ function getRowActions(secret) {
   return actions.filter(a => !a.condition || a.condition())
 }
 
-watch([titleQuery, activeFilters, pageLength, currentSort], () => {
-  secrets.submit({
+watch([titleQuery, activeFilters, pageLength, currentSort, panelFilters], () => {
+  const filters = {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
-    favorites_only: 1, // Hardcoded for favorites list!
+    favorites_only: 1,
     limit: pageLength.value,
     order_by: currentSort.value,
-  })
+  }
+  for (const [key, val] of Object.entries(panelFilters.value)) {
+    if (val !== undefined && val !== '') {
+      filters[key] = val
+    }
+  }
+  secrets.submit(filters)
 }, { deep: true, immediate: true })
 
 </script>

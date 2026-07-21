@@ -18,3 +18,56 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   @apply bg-surface-gray-4;
 }
+
+/* --- Dark mode sidebar polish --- */
+
+[data-theme="dark"] .vault-sidebar {
+  background: var(--surface-gray-1, #1a1a1a);
+  border-right: 1px solid var(--outline-gray-1, rgba(255,255,255,0.06));
+}
+
+[data-theme="dark"] .vault-sidebar-item[data-state="inactive"] {
+  color: var(--ink-gray-8, #e4e4e7) !important;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+[data-theme="dark"] .vault-sidebar-item[data-state="inactive"]:hover {
+  color: var(--ink-gray-9, #fafafa);
+  background-color: var(--surface-gray-3, rgba(255,255,255,0.06)) !important;
+}
+
+[data-theme="dark"] .vault-sidebar-item[data-state="active"] {
+  color: var(--ink-gray-9, #fafafa) !important;
+  background-color: var(--surface-selected, rgba(255,255,255,0.1)) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .vault-sidebar-section-label {
+  color: var(--ink-gray-7, #d4d4d8) !important;
+  letter-spacing: 0.05em;
+}
+
+[data-theme="dark"] .vault-sidebar .folder-dot {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+/* Sidebar scrollbar in dark mode */
+[data-theme="dark"] .vault-sidebar ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+
+[data-theme="dark"] .vault-sidebar ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+
+/* Top List Controls */
+[data-theme="dark"] .view-controls-bar .btn {
+  background-color: var(--surface-gray-2, rgba(255,255,255,0.04)) !important;
+  border: 1px solid var(--outline-gray-2, rgba(255,255,255,0.06)) !important;
+  color: var(--ink-gray-8, #e4e4e7) !important;
+}
+
+[data-theme="dark"] .view-controls-bar .btn:hover {
+  background-color: var(--surface-gray-3, rgba(255,255,255,0.08)) !important;
+}

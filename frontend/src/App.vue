@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { computed, watchEffect, onMounted } from 'vue'
+import { computed, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
 import { mobileSidebarOpened } from './composables/vault'
@@ -52,9 +52,21 @@ watchEffect(() => {
   }
 })
 
+// Set theme to prevent flashing as much as possible within Vue
+const savedTheme = localStorage.getItem('theme') || 'light'
+document.documentElement.setAttribute('data-theme', savedTheme)
+
 onMounted(() => {
-  const savedTheme = localStorage.getItem('theme') || 'light'
-  document.documentElement.setAttribute('data-theme', savedTheme)
+  const handleResize = () => {
+    if (window.innerWidth >= 640 && mobileSidebarOpened.value) {
+      mobileSidebarOpened.value = false
+    }
+  }
+  window.addEventListener('resize', handleResize)
+  
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
+  })
 })
 </script>
 

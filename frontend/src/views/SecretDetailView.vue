@@ -492,7 +492,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Button,
@@ -527,6 +527,22 @@ const props = defineProps({
 const router = useRouter()
 
 const showActivitySidebar = ref(window.innerWidth >= 1024)
+
+function handleResize() {
+  if (window.innerWidth >= 1024) {
+    showActivitySidebar.value = true
+  } else {
+    showActivitySidebar.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 const activeTabIndex = ref(0)
 const activeTabLabel = ref('Sharing')
 const tabsList = computed(() => [
