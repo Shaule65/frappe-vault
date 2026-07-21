@@ -6,6 +6,7 @@ import {
   resourcesPlugin,
   pageMetaPlugin,
 } from 'frappe-ui'
+import { spritePlugin } from 'frappe-ui/icons'
 import App from './App.vue'
 import router from './router'
 import './index.css'
@@ -17,6 +18,7 @@ setConfig('resourceFetcher', frappeRequest)
 app.use(FrappeUI)
 app.use(resourcesPlugin)
 app.use(pageMetaPlugin)
+app.use(spritePlugin)
 app.use(router)
 
 app.mount('#app')

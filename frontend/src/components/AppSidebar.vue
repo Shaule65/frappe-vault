@@ -62,7 +62,7 @@
           >
             <template #prefix>
               <div class="flex items-center justify-center w-4 h-4">
-                <FeatherIcon
+                <Icon
                   :name="folder.icon || 'folder'"
                   class="w-4 h-4 shrink-0"
                 />
@@ -192,34 +192,8 @@
               @keyup.enter="handleCreateFolder"
             />
             <div>
-              <!-- Icon picker -->
-              <div class="mt-3">
-                <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Icon</label>
-                <div class="mb-2">
-                  <TextInput
-                    type="text"
-                    v-model="newFolderIconSearch"
-                    placeholder="Search icons..."
-                  >
-                    <template #prefix>
-                      <FeatherIcon name="search" class="w-4 h-4 text-ink-gray-5" />
-                    </template>
-                  </TextInput>
-                </div>
-                <div class="grid grid-cols-7 gap-2 max-h-40 overflow-y-auto p-1 border border-outline-gray-2 rounded-md bg-surface-base">
-                  <div v-if="filteredNewIcons.length === 0" class="col-span-7 text-center text-xs text-ink-gray-5 py-4">No icons found</div>
-                  <Button
-                    v-for="icon in filteredNewIcons"
-                    :key="icon"
-                    variant="ghost"
-                    class="w-8 h-8 !p-1.5 rounded-md flex items-center justify-center hover:bg-surface-gray-2"
-                    :class="{ 'bg-surface-gray-3 text-ink-gray-9 ring-1 ring-outline-gray-3': newFolderIcon === icon, 'text-ink-gray-5': newFolderIcon !== icon }"
-                    @click.prevent="newFolderIcon = icon"
-                  >
-                    <FeatherIcon :name="icon" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Icon</label>
+              <IconPicker v-model="newFolderIcon" placeholder="Search icons..." class="w-full" />
             </div>
           </div>
         </template>
@@ -251,34 +225,8 @@
               @keyup.enter="handleEditFolder"
             />
             <div>
-              <!-- Icon picker -->
-              <div class="mt-3">
-                <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Icon</label>
-                <div class="mb-2">
-                  <TextInput
-                    type="text"
-                    v-model="editFolderIconSearch"
-                    placeholder="Search icons..."
-                  >
-                    <template #prefix>
-                      <FeatherIcon name="search" class="w-4 h-4 text-ink-gray-5" />
-                    </template>
-                  </TextInput>
-                </div>
-                <div class="grid grid-cols-7 gap-2 max-h-40 overflow-y-auto p-1 border border-outline-gray-2 rounded-md bg-surface-base">
-                  <div v-if="filteredEditIcons.length === 0" class="col-span-7 text-center text-xs text-ink-gray-5 py-4">No icons found</div>
-                  <Button
-                    v-for="icon in filteredEditIcons"
-                    :key="icon"
-                    variant="ghost"
-                    class="w-8 h-8 !p-1.5 rounded-md flex items-center justify-center hover:bg-surface-gray-2"
-                    :class="{ 'bg-surface-gray-3 text-ink-gray-9 ring-1 ring-outline-gray-3': editFolderIcon === icon, 'text-ink-gray-5': editFolderIcon !== icon }"
-                    @click.prevent="editFolderIcon = icon"
-                  >
-                    <FeatherIcon :name="icon" class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Icon</label>
+              <IconPicker v-model="editFolderIcon" placeholder="Search icons..." class="w-full" />
             </div>
           </div>
         </template>
@@ -350,9 +298,9 @@
 <script setup>
 import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, TextInput, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
+import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
+import { IconPicker, Icon } from 'frappe-ui/icons'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData } from '../composables/vault'
-import feather from 'feather-icons'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
@@ -407,14 +355,12 @@ const folderSecretsResource = useFolderSecrets()
 
 const showCreateFolderDialog = ref(false)
 const newFolderName = ref('')
-const newFolderIcon = ref('folder')
-const newFolderIconSearch = ref('')
+const newFolderIcon = ref('')
 
 const showEditFolderDialog = ref(false)
 const folderToEdit = ref(null)
 const editFolderName = ref('')
-const editFolderIcon = ref('folder')
-const editFolderIconSearch = ref('')
+const editFolderIcon = ref('')
 
 const showDeleteFolderDialog = ref(false)
 const folderToDelete = ref(null)
@@ -438,26 +384,10 @@ function parseFrappeError(error) {
   return 'Failed to delete folder. Please try again.'
 }
 
-const availableIcons = [
-  'folder', 'briefcase', 'home', 'star', 'heart', 'lock', 'key', 'database', 'server', 'users', 'globe', 'settings', 'shield', 'book', 'cpu', 'cloud', 'zap', 'target', 'award', 'bookmark', 'box', 'camera', 'coffee', 'compass', 'credit-card', 'flag', 'gift', 'hash', 'image', 'layers', 'life-buoy', 'map', 'music', 'package', 'phone', 'printer', 'radio', 'shopping-bag', 'shopping-cart', 'smartphone', 'speaker', 'sun', 'moon', 'tag', 'tool', 'trash', 'truck', 'tv', 'umbrella', 'video', 'watch', 'wifi'
-]
-
-const allIcons = typeof feather !== 'undefined' && feather.icons ? Object.keys(feather.icons) : availableIcons
-
-const filteredNewIcons = computed(() => {
-  if (!newFolderIconSearch.value) return availableIcons
-  return allIcons.filter(i => i.includes(newFolderIconSearch.value.toLowerCase()))
-})
-
-const filteredEditIcons = computed(() => {
-  if (!editFolderIconSearch.value) return availableIcons
-  return allIcons.filter(i => i.includes(editFolderIconSearch.value.toLowerCase()))
-})
 
 function openCreateFolderDialog() {
   newFolderName.value = ''
-  newFolderIcon.value = 'folder'
-  newFolderIconSearch.value = ''
+  newFolderIcon.value = ''
   showCreateFolderDialog.value = true
 }
 
@@ -466,7 +396,7 @@ async function handleCreateFolder() {
   try {
     await createFolderResource.submit({
       folder_name: newFolderName.value.trim(),
-      icon: newFolderIcon.value,
+      icon: newFolderIcon.value || 'folder',
     })
     showCreateFolderDialog.value = false
     foldersResource.reload()
@@ -484,8 +414,7 @@ function getFolderOptions(folder) {
       onClick: () => {
         folderToEdit.value = folder
         editFolderName.value = folder.folder_name
-        editFolderIcon.value = folder.icon || 'folder'
-        editFolderIconSearch.value = ''
+        editFolderIcon.value = folder.icon || ''
         showEditFolderDialog.value = true
       }
     })
@@ -519,7 +448,7 @@ async function handleEditFolder() {
     await updateFolderResource.submit({
       name: folderToEdit.value.name,
       folder_name: editFolderName.value.trim(),
-      icon: editFolderIcon.value,
+      icon: editFolderIcon.value || 'folder',
     })
     showEditFolderDialog.value = false
     folderToEdit.value = null
