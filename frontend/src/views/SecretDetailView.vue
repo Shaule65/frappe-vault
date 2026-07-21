@@ -2,7 +2,7 @@
 
   <div class="h-full w-full bg-surface-base text-ink-gray-9 flex flex-col">
     <!-- Split header using PageHeaderBase -->
-            <PageHeaderBase class="z-10 flex h-12 border-b border-outline-gray-1 bg-surface-base shrink-0">
+            <PageHeaderBase class="flex h-12 border-b border-outline-gray-1 bg-surface-base shrink-0">
       <!-- Details Main Header (Left/Middle) -->
       <div :class="[showActivitySidebar ? 'hidden lg:flex' : 'flex', 'min-w-0 flex-1 items-center justify-between gap-3 px-3 lg:px-5 bg-surface-base']">
         <div class="flex min-w-0 items-center gap-2">
@@ -27,7 +27,7 @@
       <div v-show="showActivitySidebar" class="flex w-full lg:w-1/2 shrink-0 items-center justify-between lg:border-l border-outline-gray-1 px-3 lg:px-4 bg-surface-base">
         <div class="flex items-center gap-2">
           <Button class="lg:hidden" variant="ghost" icon="lucide-arrow-left" @click="showActivitySidebar = false" />
-          <PageHeaderTitle>Activity & Sharing</PageHeaderTitle>
+          <PageHeaderTitle>Sharing & Activity</PageHeaderTitle>
         </div>
       </div>
     </PageHeaderBase>
@@ -211,7 +211,7 @@
         <div class="flex shrink-0 items-center border-b border-outline-gray-1 px-4 py-2">
           <TabButtons
             v-model="activeTabLabel"
-            :options="[{ label: 'Activity' }, { label: 'Sharing' }]"
+            :options="[{ label: 'Sharing' }, { label: 'Activity' }]"
           />
         </div>
 
@@ -231,7 +231,7 @@
                 <div v-else-if="activityList.length" class="relative space-y-6 before:absolute before:top-2 before:bottom-2 before:left-2.5 before:w-px before:bg-outline-gray-2 py-1">
                   <div v-for="item in activityList" :key="item.name" class="relative flex items-start gap-3.5">
                     <!-- Clean icon without background/border/shadow -->
-                    <div class="w-5 h-5 flex items-center justify-center shrink-0 z-10 text-ink-gray-5 bg-surface-base mt-0.5">
+                    <div class="w-5 h-5 flex items-center justify-center shrink-0 relative text-ink-gray-5 bg-surface-base mt-0.5">
                       <FeatherIcon :name="actionIcons[item.action] || 'activity'" class="w-4 h-4" />
                     </div>
                     <!-- Content aligned with right-aligned timestamp -->
@@ -528,7 +528,7 @@ const router = useRouter()
 
 const showActivitySidebar = ref(window.innerWidth >= 1024)
 const activeTabIndex = ref(0)
-const activeTabLabel = ref('Activity')
+const activeTabLabel = ref('Sharing')
 const tabsList = computed(() => [
   { label: 'Activity', icon: 'lucide-sparkles' },
   { label: sharesList.value.length ? `Sharing (${sharesList.value.length})` : 'Sharing', icon: 'lucide-share-2' },

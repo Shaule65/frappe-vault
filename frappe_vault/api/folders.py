@@ -62,7 +62,7 @@ def delete(name):
 
 
 @frappe.whitelist()
-def update(name, folder_name, color=None, description=None):
+def update(name, folder_name, color=None, icon=None, description=None):
     from frappe_vault.utils.permissions import has_folder_permission
     if not has_folder_permission(name, ptype="write"):
         frappe.throw(_("You don't have permission to update this folder"), frappe.PermissionError)
@@ -76,6 +76,8 @@ def update(name, folder_name, color=None, description=None):
     doc = frappe.get_doc("Vault Folder", name)
     if color is not None:
         doc.color = color
+    if icon is not None:
+        doc.icon = icon
     if description is not None:
         doc.description = description
     
