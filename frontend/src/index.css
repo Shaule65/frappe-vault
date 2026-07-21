@@ -76,3 +76,8 @@
 .dialog-overlay {
   z-index: 100 !important;
 }
+
+/* Ensure Frappe UI (Reka) Popovers, Dropdowns, and Tooltips stack above all page elements */
+[data-reka-popper-content-wrapper] {
+  z-index: 100 !important;
+}
