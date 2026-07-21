@@ -35,7 +35,12 @@
         />
       </template>
       <template #right>
-
+        <Button 
+          v-if="selectedShares.size === 1 && canRevokeSelected"
+          iconLeft="lucide-user-minus"
+          label="Revoke Access"
+          @click="showBulkRevokeConfirm = true"
+        />
         <!-- Refresh Button -->
         <Button
           :tooltip="'Refresh'"
@@ -87,11 +92,11 @@
                 <template #default>
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-sm bg-indigo-50 text-indigo-600">
+                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-sm bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
                        <FeatherIcon name="folder" class="w-4 h-4" />
                     </div>
                     <SecretTypeIcon v-else :type="item.secret_type" />
-                    <span class="min-w-0 flex-1 font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 flex-1 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -121,33 +126,28 @@
 
                   <!-- Expires On column -->
                   <span v-else-if="column.key === 'expires_on'" class="text-base text-ink-gray-6">{{ item }}</span>
-
-                  <!-- Actions column (Revoke) -->
-                  <div v-else-if="column.key === 'actions'" class="flex justify-end w-full" @click.stop>
-                    <Button
-                      v-if="!row.is_revoked"
-                      variant="ghost"
-                      theme="red"
-                      size="sm"
-                      icon="lucide-trash-2"
-                      class="h-7.5 px-2 text-ink-red-3 hover:text-ink-red-4 hover:bg-red-50 rounded focus:outline-none"
-                      @click="confirmRevokeShare(row)"
-                      tooltip="Revoke Share"
-                    />
-                  </div>
                 </template>
               </ListRowItem>
             </ListRow>
           </ListRows>
           <ListSelectBanner>
             <template #actions="{ unselectAll }">
-              <Button
-                variant="solid"
-                theme="red"
-                iconLeft="trash-2"
-                label="Delete"
-                @click="showBulkDeleteDialog = true"
-              />
+              <Dropdown
+                :options="[
+                  ...(canRevokeSelected ? [{
+                    label: 'Revoke Access',
+                    icon: 'lucide-user-minus',
+                    onClick: () => { showBulkRevokeConfirm = true }
+                  }] : []),
+                  {
+                    label: 'Delete Logs',
+                    icon: 'trash-2',
+                    onClick: () => { showBulkDeleteDialog = true }
+                  }
+                ]"
+              >
+                <Button variant="ghost" icon="more-horizontal" class="text-ink-gray-7" />
+              </Dropdown>
             </template>
           </ListSelectBanner>
         </ListView>
@@ -287,18 +287,52 @@
       </template>
     </Dialog>
 
-    <!-- Bulk Delete Confirmation Dialog -->
+    <!-- Bulk Revoke Confirmation Dialog -->
     <Dialog
-      v-model="showBulkDeleteDialog"
+      v-model="showBulkRevokeConfirm"
       :options="{
-        title: 'Delete Sharing Logs',
+        title: 'Revoke Selected Shares',
         size: 'sm',
       }"
     >
       <template #body-content>
         <p class="text-sm text-ink-gray-7 pt-2">
-          Are you sure you want to permanently delete the <span class="font-semibold text-ink-gray-9">{{ selectedShares.size }}</span> selected sharing log records? This action cannot be undone.
+          Are you sure you want to revoke access for the <span class="font-semibold text-ink-gray-9">{{ selectedShares.size }}</span> selected sharing records? The recipients will immediately lose access.
         </p>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2 px-4 pb-4">
+          <Button variant="ghost" label="Cancel" @click="showBulkRevokeConfirm = false" class="text-ink-gray-7 focus:outline-none" />
+          <Button
+            variant="solid"
+            theme="red"
+            label="Revoke Access"
+            :loading="bulkRevokeLoading"
+            @click="handleBulkRevoke"
+            class="px-4 font-semibold shadow-sm focus:outline-none"
+          />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Bulk Delete Confirmation Dialog -->
+    <Dialog
+      v-model="showBulkDeleteDialog"
+      :options="{
+        title: 'Delete Selected Logs',
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="pt-2 flex flex-col gap-3">
+          <p class="text-sm text-ink-gray-7">
+            Are you sure you want to permanently delete the <span class="font-semibold text-ink-gray-9">{{ selectedShares.size }}</span> selected sharing logs? This action cannot be undone.
+          </p>
+          <div v-if="hasActiveSharesSelected" class="bg-surface-red-2 text-ink-red-4 text-sm p-3 rounded-md flex items-start gap-2 border border-outline-red-1">
+            <FeatherIcon name="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0" />
+            <p>You have selected active shares. Deleting these logs will <b>immediately revoke access</b> for the recipients.</p>
+          </div>
+        </div>
       </template>
       <template #actions>
         <div class="flex justify-end gap-2 px-4 pb-4">
@@ -322,7 +356,7 @@ import ViewControlsBar from '../components/ViewControlsBar.vue'
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import RefreshIcon from '../components/RefreshIcon.vue'
-import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Dialog, Breadcrumbs, toast, TabButtons } from 'frappe-ui'
+import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Dialog, Breadcrumbs, toast, TabButtons, Dropdown } from 'frappe-ui'
 import { mobileSidebarOpened, useSharedWithMe, useShareSecret, useUnshare, useShareOptions, useSecrets, useFolders, useBulkDeleteShares } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
@@ -342,6 +376,8 @@ const titleQuery = ref('')
 const selectedShares = ref(new Set())
 const showBulkDeleteDialog = ref(false)
 const bulkDeleteLoading = ref(false)
+const showBulkRevokeConfirm = ref(false)
+const bulkRevokeLoading = ref(false)
 const pageLength = ref(20)
 
 // Form Dialog state
@@ -416,8 +452,7 @@ const columns = ref([
   { label: 'Shared With', key: 'shared_with', width: '14rem' },
   { label: 'Target Type', key: 'share_type', width: '8rem' },
   { label: 'Permission', key: 'permission_level', width: '10rem' },
-  { label: 'Expires On', key: 'expires_on', width: '10rem' },
-  { label: '', key: 'actions', width: '4rem', align: 'right' }
+  { label: 'Expires On', key: 'expires_on', width: '10rem' }
 ])
 
 const formattedRows = computed(() => {
@@ -450,6 +485,22 @@ const formattedRows = computed(() => {
 })
 
 const paginatedRows = computed(() => formattedRows.value.slice(0, pageLength.value))
+
+const canRevokeSelected = computed(() => {
+  if (selectedShares.value.size === 0) return false
+  return Array.from(selectedShares.value).every(name => {
+    const doc = formattedRows.value.find(r => r.name === name)
+    return doc && !doc.is_revoked
+  })
+})
+
+const hasActiveSharesSelected = computed(() => {
+  if (selectedShares.value.size === 0) return false
+  return Array.from(selectedShares.value).some(name => {
+    const doc = formattedRows.value.find(r => r.name === name)
+    return doc && !doc.is_revoked
+  })
+})
 
 function handleRowClick(row) {
   if (row.shared_doctype === 'Vault Folder') {
@@ -540,6 +591,30 @@ async function handleBulkDelete() {
     toast.error(err.message || 'Failed to delete logs')
   } finally {
     bulkDeleteLoading.value = false
+  }
+}
+
+async function handleBulkRevoke() {
+  if (selectedShares.value.size === 0) return
+  bulkRevokeLoading.value = true
+  try {
+    const promises = Array.from(selectedShares.value).map((name) => {
+      const doc = formattedRows.value.find(r => r.name === name)
+      if (doc && !doc.is_revoked) {
+        return unshareResource.submit({ share_name: name })
+      }
+      return Promise.resolve()
+    })
+    await Promise.all(promises)
+    
+    toast.success('Selected shares revoked successfully')
+    selectedShares.value.clear()
+    shared.reload()
+    showBulkRevokeConfirm.value = false
+  } catch (err) {
+    toast.error(err.message || 'Failed to revoke shares')
+  } finally {
+    bulkRevokeLoading.value = false
   }
 }
 

@@ -159,7 +159,7 @@
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
                     <SecretTypeIcon :type="item.secret_type" />
-                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-indigo-600 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -191,7 +191,7 @@
                       <FeatherIcon
                         name="star"
                         class="w-4 h-4"
-                        :class="row.is_favorite ? 'text-yellow-500 fill-yellow-500' : 'text-ink-gray-4'"
+                        :class="row.is_favorite ? 'text-ink-yellow-3 fill-current' : 'text-ink-gray-4'"
                       />
                     </Button>
                   </div>
@@ -256,7 +256,7 @@
           <p class="text-sm text-ink-gray-6 mt-1 leading-normal" v-else>
             Are you sure you want to permanently delete <strong>{{ selectedSecrets.size }} secrets</strong>? This action cannot be undone.
           </p>
-          <div v-if="deleteError" class="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+          <div v-if="deleteError" class="text-sm text-ink-red-3 bg-surface-red-2 p-3 rounded-lg border border-outline-red-1">
             {{ deleteError }}
           </div>
         </div>

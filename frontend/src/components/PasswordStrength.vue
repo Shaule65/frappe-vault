@@ -14,11 +14,11 @@ import StrengthBadge from './StrengthBadge.vue'
 const props = defineProps({ level: { type: String, default: 'weak' } })
 
 const config = {
-  weak: { widthClass: 'w-1/5', color: 'bg-red-500' },
-  fair: { widthClass: 'w-2/5', color: 'bg-orange-500' },
-  good: { widthClass: 'w-3/5', color: 'bg-blue-500' },
-  strong: { widthClass: 'w-4/5', color: 'bg-green-500' },
-  excellent: { widthClass: 'w-full', color: 'bg-emerald-500' },
+  weak: { widthClass: 'w-1/5', color: 'bg-surface-red-3' },
+  fair: { widthClass: 'w-2/5', color: 'bg-surface-orange-3' },
+  good: { widthClass: 'w-3/5', color: 'bg-surface-blue-3' },
+  strong: { widthClass: 'w-4/5', color: 'bg-surface-green-3' },
+  excellent: { widthClass: 'w-full', color: 'bg-surface-green-4' },
 }
 
 const barWidthClass = computed(() => config[props.level]?.widthClass || 'w-0')

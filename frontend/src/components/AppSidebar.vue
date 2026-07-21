@@ -41,13 +41,13 @@
               Folders
             </span>
             <Tooltip text="Create Folder" placement="right">
-              <button
-                class="flex items-center justify-center w-5 h-5 rounded hover:bg-surface-gray-3 text-ink-gray-6 hover:text-ink-gray-8 transition-colors shrink-0"
+              <Button
+                variant="ghost"
+                icon="plus"
+                class="w-6 h-6 !p-1 text-ink-gray-6 hover:text-ink-gray-8 hover:bg-surface-gray-3 shrink-0"
                 :class="{ 'mx-auto': isSidebarCollapsed }"
                 @click.prevent.stop="openCreateFolderDialog"
-              >
-                <FeatherIcon name="plus" class="w-3.5 h-3.5" />
-              </button>
+              />
             </Tooltip>
           </div>
 
@@ -61,14 +61,14 @@
           >
             <template #prefix>
               <div class="flex items-center justify-center w-4 h-4">
-                <div
-                  class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5"
-                  :style="{ backgroundColor: folder.color || '#6b7280' }"
+                <FeatherIcon
+                  :name="folder.icon || 'folder'"
+                  class="w-4 h-4 shrink-0 text-ink-gray-5"
                 />
               </div>
             </template>
             <template #suffix>
-              <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-150" @click.prevent.stop>
+              <div v-if="getFolderOptions(folder).length > 0" class="opacity-0 group-hover:opacity-100 transition-opacity duration-150" @click.prevent.stop>
                 <Dropdown :options="getFolderOptions(folder)">
                   <template #default="{ open }">
                     <Button
@@ -89,21 +89,21 @@
         <SidebarItem
           v-if="stats.data?.has_demo_data"
           label="Clear Demo Data"
-          class="hover:!bg-red-100/80 !text-red-600 transition-colors cursor-pointer font-medium"
+          class="hover:bg-surface-red-2 text-ink-red-6 transition-colors cursor-pointer font-medium"
           @click="showClearDemoConfirm = true"
         >
           <template #icon>
-            <BrushCleaningIcon class="size-4 text-red-600 shrink-0" />
+            <BrushCleaningIcon class="size-4 text-ink-red-3 shrink-0" />
           </template>
         </SidebarItem>
         <SidebarItem
           v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
           label="Load Demo Data"
-          class="hover:!bg-blue-100/80 !text-blue-600 transition-colors cursor-pointer font-medium"
+          class="hover:bg-surface-blue-2 text-ink-blue-3 transition-colors cursor-pointer font-medium"
           @click="handleGenerateDemo"
         >
           <template #icon>
-            <SparklesIcon class="size-4 text-blue-600 shrink-0" />
+            <SparklesIcon class="size-4 text-ink-blue-3 shrink-0" />
           </template>
         </SidebarItem>
         <SidebarCollapseToggle v-if="!isMobile" />
@@ -191,18 +191,33 @@
               @keyup.enter="handleCreateFolder"
             />
             <div>
-              <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Color</label>
-              <div class="flex items-center gap-2">
-                <button
-                  v-for="color in curatedColors"
-                  :key="color"
-                  class="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center focus:outline-none transition-transform"
-                  :style="{ backgroundColor: color }"
-                  :class="{ 'scale-110 ring-2 ring-indigo-500 ring-offset-2': newFolderColor === color }"
-                  @click="newFolderColor = color"
-                >
-                  <FeatherIcon v-if="newFolderColor === color" name="check" class="w-3.5 h-3.5 text-white" />
-                </button>
+              <!-- Icon picker -->
+              <div class="mt-3">
+                <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Icon</label>
+                <div class="mb-2">
+                  <TextInput
+                    type="text"
+                    v-model="newFolderIconSearch"
+                    placeholder="Search icons..."
+                  >
+                    <template #prefix>
+                      <FeatherIcon name="search" class="w-4 h-4 text-ink-gray-5" />
+                    </template>
+                  </TextInput>
+                </div>
+                <div class="grid grid-cols-7 gap-2 max-h-40 overflow-y-auto p-1 border border-outline-gray-2 rounded-md bg-surface-base">
+                  <div v-if="filteredNewIcons.length === 0" class="col-span-7 text-center text-xs text-ink-gray-5 py-4">No icons found</div>
+                  <Button
+                    v-for="icon in filteredNewIcons"
+                    :key="icon"
+                    variant="ghost"
+                    class="w-8 h-8 !p-1.5 rounded-md flex items-center justify-center hover:bg-surface-gray-2"
+                    :class="{ 'bg-surface-gray-3 text-ink-gray-9 ring-1 ring-outline-gray-3': newFolderIcon === icon, 'text-ink-gray-5': newFolderIcon !== icon }"
+                    @click.prevent="newFolderIcon = icon"
+                  >
+                    <FeatherIcon :name="icon" class="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -235,18 +250,33 @@
               @keyup.enter="handleEditFolder"
             />
             <div>
-              <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Color</label>
-              <div class="flex items-center gap-2">
-                <button
-                  v-for="color in curatedColors"
-                  :key="color"
-                  class="w-6 h-6 rounded-full border border-black/10 flex items-center justify-center focus:outline-none transition-transform"
-                  :style="{ backgroundColor: color }"
-                  :class="{ 'scale-110 ring-2 ring-indigo-500 ring-offset-2': editFolderColor === color }"
-                  @click="editFolderColor = color"
-                >
-                  <FeatherIcon v-if="editFolderColor === color" name="check" class="w-3.5 h-3.5 text-white" />
-                </button>
+              <!-- Icon picker -->
+              <div class="mt-3">
+                <label class="block text-xs text-ink-gray-5 mb-1.5 font-medium">Folder Icon</label>
+                <div class="mb-2">
+                  <TextInput
+                    type="text"
+                    v-model="editFolderIconSearch"
+                    placeholder="Search icons..."
+                  >
+                    <template #prefix>
+                      <FeatherIcon name="search" class="w-4 h-4 text-ink-gray-5" />
+                    </template>
+                  </TextInput>
+                </div>
+                <div class="grid grid-cols-7 gap-2 max-h-40 overflow-y-auto p-1 border border-outline-gray-2 rounded-md bg-surface-base">
+                  <div v-if="filteredEditIcons.length === 0" class="col-span-7 text-center text-xs text-ink-gray-5 py-4">No icons found</div>
+                  <Button
+                    v-for="icon in filteredEditIcons"
+                    :key="icon"
+                    variant="ghost"
+                    class="w-8 h-8 !p-1.5 rounded-md flex items-center justify-center hover:bg-surface-gray-2"
+                    :class="{ 'bg-surface-gray-3 text-ink-gray-9 ring-1 ring-outline-gray-3': editFolderIcon === icon, 'text-ink-gray-5': editFolderIcon !== icon }"
+                    @click.prevent="editFolderIcon = icon"
+                  >
+                    <FeatherIcon :name="icon" class="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -275,7 +305,7 @@
             <p class="text-sm text-ink-gray-7" v-if="loadingCount">Analyzing folder secrets...</p>
             <template v-else>
               <div class="space-y-3" v-if="deleteSecretsCount > 0">
-                <div class="p-3 bg-red-50 border border-red-100 rounded-lg text-ink-red-3 flex items-start gap-2.5">
+                <div class="p-3 bg-surface-red-2 border border-outline-red-1 rounded-lg text-ink-red-3 flex items-start gap-2.5">
                   <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5" />
                   <div class="text-sm">
                     <p class="font-semibold text-ink-red-4">Warning: Contains Secrets</p>
@@ -293,7 +323,7 @@
                   Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
                 </p>
               </div>
-              <div v-if="deleteFolderError" class="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 mt-2">
+              <div v-if="deleteFolderError" class="text-sm text-ink-red-3 bg-surface-red-2 p-3 rounded-lg border border-outline-red-1 mt-2">
                 {{ deleteFolderError }}
               </div>
             </template>
@@ -319,8 +349,9 @@
 <script setup>
 import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
+import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, TextInput, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData } from '../composables/vault'
+import feather from 'feather-icons'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
@@ -375,12 +406,14 @@ const folderSecretsResource = useFolderSecrets()
 
 const showCreateFolderDialog = ref(false)
 const newFolderName = ref('')
-const newFolderColor = ref('#3b82f6')
+const newFolderIcon = ref('folder')
+const newFolderIconSearch = ref('')
 
 const showEditFolderDialog = ref(false)
 const folderToEdit = ref(null)
 const editFolderName = ref('')
-const editFolderColor = ref('#3b82f6')
+const editFolderIcon = ref('folder')
+const editFolderIconSearch = ref('')
 
 const showDeleteFolderDialog = ref(false)
 const folderToDelete = ref(null)
@@ -404,18 +437,26 @@ function parseFrappeError(error) {
   return 'Failed to delete folder. Please try again.'
 }
 
-const curatedColors = [
-  '#3b82f6', // Blue
-  '#10b981', // Green
-  '#f97316', // Orange
-  '#8b5cf6', // Purple
-  '#ec4899', // Pink
-  '#ef4444', // Red
+const availableIcons = [
+  'folder', 'briefcase', 'home', 'star', 'heart', 'lock', 'key', 'database', 'server', 'users', 'globe', 'settings', 'shield', 'book', 'cpu', 'cloud', 'zap', 'target', 'award', 'bookmark', 'box', 'camera', 'coffee', 'compass', 'credit-card', 'flag', 'gift', 'hash', 'image', 'layers', 'life-buoy', 'map', 'music', 'package', 'phone', 'printer', 'radio', 'shopping-bag', 'shopping-cart', 'smartphone', 'speaker', 'sun', 'moon', 'tag', 'tool', 'trash', 'truck', 'tv', 'umbrella', 'video', 'watch', 'wifi'
 ]
+
+const allIcons = Object.keys(feather.icons)
+
+const filteredNewIcons = computed(() => {
+  if (!newFolderIconSearch.value) return availableIcons
+  return allIcons.filter(i => i.includes(newFolderIconSearch.value.toLowerCase()))
+})
+
+const filteredEditIcons = computed(() => {
+  if (!editFolderIconSearch.value) return availableIcons
+  return allIcons.filter(i => i.includes(editFolderIconSearch.value.toLowerCase()))
+})
 
 function openCreateFolderDialog() {
   newFolderName.value = ''
-  newFolderColor.value = '#3b82f6'
+  newFolderIcon.value = 'folder'
+  newFolderIconSearch.value = ''
   showCreateFolderDialog.value = true
 }
 
@@ -424,7 +465,7 @@ async function handleCreateFolder() {
   try {
     await createFolderResource.submit({
       folder_name: newFolderName.value.trim(),
-      color: newFolderColor.value,
+      icon: newFolderIcon.value,
     })
     showCreateFolderDialog.value = false
     foldersResource.reload()
@@ -434,23 +475,26 @@ async function handleCreateFolder() {
 }
 
 function getFolderOptions(folder) {
-  return [
-    {
+  const options = []
+  if (folder.can_write) {
+    options.push({
       label: 'Edit Folder',
       icon: 'edit-2',
       onClick: () => {
         folderToEdit.value = folder
         editFolderName.value = folder.folder_name
-        editFolderColor.value = folder.color || '#3b82f6'
+        editFolderIcon.value = folder.icon || 'folder'
+        editFolderIconSearch.value = ''
         showEditFolderDialog.value = true
       }
-    },
-    {
+    })
+    options.push({
       label: 'Delete Folder',
       icon: 'trash-2',
       onClick: () => openDeleteFolderDialog(folder)
-    }
-  ]
+    })
+  }
+  return options
 }
 
 function openDeleteFolderDialog(folder) {
@@ -474,7 +518,7 @@ async function handleEditFolder() {
     await updateFolderResource.submit({
       name: folderToEdit.value.name,
       folder_name: editFolderName.value.trim(),
-      color: editFolderColor.value,
+      icon: editFolderIcon.value,
     })
     showEditFolderDialog.value = false
     folderToEdit.value = null
@@ -604,6 +648,7 @@ function toggleTheme() {
   const currentTheme = document.documentElement.getAttribute('data-theme')
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
   document.documentElement.setAttribute('data-theme', newTheme)
+  localStorage.setItem('theme', newTheme)
 }
 
 const sidebarConfig = reactive({

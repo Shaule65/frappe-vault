@@ -2,7 +2,7 @@
   <div class="min-h-screen w-full bg-surface-gray-2">
     <div class="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-10">
       <div class="mb-6 flex items-center gap-3">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-blue-3 text-ink-white">
           <FeatherIcon name="lock" class="h-5 w-5" />
         </div>
         <div>
@@ -23,11 +23,11 @@
           />
         </div>
 
-        <div v-else-if="errorMessage" class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4">
-          <FeatherIcon name="alert-circle" class="mt-0.5 h-5 w-5 text-red-600" />
+        <div v-else-if="errorMessage" class="flex items-start gap-3 rounded-md border border-outline-red-1 bg-surface-red-2 p-4">
+          <FeatherIcon name="alert-circle" class="mt-0.5 h-5 w-5 text-ink-red-3" />
           <div>
-            <p class="text-sm font-medium text-red-900">Unable to open this link</p>
-            <p class="mt-1 text-sm text-red-700">{{ errorMessage }}</p>
+            <p class="text-sm font-medium text-ink-red-4">Unable to open this link</p>
+            <p class="mt-1 text-sm text-ink-red-3">{{ errorMessage }}</p>
           </div>
         </div>
 
@@ -51,7 +51,7 @@
             <SecretValueDisplay v-if="secret.notes" label="Notes" :value="secret.notes" multiline />
           </div>
 
-          <p class="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p class="rounded-md bg-surface-warning-2 px-3 py-2 text-sm text-ink-warning">
             Save what you need now. This link may not work again after the allowed views are used.
           </p>
         </div>
