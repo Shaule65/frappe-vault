@@ -2,7 +2,7 @@
   <Sidebar
     v-model:collapsed="isSidebarCollapsed"
     :disable-collapse="isMobile"
-    class="select-none"
+    class="select-none vault-sidebar"
   >
     <div class="flex h-full flex-col p-2">
       <!-- Header -->
@@ -24,6 +24,7 @@
             :icon="item.icon"
             :to="item.to"
             :isActive="item.isActive"
+            class="vault-sidebar-item"
           >
             <template v-if="item.count" #suffix>
               <Badge :label="String(item.count)" variant="subtle" theme="gray" />
@@ -36,7 +37,7 @@
           <div class="flex items-center justify-between px-2 pt-3 pb-1 mb-1 select-none">
             <span
               v-if="!isSidebarCollapsed"
-              class="text-xs font-semibold text-ink-gray-4 tracking-wider uppercase transition-opacity duration-200 truncate"
+              class="text-xs font-semibold text-ink-gray-4 tracking-wider uppercase transition-opacity duration-200 truncate vault-sidebar-section-label"
             >
               Folders
             </span>
@@ -57,13 +58,13 @@
             :label="folder.folder_name"
             :to="`/secrets?folder=${encodeURIComponent(folder.name)}`"
             :isActive="checkActive(`/secrets?folder=${encodeURIComponent(folder.name)}`)"
-            class="group"
+            class="group vault-sidebar-item"
           >
             <template #prefix>
               <div class="flex items-center justify-center w-4 h-4">
                 <FeatherIcon
                   :name="folder.icon || 'folder'"
-                  class="w-4 h-4 shrink-0 text-ink-gray-5"
+                  class="w-4 h-4 shrink-0"
                 />
               </div>
             </template>
@@ -441,7 +442,7 @@ const availableIcons = [
   'folder', 'briefcase', 'home', 'star', 'heart', 'lock', 'key', 'database', 'server', 'users', 'globe', 'settings', 'shield', 'book', 'cpu', 'cloud', 'zap', 'target', 'award', 'bookmark', 'box', 'camera', 'coffee', 'compass', 'credit-card', 'flag', 'gift', 'hash', 'image', 'layers', 'life-buoy', 'map', 'music', 'package', 'phone', 'printer', 'radio', 'shopping-bag', 'shopping-cart', 'smartphone', 'speaker', 'sun', 'moon', 'tag', 'tool', 'trash', 'truck', 'tv', 'umbrella', 'video', 'watch', 'wifi'
 ]
 
-const allIcons = Object.keys(feather.icons)
+const allIcons = typeof feather !== 'undefined' && feather.icons ? Object.keys(feather.icons) : availableIcons
 
 const filteredNewIcons = computed(() => {
   if (!newFolderIconSearch.value) return availableIcons
