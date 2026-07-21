@@ -96,7 +96,7 @@
                        <FeatherIcon name="folder" class="w-4 h-4" />
                     </div>
                     <SecretTypeIcon v-else :type="item.secret_type" />
-                    <span class="min-w-0 flex-1 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 flex-1 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
