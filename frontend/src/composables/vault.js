@@ -222,3 +222,22 @@ export function useClearDemoData() {
   })
 }
 
+// --- Field Metadata ---
+export function useFilterableFields(doctype = 'Vault Secret') {
+  return createResource({
+    url: 'frappe_vault.api.fields.get_filterable_fields',
+    params: { doctype },
+    auto: true,
+    cache: ['vault-filterable-fields', doctype],
+  })
+}
+
+export function useSortOptions(doctype = 'Vault Secret') {
+  return createResource({
+    url: 'frappe_vault.api.fields.get_sort_options',
+    params: { doctype },
+    auto: true,
+    cache: ['vault-sort-options', doctype],
+  })
+}
+

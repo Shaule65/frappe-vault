@@ -18,25 +18,22 @@
       </div>
     </header>
 
-    <!-- View Controls Bar (matching CRM ViewControls.vue line 132-237) -->
-    <div class="flex items-center justify-between gap-2 px-5 py-4">
-      <!-- Quick Filters (Left side - matching CRM quick filter fields) -->
+    <!-- View Controls Bar -->
+    <div class="view-controls-bar flex items-center justify-between gap-2 px-5 py-4 relative z-10">
+      <!-- Quick Filters (Left side) -->
       <div class="flex flex-1 items-center gap-2.5 overflow-x-auto h-9">
-        <!-- Title Quick Filter -->
         <TextInput
           v-model="titleQuery"
           placeholder="Title"
           class="w-44 shrink-0"
         />
 
-        <!-- Type Quick Filter Dropdown -->
         <Select
           v-model="activeFilters.secret_type"
           :options="typeFilterOptions"
           placeholder="Type"
         />
 
-        <!-- Folder Quick Filter Dropdown -->
         <Select
           v-model="activeFilters.folder"
           :options="folderFilterOptions"
@@ -44,12 +41,12 @@
         />
       </div>
 
-      <!-- Divider (matching CRM: -ml-2 h-[70%] border-l) -->
+      <!-- Divider -->
       <div class="-ml-2 h-[70%] border-l" />
 
-      <!-- Controls (Right side - matching CRM ViewControls right side) -->
+      <!-- Controls (Right side) -->
       <div class="flex items-center gap-2">
-        <!-- Refresh Button (matching CRM: icon only with tooltip) -->
+        <!-- Refresh -->
         <Button
           :tooltip="'Refresh'"
           :icon="RefreshIcon"
@@ -57,58 +54,26 @@
           @click="refreshSecrets()"
         />
 
-        <!-- Filter Button (matching CRM Filter.vue - Button with iconLeft + label) -->
-        <Dropdown :options="combinedFilterOptions">
-          <template #default="{ open }">
-            <div class="flex items-center">
-              <Button
-                :label="'Filter'"
-                :iconLeft="FilterIcon"
-                :class="activeFilterCount ? 'rounded-r-none' : ''"
-                @click="open"
-              >
-                <template v-if="activeFilterCount" #suffix>
-                  <div
-                    class="flex h-5 w-5 items-center justify-center rounded-[5px] bg-surface-elevation-1 pt-px text-xs font-medium text-ink-gray-8 shadow-sm"
-                  >
-                    {{ activeFilterCount }}
-                  </div>
-                </template>
-              </Button>
-              <Button
-                v-if="activeFilterCount"
-                :tooltip="'Clear Filters'"
-                class="rounded-l-none border-l border-outline-gray-1"
-                icon="x"
-                @click.stop="clearFilters()"
-              />
-            </div>
-          </template>
-        </Dropdown>
+        <!-- Filter Panel -->
+        <FilterPanel
+          :fields="filterableFields.data || []"
+          @update="onFilterUpdate"
+        />
 
-        <!-- Sort Button (matching CRM SortBy.vue - Button with iconLeft + label) -->
-        <Dropdown :options="sortDropdownOptions">
-          <template #default="{ open }">
-            <Button label="Sort" @click="open">
-              <template #prefix>
-                <SortIcon class="h-4" />
-              </template>
-            </Button>
-          </template>
-        </Dropdown>
+        <!-- Sort Panel -->
+        <SortPanel
+          :fields="sortOptions.data || []"
+          @update="onSortUpdate"
+        />
 
-        <!-- Columns Button (matching CRM ColumnSettings.vue - Button with iconLeft + label) -->
-        <Dropdown :options="columnsDropdownOptions">
-          <template #default="{ open }">
-            <Button label="Columns" @click="open">
-              <template #prefix>
-                <ColumnsIcon class="h-4" />
-              </template>
-            </Button>
-          </template>
-        </Dropdown>
+        <!-- Column Panel -->
+        <ColumnPanel
+          :defaultColumns="defaultColumns"
+          :allFields="filterableFields.data || []"
+          @update="onColumnsUpdate"
+        />
 
-        <!-- More Dropdown (matching CRM: icon-only button with tooltip) -->
+        <!-- More Options -->
         <Dropdown :options="moreOptions">
           <template #default>
             <Button :tooltip="'More Options'" icon="more-horizontal" />
@@ -118,7 +83,7 @@
     </div>
 
     <!-- Secret list -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden relative">
       <!-- Loading state -->
       <div v-if="secrets.loading && !secrets.data" class="p-6 space-y-3">
         <div v-for="i in 5" :key="i" class="h-16 bg-surface-gray-3 rounded-lg animate-pulse" />
@@ -139,7 +104,7 @@
             onRowClick: (row) => router.push({ name: 'SecretDetail', params: { name: row.name } }),
           }"
         >
-          <ListHeader class="sm:mx-5 mx-3 shrink-0">
+          <ListHeader class="sm:mx-5 mx-3 shrink-0 relative">
             <ListHeaderItem
               v-for="column in columns"
               :key="column.key"
@@ -159,7 +124,7 @@
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
                     <SecretTypeIcon :type="item.secret_type" />
-                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 font-medium text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -195,6 +160,9 @@
                       />
                     </Button>
                   </div>
+
+                  <!-- Dynamic columns (fallback) -->
+                  <span v-else class="text-base text-ink-gray-7 truncate">{{ item ?? '—' }}</span>
                 </template>
               </ListRowItem>
             </ListRow>
@@ -280,10 +248,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import SortIcon from '../components/SortIcon.vue'
-import ColumnsIcon from '../components/ColumnsIcon.vue'
-import FilterIcon from '../components/FilterIcon.vue'
 import RefreshIcon from '../components/RefreshIcon.vue'
+import FilterPanel from '../components/FilterPanel.vue'
+import SortPanel from '../components/SortPanel.vue'
+import ColumnPanel from '../components/ColumnPanel.vue'
 import {
   Button,
   Dialog,
@@ -301,7 +269,17 @@ import {
   Breadcrumbs,
   Select,
 } from 'frappe-ui'
-import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite, useGenerateDemoData, useVaultStats, useDeleteSecret, useBulkDeleteSecrets } from '../composables/vault'
+import {
+  mobileSidebarOpened,
+  useSecrets,
+  useFolders,
+  useToggleFavorite,
+  useGenerateDemoData,
+  useVaultStats,
+  useBulkDeleteSecrets,
+  useFilterableFields,
+  useSortOptions,
+} from '../composables/vault'
 import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import NewSecretDialog from '../components/NewSecretDialog.vue'
@@ -315,18 +293,21 @@ const selectedSecret = ref(null)
 const showNewDialog = ref(false)
 const selectedSecrets = ref(new Set())
 const activeFilters = ref({ secret_type: '', folder: route.query.folder || '', favorites_only: false })
+const panelFilters = ref({})
 const pageLength = ref(20)
 const currentSort = ref('modified desc')
 const showDeleteDialog = ref(false)
 const deleteError = ref('')
 const secretToDelete = ref(null)
 
-const visibleColumns = ref({
-  secret_type: true,
-  folder: true,
-  password_strength: true,
-  modified: true,
-})
+const defaultColumns = [
+  { label: 'Type', key: 'secret_type', width: '10rem' },
+  { label: 'Folder', key: 'folder', width: '11rem' },
+  { label: 'Strength', key: 'password_strength', width: '10rem' },
+  { label: 'Last Modified', key: 'modified', width: '12rem' },
+]
+
+const activeColumnDefs = ref([...defaultColumns])
 
 const secrets = useSecrets()
 const foldersResource = useFolders()
@@ -334,6 +315,8 @@ const toggleFav = useToggleFavorite()
 const stats = useVaultStats()
 const generateDemo = useGenerateDemoData()
 const deleteResource = useBulkDeleteSecrets()
+const filterableFields = useFilterableFields()
+const sortOptions = useSortOptions()
 
 async function handleGenerateDemo() {
   try {
@@ -346,13 +329,11 @@ async function handleGenerateDemo() {
 
 const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || secretsList.value.length || 0)
-const hasActiveFilters = computed(() => titleQuery.value || activeFilters.value.secret_type || activeFilters.value.folder || activeFilters.value.favorites_only)
-const activeFilterCount = computed(() => [
-  titleQuery.value,
-  activeFilters.value.secret_type,
-  activeFilters.value.folder,
-  activeFilters.value.favorites_only,
-].filter(Boolean).length)
+const hasActiveFilters = computed(() =>
+  titleQuery.value || activeFilters.value.secret_type || activeFilters.value.folder ||
+  activeFilters.value.favorites_only || Object.keys(panelFilters.value).length > 0
+)
+
 const breadcrumbs = computed(() => {
   if (activeFilters.value.folder) {
     const folderName = foldersResource.data?.find(f => f.name === activeFilters.value.folder)?.folder_name || 'Folder'
@@ -364,68 +345,11 @@ const breadcrumbs = computed(() => {
   return [{ label: 'Secrets' }]
 })
 
-
-const sortOptions = [
-  { label: 'Last Modified (Newest)', value: 'modified desc' },
-  { label: 'Last Modified (Oldest)', value: 'modified asc' },
-  { label: 'Title (A-Z)', value: 'title asc' },
-  { label: 'Title (Z-A)', value: 'title desc' },
-  { label: 'Last Accessed', value: 'last_accessed desc' },
-]
-
-const sortDropdownOptions = computed(() => {
-  return sortOptions.map(opt => ({
-    label: opt.label,
-    onClick: () => {
-      currentSort.value = opt.value
-    }
-  }))
-})
-
-const columnsDropdownOptions = computed(() => {
-  return [
-    {
-      group: 'Toggle Columns',
-      items: [
-        {
-          label: 'Type',
-          icon: visibleColumns.value.secret_type ? 'check' : '',
-          onClick: () => { visibleColumns.value.secret_type = !visibleColumns.value.secret_type }
-        },
-        {
-          label: 'Folder',
-          icon: visibleColumns.value.folder ? 'check' : '',
-          onClick: () => { visibleColumns.value.folder = !visibleColumns.value.folder }
-        },
-        {
-          label: 'Strength',
-          icon: visibleColumns.value.password_strength ? 'check' : '',
-          onClick: () => { visibleColumns.value.password_strength = !visibleColumns.value.password_strength }
-        },
-        {
-          label: 'Last Modified',
-          icon: visibleColumns.value.modified ? 'check' : '',
-          onClick: () => { visibleColumns.value.modified = !visibleColumns.value.modified }
-        },
-      ]
-    }
-  ]
-})
-
-const allColumns = ref([
-  { label: 'Title', key: 'title', width: '18rem' },
-  { label: 'Type', key: 'secret_type', width: '10rem' },
-  { label: 'Folder', key: 'folder', width: '11rem' },
-  { label: 'Strength', key: 'password_strength', width: '10rem' },
-  { label: 'Last Modified', key: 'modified', width: '12rem' },
-  { label: '', key: '_actions', width: '6rem', align: 'right' }
-])
-
+// Fixed columns: title (always first) and _actions (always last)
 const columns = computed(() => {
-  return allColumns.value.filter(col => {
-    if (col.key === 'title' || col.key === '_actions') return true
-    return visibleColumns.value[col.key]
-  })
+  const titleCol = { label: 'Title', key: 'title', width: '18rem' }
+  const actionsCol = { label: '', key: '_actions', width: '6rem', align: 'right' }
+  return [titleCol, ...activeColumnDefs.value, actionsCol]
 })
 
 const formattedRows = computed(() => {
@@ -460,21 +384,6 @@ const folderFilterOptions = computed(() => {
   return opts
 })
 
-const combinedFilterOptions = computed(() => {
-  return [
-    {
-      group: 'Filters',
-      items: [
-        {
-          label: 'Favorites Only',
-          icon: activeFilters.value.favorites_only ? 'check' : '',
-          onClick: () => { activeFilters.value.favorites_only = !activeFilters.value.favorites_only }
-        },
-      ]
-    }
-  ]
-})
-
 const moreOptions = computed(() => {
   return [
     {
@@ -495,32 +404,42 @@ const moreOptions = computed(() => {
   ]
 })
 
+function onFilterUpdate(filters) {
+  panelFilters.value = filters
+}
+
+function onSortUpdate(orderBy) {
+  currentSort.value = orderBy
+}
+
+function onColumnsUpdate(cols) {
+  activeColumnDefs.value = cols
+}
+
 function refreshSecrets() {
-  secrets.submit({
+  const filters = {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
     folder: activeFilters.value.folder || undefined,
     favorites_only: activeFilters.value.favorites_only || undefined,
     limit: pageLength.value,
     order_by: currentSort.value,
-  })
+    ...panelFilters.value,
+  }
+  secrets.submit(filters)
 }
 
 function clearFilters() {
   titleQuery.value = ''
   activeFilters.value = { secret_type: '', folder: '', favorites_only: false }
+  panelFilters.value = {}
   currentSort.value = 'modified desc'
 }
 
 async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
 function handleCreated(r) { showNewDialog.value = false; refreshSecrets(); router.push({ name: 'SecretDetail', params: { name: r.name } }) }
 
-// Extract a clean, human-readable message from a Frappe API error.
-// Frappe errors can have: error.message (from frappe.throw), error.messages[] (array),
-// or error.exc (full Python traceback as a string — never show this raw).
 function parseFrappeError(error) {
-  // frappe-ui wraps errors: the user-facing message is in error.message
-  // or error.messages[0]. error.exc is the raw traceback — skip it.
   if (error?.message && !error.message.includes('Traceback')) {
     return error.message
   }
@@ -528,7 +447,6 @@ function parseFrappeError(error) {
     const msg = error.messages[0]
     if (msg && !msg.includes('Traceback')) return msg
   }
-  // Fall back to extracting the last non-empty line from the traceback
   if (error?.exc) {
     const lines = error.exc.split('\n').map(l => l.trim()).filter(Boolean)
     const last = lines[lines.length - 1]
@@ -548,13 +466,11 @@ async function handleDeleteSecret() {
     const res = await deleteResource.submit({ secret_names: JSON.stringify(secret_names) })
 
     if (res && res.deleted > 0) {
-      // At least some secrets were deleted — close dialog, refresh list
       showDeleteDialog.value = false
       selectedSecrets.value.clear()
       refreshSecrets()
       stats.reload()
     } else if (res && res.skipped > 0 && res.deleted === 0) {
-      // Nothing was deleted — all skipped due to permissions
       deleteError.value = `You don't have permission to delete the selected secret(s). Only the owner or someone with Full Control access can delete.`
     } else if (res && res.failed > 0) {
       deleteError.value = res.error || 'An unexpected error occurred while deleting.'
@@ -564,20 +480,22 @@ async function handleDeleteSecret() {
   }
 }
 
-function copyToClipboard(text) {
-  if (!text) return
-  navigator.clipboard.writeText(text)
-}
-
-watch([titleQuery, activeFilters, pageLength, currentSort], () => {
-  secrets.submit({
+watch([titleQuery, activeFilters, pageLength, currentSort, panelFilters], () => {
+  const filters = {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
     folder: activeFilters.value.folder || undefined,
     favorites_only: activeFilters.value.favorites_only || undefined,
     limit: pageLength.value,
     order_by: currentSort.value,
-  })
+  }
+  // Merge panel filters into the API params
+  for (const [key, val] of Object.entries(panelFilters.value)) {
+    if (val !== undefined && val !== '') {
+      filters[key] = val
+    }
+  }
+  secrets.submit(filters)
 }, { deep: true, immediate: true })
 
 watch(() => route.query.folder, (newFolder) => {
