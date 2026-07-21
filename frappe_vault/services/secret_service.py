@@ -12,7 +12,7 @@ def get_secrets(
     username: str = None,
     secret_type: str = None,
     folder: str = None,
-    favorites_only: bool = False,
+    bookmarks_only: bool = False,
     tag: str = None,
     limit: int = 20,
     offset: int = 0,
@@ -30,19 +30,19 @@ def get_secrets(
     if folder:
         filters["folder"] = folder
 
-    # Resolve user favorites
+    # Resolve user bookmarks
     user = frappe.session.user
-    user_favorites = set(frappe.get_all("Vault Favorite", filters={"user": user}, pluck="secret"))
+    user_bookmarks = set(frappe.get_all("Vault Bookmark", filters={"user": user}, pluck="secret"))
 
-    if favorites_only:
-        if not user_favorites:
+    if bookmarks_only:
+        if not user_bookmarks:
             return {
                 "secrets": [],
                 "total": 0,
                 "limit": limit,
                 "offset": offset,
             }
-        filters["name"] = ["in", list(user_favorites)]
+        filters["name"] = ["in", list(user_bookmarks)]
 
     if title:
         filters["title"] = ["like", f"%{title}%"]
@@ -68,9 +68,9 @@ def get_secrets(
         limit_start=offset,
     )
 
-    # Populate is_favorite dynamically per-user
+    # Populate is_bookmark dynamically per-user
     for s in secrets:
-        s["is_favorite"] = 1 if s["name"] in user_favorites else 0
+        s["is_bookmark"] = 1 if s["name"] in user_bookmarks else 0
 
     # Fix total count leak by counting only visible records
     total = len(frappe.get_list("Vault Secret", filters=filters, or_filters=or_filters, pluck="name"))
@@ -163,7 +163,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "username": doc.username,
         "email": doc.email,
         "notes": doc.notes,
-        "is_favorite": 1 if frappe.db.exists("Vault Favorite", {"user": frappe.session.user, "secret": doc.name}) else 0,
+        "is_bookmark": 1 if frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name}) else 0,
         "password_strength": doc.password_strength,
         "password_last_changed": doc.password_last_changed,
         "last_accessed": str(doc.last_accessed) if doc.last_accessed else None,
@@ -248,7 +248,7 @@ def update_secret(name: str, data: dict) -> dict:
 
     allowed_fields = [
         "title", "secret_type", "folder", "url", "username", "email",
-        "password", "api_key", "api_secret", "notes", "is_favorite",
+        "password", "api_key", "api_secret", "notes", "is_bookmark",
         "ssh_private_key", "certificate", "card_holder", "card_number",
         "card_expiry", "card_cvv", "db_host", "db_port", "db_name",
         "db_password", "expires_on", "custom_fields_json",
@@ -280,10 +280,10 @@ def delete_secret(name: str) -> dict:
     for share_name in shares:
         frappe.delete_doc("Vault Share", share_name, force=True, ignore_permissions=True)
 
-    # 3. Clean up associated favorites
-    favorites = frappe.get_all("Vault Favorite", filters={"secret": name}, pluck="name")
-    for fav_name in favorites:
-        frappe.delete_doc("Vault Favorite", fav_name, force=True, ignore_permissions=True)
+    # 3. Clean up associated bookmarks
+    bookmarks = frappe.get_all("Vault Bookmark", filters={"secret": name}, pluck="name")
+    for b_name in bookmarks:
+        frappe.delete_doc("Vault Bookmark", b_name, force=True, ignore_permissions=True)
 
     # 4. Finally delete the Vault Secret document itself.
     # We bypass link verification for Vault Audit Log so we can keep the historical
@@ -315,26 +315,26 @@ def bulk_delete(secret_names: list) -> dict:
     return {"deleted": deleted, "skipped": skipped, "failed": failed, "error": error}
 
 
-def toggle_favorite(name: str) -> dict:
-    """Toggle favorite status."""
+def toggle_bookmark(name: str) -> dict:
+    """Toggle bookmark status."""
     if not frappe.has_permission("Vault Secret", "read", name):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
     user = frappe.session.user
-    fav_exists = frappe.db.exists("Vault Favorite", {"user": user, "secret": name})
+    fav_exists = frappe.db.exists("Vault Bookmark", {"user": user, "secret": name})
     if fav_exists:
-        frappe.delete_doc("Vault Favorite", fav_exists, force=True, ignore_permissions=True)
-        is_favorite = 0
+        frappe.delete_doc("Vault Bookmark", fav_exists, force=True, ignore_permissions=True)
+        is_bookmark = 0
     else:
         fav_doc = frappe.get_doc({
-            "doctype": "Vault Favorite",
+            "doctype": "Vault Bookmark",
             "user": user,
             "secret": name
         })
         fav_doc.insert(ignore_permissions=True)
-        is_favorite = 1
+        is_bookmark = 1
 
-    return {"name": name, "is_favorite": is_favorite}
+    return {"name": name, "is_bookmark": is_bookmark}
 
 
 def bulk_move(secret_names: list, target_folder: str) -> dict:
@@ -360,8 +360,8 @@ def get_vault_stats() -> dict:
     )
 
     total = len(secrets)
-    user_favorites = set(frappe.get_all("Vault Favorite", filters={"user": user}, pluck="secret"))
-    favorites = sum(1 for s in secrets if s.get("name") in user_favorites)
+    user_bookmarks = set(frappe.get_all("Vault Bookmark", filters={"user": user}, pluck="secret"))
+    bookmarks = sum(1 for s in secrets if s.get("name") in user_bookmarks)
     weak = sum(1 for s in secrets if s.get("password_strength") in ["weak", "fair"])
 
     secrets_by_type = {}
@@ -380,7 +380,7 @@ def get_vault_stats() -> dict:
 
     return {
         "total_secrets": total,
-        "favorites": favorites,
+        "bookmarks": bookmarks,
         "weak_passwords": weak,
         "secrets_by_type": secrets_by_type,
         "recent_secrets": recent,

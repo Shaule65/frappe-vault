@@ -24,7 +24,7 @@ def check_has_demo_data() -> bool:
 
 
 def generate_demo_data() -> dict:
-    """Orchestrate generation of realistic demo folders, secrets, favorites, and shares."""
+    """Orchestrate generation of realistic demo folders, secrets, bookmarks, and shares."""
     if check_has_demo_data():
         return {"status": "already_exists", "message": _("Demo data is already generated.")}
 
@@ -59,7 +59,7 @@ def generate_demo_data() -> dict:
     # 2. Create Demo Secrets
     for s_raw in DEMO_SECRETS:
         s = dict(s_raw)  # copy dict before mutating
-        is_fav = s.pop("is_favorite", 0)
+        is_fav = s.pop("is_bookmark", 0)
         share_role = s.pop("share_role", None)
         share_perm = s.pop("share_perm", "View Only")
 
@@ -70,9 +70,9 @@ def generate_demo_data() -> dict:
         created_secrets.append(doc.name)
 
         if is_fav:
-            if not frappe.db.exists("Vault Favorite", {"user": frappe.session.user, "secret": doc.name}):
+            if not frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name}):
                 frappe.get_doc({
-                    "doctype": "Vault Favorite",
+                    "doctype": "Vault Bookmark",
                     "user": frappe.session.user,
                     "secret": doc.name
                 }).insert(ignore_permissions=True)
@@ -100,7 +100,7 @@ def generate_demo_data() -> dict:
 
 
 def clear_demo_data() -> dict:
-    """Clear all generated demo secrets, favorites, shares, and empty folders."""
+    """Clear all generated demo secrets, bookmarks, shares, and empty folders."""
     records_raw = frappe.db.get_default("frappe_vault_demo_records")
     records = {"secrets": [], "folders": []}
     if records_raw:
@@ -115,11 +115,11 @@ def clear_demo_data() -> dict:
     for s_doc in frappe.get_all("Vault Secret", filters={"title": ["in", catalog_titles]}, pluck="name"):
         secret_names.add(s_doc)
 
-    # Delete recorded secrets along with their favorites, links, and shares
+    # Delete recorded secrets along with their bookmarks, links, and shares
     for s_name in secret_names:
         if frappe.db.exists("Vault Secret", s_name):
-            for fav in frappe.get_all("Vault Favorite", filters={"secret": s_name}, pluck="name"):
-                frappe.delete_doc("Vault Favorite", fav, ignore_permissions=True, force=True)
+            for fav in frappe.get_all("Vault Bookmark", filters={"secret": s_name}, pluck="name"):
+                frappe.delete_doc("Vault Bookmark", fav, ignore_permissions=True, force=True)
             for link in frappe.get_all("Vault One Time Link", filters={"secret": s_name}, pluck="name"):
                 frappe.delete_doc("Vault One Time Link", link, ignore_permissions=True, force=True)
             for sh in frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": s_name}, pluck="name"):
