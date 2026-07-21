@@ -59,7 +59,7 @@ def generate_demo_data() -> dict:
     # 2. Create Demo Secrets
     for s_raw in DEMO_SECRETS:
         s = dict(s_raw)  # copy dict before mutating
-        is_fav = s.pop("is_bookmark", 0)
+        is_bookmark = s.pop("is_bookmark", 0)
         share_role = s.pop("share_role", None)
         share_perm = s.pop("share_perm", "View Only")
 
@@ -69,7 +69,7 @@ def generate_demo_data() -> dict:
         }).insert(ignore_permissions=True)
         created_secrets.append(doc.name)
 
-        if is_fav:
+        if is_bookmark:
             if not frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name}):
                 frappe.get_doc({
                     "doctype": "Vault Bookmark",
