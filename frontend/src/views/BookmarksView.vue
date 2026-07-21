@@ -142,7 +142,7 @@
                     >
                       <FeatherIcon
                         name="bookmark"
-                        class="w-4 h-4 text-ink-yellow-3 fill-current"
+                        class="w-4 h-4 text-ink-yellow-6 fill-current"
                       />
                     </Button>
                   </div>

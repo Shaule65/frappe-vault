@@ -156,7 +156,7 @@
                       <FeatherIcon
                         name="bookmark"
                         class="w-4 h-4"
-                        :class="row.is_bookmark ? 'text-ink-yellow-3 fill-current' : 'text-ink-gray-4'"
+                        :class="row.is_bookmark ? 'text-ink-yellow-6 fill-current' : 'text-ink-gray-4'"
                       />
                     </Button>
                   </div>
