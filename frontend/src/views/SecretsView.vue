@@ -124,7 +124,7 @@
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
                     <SecretTypeIcon :type="item.secret_type" />
-                    <span class="min-w-0 font-medium text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -151,12 +151,12 @@
                     <Button
                       variant="ghost"
                       class="!p-1.5 h-auto text-ink-gray-5 hover:text-ink-gray-9"
-                      @click.stop="handleToggleFavorite(row)"
+                      @click.stop="handleToggleBookmark(row)"
                     >
                       <FeatherIcon
-                        name="star"
+                        name="bookmark"
                         class="w-4 h-4"
-                        :class="row.is_favorite ? 'text-ink-yellow-3 fill-current' : 'text-ink-gray-4'"
+                        :class="row.is_bookmark ? 'text-ink-yellow-6 fill-current' : 'text-ink-gray-4'"
                       />
                     </Button>
                   </div>
@@ -273,7 +273,7 @@ import {
   mobileSidebarOpened,
   useSecrets,
   useFolders,
-  useToggleFavorite,
+  useToggleBookmark,
   useGenerateDemoData,
   useVaultStats,
   useBulkDeleteSecrets,
@@ -292,7 +292,7 @@ const titleQuery = ref('')
 const selectedSecret = ref(null)
 const showNewDialog = ref(false)
 const selectedSecrets = ref(new Set())
-const activeFilters = ref({ secret_type: '', folder: route.query.folder || '', favorites_only: false })
+const activeFilters = ref({ secret_type: '', folder: route.query.folder || '', bookmarks_only: false })
 const panelFilters = ref({})
 const pageLength = ref(20)
 const currentSort = ref('modified desc')
@@ -311,7 +311,7 @@ const activeColumnDefs = ref([...defaultColumns])
 
 const secrets = useSecrets()
 const foldersResource = useFolders()
-const toggleFav = useToggleFavorite()
+const toggleBook = useToggleBookmark()
 const stats = useVaultStats()
 const generateDemo = useGenerateDemoData()
 const deleteResource = useBulkDeleteSecrets()
@@ -331,7 +331,7 @@ const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || secretsList.value.length || 0)
 const hasActiveFilters = computed(() =>
   titleQuery.value || activeFilters.value.secret_type || activeFilters.value.folder ||
-  activeFilters.value.favorites_only || Object.keys(panelFilters.value).length > 0
+  activeFilters.value.bookmarks_only || Object.keys(panelFilters.value).length > 0
 )
 
 const breadcrumbs = computed(() => {
@@ -421,7 +421,7 @@ function refreshSecrets() {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
     folder: activeFilters.value.folder || undefined,
-    favorites_only: activeFilters.value.favorites_only || undefined,
+    bookmarks_only: activeFilters.value.bookmarks_only || undefined,
     limit: pageLength.value,
     order_by: currentSort.value,
     ...panelFilters.value,
@@ -431,12 +431,12 @@ function refreshSecrets() {
 
 function clearFilters() {
   titleQuery.value = ''
-  activeFilters.value = { secret_type: '', folder: '', favorites_only: false }
+  activeFilters.value = { secret_type: '', folder: '', bookmarks_only: false }
   panelFilters.value = {}
   currentSort.value = 'modified desc'
 }
 
-async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
+async function handleToggleBookmark(s) { await toggleBook.submit({ name: s.name }); refreshSecrets() }
 function handleCreated(r) { showNewDialog.value = false; refreshSecrets(); router.push({ name: 'SecretDetail', params: { name: r.name } }) }
 
 function parseFrappeError(error) {
@@ -485,7 +485,7 @@ watch([titleQuery, activeFilters, pageLength, currentSort, panelFilters], () => 
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
     folder: activeFilters.value.folder || undefined,
-    favorites_only: activeFilters.value.favorites_only || undefined,
+    bookmarks_only: activeFilters.value.bookmarks_only || undefined,
     limit: pageLength.value,
     order_by: currentSort.value,
   }

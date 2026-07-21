@@ -59,6 +59,6 @@ SENSITIVE_FIELDS = [
 # Safe fields for list view
 LIST_VIEW_FIELDS = [
     "name", "title", "secret_type", "folder", "url", "username",
-    "email", "is_favorite", "password_strength", "password_last_changed",
+    "email", "is_bookmark", "password_strength", "password_last_changed",
     "last_accessed", "access_count", "expires_on", "modified", "owner",
 ]

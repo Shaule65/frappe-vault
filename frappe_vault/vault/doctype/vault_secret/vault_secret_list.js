@@ -3,7 +3,7 @@
 
 frappe.listview_settings["Vault Secret"] = {
     // Additional fields to fetch for list view
-    add_fields: ["secret_type", "category", "is_favorite", "password_strength", "last_accessed", "owner"],
+    add_fields: ["secret_type", "category", "is_bookmark", "password_strength", "last_accessed", "owner"],
     
     // Default filters - show user's own secrets
     filters: [
@@ -30,9 +30,9 @@ frappe.listview_settings["Vault Secret"] = {
     // Custom formatters for columns
     formatters: {
         title(value, df, doc) {
-            // Show favorite star using Frappe icon
-            if (doc.is_favorite) {
-                return `<span class="text-warning">${frappe.utils.icon("star", "sm")}</span> ${frappe.utils.escape_html(value)}`;
+            // Show bookmark icon using Frappe icon
+            if (doc.is_bookmark) {
+                return `<span class="text-warning">${frappe.utils.icon("es-solid-bookmark", "sm")}</span> ${frappe.utils.escape_html(value)}`;
             }
             return frappe.utils.escape_html(value);
         },
@@ -81,14 +81,14 @@ frappe.listview_settings["Vault Secret"] = {
 
     // Setup on list view load
     onload(listview) {
-        // Add "Favorites Only" filter toggle
-        listview.page.add_inner_button(__("Favorites"), () => {
-            const has_filter = listview.filter_area.get().some(f => f[1] === "is_favorite");
+        // Add "Bookmarks Only" filter toggle
+        listview.page.add_inner_button(__("Bookmarks"), () => {
+            const has_filter = listview.filter_area.get().some(f => f[1] === "is_bookmark");
             
             if (has_filter) {
-                listview.filter_area.remove("is_favorite");
+                listview.filter_area.remove("is_bookmark");
             } else {
-                listview.filter_area.add([[listview.doctype, "is_favorite", "=", 1]]);
+                listview.filter_area.add([[listview.doctype, "is_bookmark", "=", 1]]);
             }
         }, __("Filter"));
 
@@ -109,34 +109,30 @@ frappe.listview_settings["Vault Secret"] = {
         });
 
         // Add bulk actions
-        listview.page.add_action_item(__("Add to Favorites"), () => {
-            const names = listview.get_checked_items(true);
-            if (!names.length) {
-                frappe.toast(__("Please select secrets first"));
-                return;
-            }
+        listview.page.add_action_item(__("Add to Bookmarks"), () => {
+            const names = listview.get_checked_items().map(i => i.name);
             
             frappe.call({
                 method: "frappe.client.set_value",
                 args: {
                     doctype: "Vault Secret",
                     name: names,
-                    fieldname: "is_favorite",
+                    fieldname: "is_bookmark",
                     value: 1
                 },
-                freeze: true,
-                freeze_message: __("Updating..."),
-                callback() {
-                    listview.refresh();
-                    frappe.show_alert({
-                        message: __("{0} secrets added to favorites", [names.length]),
-                        indicator: "green"
-                    });
+                callback: function (r) {
+                    if (!r.exc) {
+                        frappe.show_alert({
+                            message: __("{0} secrets added to bookmarks", [names.length]),
+                            indicator: "green"
+                        });
+                        listview.refresh();
+                    }
                 }
             });
         });
 
-        listview.page.add_action_item(__("Remove from Favorites"), () => {
+        listview.page.add_action_item(__("Remove from Bookmarks"), () => {
             const names = listview.get_checked_items(true);
             if (!names.length) {
                 frappe.toast(__("Please select secrets first"));
@@ -146,12 +142,12 @@ frappe.listview_settings["Vault Secret"] = {
             frappe.xcall("frappe.client.set_value", {
                 doctype: "Vault Secret",
                 name: names,
-                fieldname: "is_favorite",
+                fieldname: "is_bookmark",
                 value: 0
             }).then(() => {
                 listview.refresh();
                 frappe.show_alert({
-                    message: __("{0} secrets removed from favorites", [names.length]),
+                    message: __("{0} secrets removed from bookmarks", [names.length]),
                     indicator: "grey"
                 });
             });

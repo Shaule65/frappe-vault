@@ -71,3 +71,8 @@
 [data-theme="dark"] .view-controls-bar .btn:hover {
   background-color: var(--surface-gray-3, rgba(255,255,255,0.08)) !important;
 }
+
+/* Ensure Frappe UI Dialog backdrop and content stack above all page elements and controls */
+.dialog-overlay {
+  z-index: 100 !important;
+}

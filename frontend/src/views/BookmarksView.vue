@@ -70,7 +70,7 @@
       </template>
     </ViewControlsBar>
 
-    <!-- Favorite list -->
+    <!-- Bookmark list -->
     <div class="flex-1 flex flex-col overflow-hidden relative">
       <!-- Loading state -->
       <div v-if="secrets.loading && !secrets.data" class="p-6 space-y-3">
@@ -111,7 +111,7 @@
                   <!-- Title column -->
                   <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
                     <SecretTypeIcon :type="item.secret_type" />
-                    <span class="min-w-0 font-semibold text-ink-gray-9 hover:text-ink-blue-3 cursor-pointer text-base truncate block leading-normal transition-colors">{{ item.title }}</span>
+                    <span class="min-w-0 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
@@ -138,18 +138,13 @@
                     <Button
                       variant="ghost"
                       class="!p-1.5 h-auto text-ink-gray-5 hover:text-ink-gray-9"
-                      @click.stop="handleToggleFavorite(row)"
+                      @click.stop="handleToggleBookmark(row)"
                     >
                       <FeatherIcon
-                        name="star"
-                        class="w-4 h-4 text-ink-yellow-3 fill-current"
+                        name="bookmark"
+                        class="w-4 h-4 text-ink-yellow-6 fill-current"
                       />
                     </Button>
-                    <Dropdown :options="getRowActions(row)">
-                      <template #default="{ open }">
-                        <Button variant="ghost" icon="lucide-more-horizontal" :class="{ 'bg-surface-gray-2': open }" />
-                      </template>
-                    </Dropdown>
                   </div>
 
                   <!-- Dynamic columns (fallback) -->
@@ -174,7 +169,7 @@
       </template>
 
       <!-- Empty state -->
-      <EmptyState v-else icon="star" title="No favorites yet" description="Star your most-used secrets for quick access" />
+      <EmptyState v-else icon="bookmark" title="No bookmarks yet" description="Bookmark your most-used secrets for quick access" />
     </div>
   </div>
 </template>
@@ -187,8 +182,8 @@ import RefreshIcon from '../components/RefreshIcon.vue'
 import FilterPanel from '../components/FilterPanel.vue'
 import SortPanel from '../components/SortPanel.vue'
 import ColumnPanel from '../components/ColumnPanel.vue'
-import { Button, Dropdown, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Breadcrumbs, Select } from 'frappe-ui'
-import { mobileSidebarOpened, useSecrets, useFolders, useToggleFavorite, useFilterableFields, useSortOptions } from '../composables/vault'
+import { Button, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Breadcrumbs, Select } from 'frappe-ui'
+import { mobileSidebarOpened, useSecrets, useFolders, useToggleBookmark, useFilterableFields, useSortOptions } from '../composables/vault'
 import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
@@ -210,15 +205,15 @@ const defaultColumns = [
 
 const activeColumnDefs = ref([...defaultColumns])
 
-const secrets = useSecrets({ favorites_only: 1 })
+const secrets = useSecrets({ bookmarks_only: 1 })
 const foldersResource = useFolders()
-const toggleFav = useToggleFavorite()
+const toggleBook = useToggleBookmark()
 const filterableFields = useFilterableFields()
 const sortOptions = useSortOptions()
 
 const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || secretsList.value.length || 0)
-const breadcrumbs = computed(() => [{ label: 'Favorites' }])
+const breadcrumbs = computed(() => [{ label: 'Bookmarks' }])
 
 const columns = computed(() => {
   const titleCol = { label: 'Title', key: 'title', width: '18rem' }
@@ -265,7 +260,7 @@ function refreshSecrets() {
   const filters = {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
-    favorites_only: 1,
+    bookmarks_only: 1,
     limit: pageLength.value,
     order_by: currentSort.value,
   }
@@ -285,41 +280,14 @@ function clearFilters() {
   pageLength.value = 20
 }
 
-async function handleToggleFavorite(s) { await toggleFav.submit({ name: s.name }); refreshSecrets() }
+async function handleToggleBookmark(s) { await toggleBook.submit({ name: s.name }); refreshSecrets() }
 
-function copyToClipboard(text) {
-  if (!text) return
-  navigator.clipboard.writeText(text)
-}
-
-function getRowActions(secret) {
-  const actions = [
-    {
-      label: 'View Details',
-      icon: 'eye',
-      onClick: () => router.push({ name: 'SecretDetail', params: { name: secret.name } }),
-    },
-    {
-      label: 'Copy Username',
-      icon: 'copy',
-      onClick: () => copyToClipboard(secret.username),
-      condition: () => !!secret.username,
-    },
-    {
-      label: 'Open URL',
-      icon: 'external-link',
-      onClick: () => window.open(secret.url, '_blank'),
-      condition: () => !!secret.url,
-    },
-  ]
-  return actions.filter(a => !a.condition || a.condition())
-}
 
 watch([titleQuery, activeFilters, pageLength, currentSort, panelFilters], () => {
   const filters = {
     title: titleQuery.value || undefined,
     secret_type: activeFilters.value.secret_type || undefined,
-    favorites_only: 1,
+    bookmarks_only: 1,
     limit: pageLength.value,
     order_by: currentSort.value,
   }

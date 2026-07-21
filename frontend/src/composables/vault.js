@@ -55,9 +55,9 @@ export function useBulkDeleteSecrets() {
   })
 }
 
-export function useToggleFavorite() {
+export function useToggleBookmark() {
   return createResource({
-    url: 'frappe_vault.api.secrets.toggle_favorite',
+    url: 'frappe_vault.api.secrets.toggle_bookmark',
   })
 }
 

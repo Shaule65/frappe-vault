@@ -23,7 +23,7 @@ DEMO_SECRETS = [
         "api_key": "pk_live_51M0...demo_key_9921",
         "api_secret": "sk_live_51M0...demo_secret_8832",
         "notes": "Demo production API credentials for checkout gateway integration.",
-        "is_favorite": 1,
+        "is_bookmark": 1,
         "share_role": "System Manager",
         "share_perm": "Full Control"
     },
@@ -35,7 +35,7 @@ DEMO_SECRETS = [
         "password": "Str0ngDemoPassword2026#",
         "url": "https://portal.company-demo.local/login",
         "notes": "Demo primary administrator credentials.",
-        "is_favorite": 1
+        "is_bookmark": 1
     },
     {
         "title": "Corporate Master Card",
@@ -46,7 +46,7 @@ DEMO_SECRETS = [
         "card_expiry": "12/28",
         "card_cvv": "842",
         "notes": "Demo company purchasing credit card.",
-        "is_favorite": 1,
+        "is_bookmark": 1,
         "share_role": "System Manager",
         "share_perm": "View Only"
     },
@@ -58,7 +58,7 @@ DEMO_SECRETS = [
         "password": "G00gleW0rkspace#2026!",
         "url": "https://admin.google.com",
         "notes": "Primary enterprise admin portal login.",
-        "is_favorite": 1
+        "is_bookmark": 1
     },
     {
         "title": "Zoom Corporate Account",
@@ -121,7 +121,7 @@ DEMO_SECRETS = [
         "db_user": "postgres_admin",
         "db_password": "P@ssw0rd_Demo_Cluster_2026!",
         "notes": "Demo PostgreSQL master node credentials.",
-        "is_favorite": 1,
+        "is_bookmark": 1,
         "share_role": "System Manager",
         "share_perm": "Edit"
     },
@@ -132,7 +132,7 @@ DEMO_SECRETS = [
         "username": "ubuntu",
         "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\nQyNTUxOQAAACBA1/Q9x8...DemoKey...\n-----END OPENSSH PRIVATE KEY-----",
         "notes": "Demo SSH key for production server access.",
-        "is_favorite": 1
+        "is_bookmark": 1
     },
     {
         "title": "DigitalOcean Droplet Root Key",
@@ -211,7 +211,7 @@ DEMO_SECRETS = [
         "api_key": "ghp_demo_99281726182918271625182910",
         "api_secret": "ghs_demo_secret_token_placeholder",
         "notes": "Personal access token with repo and org admin scopes.",
-        "is_favorite": 1,
+        "is_bookmark": 1,
         "share_role": "System Manager",
         "share_perm": "Edit"
     },
@@ -239,7 +239,7 @@ DEMO_SECRETS = [
         "api_key": "AKIA_DEMO_9928172618",
         "api_secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         "notes": "Restricted programmatic IAM user for S3 and CloudFront.",
-        "is_favorite": 1
+        "is_bookmark": 1
     },
     {
         "title": "Cloudflare DNS Token",
@@ -345,7 +345,7 @@ DEMO_SECRETS = [
         "password": "Qu1ckB00ks#Ent!2026",
         "url": "https://qbo.intuit.com",
         "notes": "Master general ledger and invoicing portal login.",
-        "is_favorite": 1
+        "is_bookmark": 1
     },
     {
         "title": "Xero Payroll API Token",
@@ -364,7 +364,7 @@ DEMO_SECRETS = [
         "card_expiry": "08/29",
         "card_cvv": "9182",
         "notes": "Executive travel and client entertainment card.",
-        "is_favorite": 1,
+        "is_bookmark": 1,
         "share_role": "System Manager",
         "share_perm": "View Only"
     },
@@ -420,7 +420,7 @@ DEMO_SECRETS = [
         "password": "S@l3sf0rc3#CRM!2026",
         "url": "https://login.salesforce.com",
         "notes": "Enterprise customer relationship management master seat.",
-        "is_favorite": 1
+        "is_bookmark": 1
     },
     {
         "title": "HubSpot CRM Master API Key",

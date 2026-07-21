@@ -50,9 +50,9 @@ frappe_vault.setup_vault_secret_form = function(frm) {
         frappe_vault.add_strength_indicator(frm);
     }
 
-    // Add favorite toggle button to page actions
+    // Add bookmark toggle button to page actions
     if (!frm.is_new()) {
-        frappe_vault.add_favorite_toggle(frm);
+        frappe_vault.add_bookmark_toggle(frm);
     }
 
     // Toggle secret type specific fields
@@ -181,23 +181,23 @@ frappe_vault.add_strength_indicator = function(frm) {
     }
 };
 
-frappe_vault.add_favorite_toggle = function(frm) {
+frappe_vault.add_bookmark_toggle = function(frm) {
     // Use Frappe's standard action icon pattern
-    const is_favorite = frm.doc.is_favorite;
+    const is_bookmark = frm.doc.is_bookmark;
     
     frm.page.add_action_icon(
-        is_favorite ? "es-solid-star" : "es-line-star",
+        is_bookmark ? "es-solid-bookmark" : "es-line-bookmark",
         async () => {
-            await frm.set_value("is_favorite", !is_favorite);
+            await frm.set_value("is_bookmark", !is_bookmark);
             await frm.save();
             frappe.show_alert({
-                message: is_favorite 
-                    ? __("Removed from favorites") 
-                    : __("Added to favorites"),
-                indicator: is_favorite ? "grey" : "yellow"
+                message: is_bookmark 
+                    ? __("Removed from bookmarks") 
+                    : __("Added to bookmarks"),
+                indicator: is_bookmark ? "grey" : "yellow"
             });
         },
-        is_favorite ? __("Remove from Favorites") : __("Add to Favorites")
+        is_bookmark ? __("Remove from Bookmarks") : __("Add to Bookmarks")
     );
 };
 

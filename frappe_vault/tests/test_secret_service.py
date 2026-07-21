@@ -50,3 +50,31 @@ class TestSecretService(FrappeTestCase):
         # Ensure it's in trash (Frappe's default behavior) or actually deleted
         exists = frappe.db.exists("Vault Secret", secret_name)
         self.assertFalse(exists)
+
+    def test_toggle_bookmark(self):
+        secret_data = {
+            "title": "Test Bookmark Secret",
+            "secret_type": "Note",
+            "notes": "Some test notes"
+        }
+        new_secret = create_secret(secret_data)
+        secret_name = new_secret.get("name")
+        
+        # Ensure it's not bookmarked initially
+        from frappe_vault.services.secret_service import toggle_bookmark
+        user = frappe.session.user
+        fav_exists = frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name})
+        self.assertFalse(fav_exists)
+        
+        # Toggle on
+        res = toggle_bookmark(secret_name)
+        self.assertEqual(res.get("is_bookmark"), 1)
+        self.assertTrue(frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name}))
+        
+        # Toggle off
+        res = toggle_bookmark(secret_name)
+        self.assertEqual(res.get("is_bookmark"), 0)
+        self.assertFalse(frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name}))
+        
+        from frappe_vault.services.secret_service import delete_secret
+        delete_secret(secret_name)

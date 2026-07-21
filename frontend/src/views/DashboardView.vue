@@ -40,7 +40,7 @@
           <div class="relative w-24 h-24 shrink-0 flex items-center justify-center">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" class="stroke-outline-gray-1" stroke-width="8" fill="none" />
-              <circle cx="50" cy="50" r="42" :stroke="scoreColor" stroke-width="8" fill="none"
+              <circle cx="50" cy="50" r="42" stroke="currentColor" :class="scoreColorClass" stroke-width="8" fill="none"
                       stroke-linecap="round" :stroke-dasharray="`${(securityScore?.score || 0) * 2.64} 264`" />
             </svg>
             <span class="absolute inset-0 flex items-center justify-center text-2xl font-bold text-ink-gray-9">{{ securityScore?.score || 0 }}</span>
@@ -95,16 +95,16 @@ const recentSecrets = computed(() => stats.data?.recent_secrets || [])
 
 const statCards = computed(() => [
   { label: 'Total Secrets', value: stats.data?.total_secrets || 0 },
-  { label: 'Favorites', value: stats.data?.favorites || 0 },
+  { label: 'Bookmarks', value: stats.data?.bookmarks || 0 },
   { label: 'Weak Passwords', value: stats.data?.weak_passwords || 0 },
   { label: 'Types', value: Object.keys(stats.data?.secrets_by_type || {}).length },
 ])
 
-const scoreColor = computed(() => {
+const scoreColorClass = computed(() => {
   const s = securityScore.value?.score || 0
-  if (s >= 80) return 'var(--text-green-500, #10b981)'
-  if (s >= 60) return 'var(--text-blue-500, #3b82f6)'
-  if (s >= 40) return 'var(--text-yellow-500, #f59e0b)'
-  return 'var(--text-red-500, #ef4444)'
+  if (s >= 80) return 'text-ink-green-3'
+  if (s >= 60) return 'text-ink-blue-3'
+  if (s >= 40) return 'text-ink-yellow-3'
+  return 'text-ink-red-3'
 })
 </script>

@@ -13,7 +13,7 @@ Secrets and password management application. Securely store, share, and manage s
 - **Folders**: Organize secrets in a tree-based folder structure
 - **Access Logging**: Track who accessed which secrets and when
 - **Sharing**: Share secrets with specific users or roles
-- **Favorites**: Mark frequently used secrets as favorites
+- **Bookmarks**: Mark frequently used secrets as bookmarks
 - **Dashboard**: Visual overview with statistics and charts
 - **REST API**: Full API access for browser extensions and integrations
 
@@ -138,7 +138,7 @@ Main document for storing credentials.
 | api_key | Data | API key (for API Key type) |
 | api_secret | Password | Encrypted API secret |
 | notes | Text Editor | Additional notes |
-| is_favorite | Check | Mark as favorite |
+| is_bookmark | Check | Mark as bookmark |
 | password_strength | Select | Calculated password strength |
 
 ### Vault Folder

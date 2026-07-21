@@ -704,7 +704,7 @@ const sidebarConfig = reactive({
       items: [
         { label: 'Dashboard', icon: LayoutDashboard, to: '/', isActive: checkActive('/') },
         { label: 'Secrets', icon: 'lucide-key-round', to: '/secrets', count: stats.data?.total_secrets, isActive: checkActive('/secrets') },
-        { label: 'Favorites', icon: 'lucide-star', to: '/favorites', count: stats.data?.favorites, isActive: checkActive('/favorites') },
+        { label: 'Bookmarks', icon: 'lucide-bookmark', to: '/bookmarks', count: stats.data?.bookmarks, isActive: checkActive('/bookmarks') },
         {
           label: isAdmin.value ? 'Shares' : 'Shared with Me',
           icon: 'lucide-share-2',

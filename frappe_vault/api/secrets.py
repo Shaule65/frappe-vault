@@ -5,9 +5,9 @@ from frappe import _
 
 
 @frappe.whitelist()
-def list(search=None, title=None, username=None, secret_type=None, folder=None, favorites_only=False, tag=None, limit=20, offset=0, order_by="modified desc"):
+def list(search=None, title=None, username=None, secret_type=None, folder=None, bookmarks_only=False, tag=None, limit=20, offset=0, order_by="modified desc"):
     from frappe_vault.services.secret_service import get_secrets
-    return get_secrets(search=search, title=title, username=username, secret_type=secret_type, folder=folder, favorites_only=frappe.utils.cint(favorites_only), tag=tag, limit=int(limit), offset=int(offset), order_by=order_by)
+    return get_secrets(search=search, title=title, username=username, secret_type=secret_type, folder=folder, bookmarks_only=frappe.utils.cint(bookmarks_only), tag=tag, limit=int(limit), offset=int(offset), order_by=order_by)
 
 
 @frappe.whitelist()
@@ -43,8 +43,8 @@ def bulk_delete(secret_names):
 
 
 @frappe.whitelist()
-def toggle_favorite(name):
-    from frappe_vault.services.secret_service import toggle_favorite as _toggle
+def toggle_bookmark(name):
+    from frappe_vault.services.secret_service import toggle_bookmark as _toggle
     return _toggle(name)
 
 

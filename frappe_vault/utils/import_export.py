@@ -32,7 +32,7 @@ def export_secrets(format: str = "json", category: str = None) -> dict:
         filters=filters,
         fields=[
             "title", "secret_type", "category", "url", "username",
-            "api_key", "notes", "is_favorite"
+            "api_key", "notes", "is_bookmark"
         ]
     )
     
@@ -40,7 +40,7 @@ def export_secrets(format: str = "json", category: str = None) -> dict:
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=[
             "title", "secret_type", "category", "url", "username",
-            "api_key", "notes", "is_favorite"
+            "api_key", "notes", "is_bookmark"
         ])
         writer.writeheader()
         writer.writerows(secrets)
@@ -101,7 +101,7 @@ def import_secrets(data: str, format: str = "json") -> dict:
                     "username": record.get("username"),
                     "api_key": record.get("api_key"),
                     "notes": record.get("notes"),
-                    "is_favorite": 1 if record.get("is_favorite") else 0,
+                    "is_bookmark": 1 if record.get("is_bookmark") or record.get("is_favorite") else 0,
                 })
                 doc.insert()
                 imported += 1
@@ -131,7 +131,7 @@ def get_export_template() -> dict:
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=[
         "title", "secret_type", "category", "url", "username",
-        "password", "api_key", "api_secret", "notes", "is_favorite"
+        "password", "api_key", "api_secret", "notes", "is_bookmark"
     ])
     writer.writeheader()
     
@@ -146,7 +146,7 @@ def get_export_template() -> dict:
         "api_key": "",
         "api_secret": "",
         "notes": "Optional notes",
-        "is_favorite": "0"
+        "is_bookmark": "0"
     })
     
     return {

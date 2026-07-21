@@ -86,9 +86,7 @@
 /* ============================================
    List View Enhancements
    ============================================ */
-.list-row .vault-favorite-star {
-    color: var(--yellow-500);
-}
+
 
 .list-row .vault-type-icon {
     display: inline-flex;

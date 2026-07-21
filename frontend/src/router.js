@@ -18,9 +18,9 @@ const routes = [
     props: true,
   },
   {
-    path: '/favorites',
-    name: 'Favorites',
-    component: () => import('./views/FavoritesView.vue'),
+    path: '/bookmarks',
+    name: 'Bookmarks',
+    component: () => import('./views/BookmarksView.vue'),
   },
   {
     path: '/shared',
