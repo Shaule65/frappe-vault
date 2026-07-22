@@ -45,7 +45,7 @@ def log_secret_deleted(doc, method):
 
 
 def log_share_created(doc, method):
-    recipient = doc.user if doc.share_type == "User" else doc.group if doc.share_type == "Group" else doc.frappe_role
+    recipient = doc.user if doc.share_type == "User" else doc.frappe_role
     details = {
         "share_type": doc.share_type,
         "permission": doc.permission_level,
@@ -59,7 +59,7 @@ def log_share_created(doc, method):
 
 
 def log_share_removed(doc, method):
-    recipient = doc.user if doc.share_type == "User" else doc.group if doc.share_type == "Group" else doc.frappe_role
+    recipient = doc.user if doc.share_type == "User" else doc.frappe_role
     _create_log("Unshared", secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
                 details={"share_type": doc.share_type, "recipient": recipient})
 

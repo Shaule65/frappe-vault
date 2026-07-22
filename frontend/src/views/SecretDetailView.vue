@@ -300,13 +300,13 @@
                       <div class="flex items-center gap-3.5 min-w-0">
                         <div class="w-9 h-9 rounded-full bg-surface-gray-2 border border-outline-gray-1 shadow-sm flex items-center justify-center shrink-0">
                           <FeatherIcon
-                            :name="item.share_type === 'User' ? 'user' : item.share_type === 'Group' ? 'users' : 'shield'"
+                            :name="item.share_type === 'User' ? 'user' : 'shield'"
                             class="w-4.5 h-4.5 text-ink-gray-5"
                           />
                         </div>
                         <div class="min-w-0">
                           <p class="text-sm font-semibold text-ink-gray-9 truncate leading-snug">
-                            {{ item.share_type === 'User' ? item.user : item.share_type === 'Group' ? item.group : item.frappe_role }}
+                            {{ item.share_type === 'User' ? item.user : item.frappe_role }}
                           </p>
                           <p class="text-xs text-ink-gray-4 mt-1 font-medium flex items-center gap-1.5 leading-none">
                             <span>{{ item.share_type }}</span>
@@ -346,7 +346,7 @@
                     </div>
                     <p class="text-sm font-semibold text-ink-gray-9 leading-snug">Not Shared Yet</p>
                     <p class="text-xs text-ink-gray-5 mt-1 max-w-[280px] mx-auto leading-normal font-medium">
-                      This secret is private. Use the Share button to give access to other users, groups, or roles.
+                      This secret is private. Use the Share button to give access to other users or roles.
                     </p>
                   </div>
                 </div>
@@ -409,7 +409,6 @@
               v-model="newShareType"
               :options="[
                 { label: 'User', value: 'User', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } },
-                { label: 'Group', value: 'Group', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } },
                 { label: 'Role', value: 'Role', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } }
               ]"
               class="w-full !flex"
@@ -470,7 +469,7 @@
         <div class="pt-2">
           <p class="text-sm text-ink-gray-7">
             Are you sure you want to revoke share access for
-            <span class="font-bold text-ink-gray-9">{{ shareToRevoke?.share_type === 'User' ? shareToRevoke?.user : shareToRevoke?.share_type === 'Group' ? shareToRevoke?.group : shareToRevoke?.frappe_role }}</span>?
+            <span class="font-bold text-ink-gray-9">{{ shareToRevoke?.share_type === 'User' ? shareToRevoke?.user : shareToRevoke?.frappe_role }}</span>?
           </p>
         </div>
       </template>
@@ -622,15 +621,13 @@ const breadcrumbs = computed(() => {
 const decryptedData = computed(() => decryptResource.data?.decrypted)
 const activityList = computed(() => activity.data || [])
 const sharesList = computed(() => sharesResource.data || [])
-const shareOptions = computed(() => shareOptionsResource.data || { users: [], groups: [], roles: [] })
+const shareOptions = computed(() => shareOptionsResource.data || { users: [], roles: [] })
 
 const recipientOptions = computed(() => {
   const owner = secretData.value?.owner
   let list = newShareType.value === 'User' 
     ? shareOptions.value.users 
-    : newShareType.value === 'Group' 
-      ? shareOptions.value.groups 
-      : shareOptions.value.roles
+    : shareOptions.value.roles
       
   if (newShareType.value === 'User' && owner) {
     list = list.filter(item => item.value !== owner)
@@ -640,7 +637,7 @@ const recipientOptions = computed(() => {
 })
 
 // Sharing Form State
-const newShareType = ref('User') // 'User', 'Group', 'Role'
+const newShareType = ref('User') // 'User', 'Role'
 const newShareRecipient = ref('')
 const newSharePermission = ref('View Only')
 const newShareExpiresOn = ref('')
@@ -722,7 +719,6 @@ async function handleShareSecret() {
       shared_doctype: 'Vault Secret',
       share_type: newShareType.value,
       user: newShareType.value === 'User' ? newShareRecipient.value : undefined,
-      group: newShareType.value === 'Group' ? newShareRecipient.value : undefined,
       frappe_role: newShareType.value === 'Role' ? newShareRecipient.value : undefined,
       permission_level: newSharePermission.value,
       expires_on: newShareExpiresOn.value || undefined,
@@ -750,7 +746,7 @@ function confirmRevokeShare(item) {
 
 async function handleRevokeShare() {
   if (!shareToRevoke.value) return
-  const recipientName = shareToRevoke.value.share_type === 'User' ? shareToRevoke.value.user : shareToRevoke.value.share_type === 'Group' ? shareToRevoke.value.group : shareToRevoke.value.frappe_role
+  const recipientName = shareToRevoke.value.share_type === 'User' ? shareToRevoke.value.user : shareToRevoke.value.frappe_role
   try {
     await unshareResource.submit({ share_name: shareToRevoke.value.name })
     toast.success(`Revoked access for ${recipientName}`)

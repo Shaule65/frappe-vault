@@ -206,7 +206,6 @@
               v-model="newShareType"
               :options="[
                 { label: 'User', value: 'User', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } },
-                { label: 'Group', value: 'Group', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } },
                 { label: 'Role', value: 'Role', class: 'flex-1 !justify-center', onClick: () => { newShareRecipient = '' } }
               ]"
               class="w-full !flex"
@@ -405,7 +404,7 @@ watch(pageLength, (newLength) => {
 const breadcrumbs = computed(() => [{ label: 'Shares' }])
 const secretsList = computed(() => secretsResource.data?.secrets || [])
 const foldersList = computed(() => foldersResource.data || [])
-const shareOptions = computed(() => shareOptionsResource.data || { users: [], groups: [], roles: [] })
+const shareOptions = computed(() => shareOptionsResource.data || { users: [], roles: [] })
 
 const shareItemOptions = computed(() => {
   const options = [{ label: 'Choose item to share...', value: '' }]
@@ -424,9 +423,7 @@ const shareItemOptions = computed(() => {
 const recipientOptions = computed(() => {
   const list = newShareType.value === 'User' 
     ? shareOptions.value.users 
-    : newShareType.value === 'Group' 
-      ? shareOptions.value.groups 
-      : shareOptions.value.roles
+    : shareOptions.value.roles
   return [{ label: 'Choose recipient...', value: '' }, ...list]
 })
 
@@ -438,7 +435,6 @@ const filteredList = computed(() => {
       (item.title && item.title.toLowerCase().includes(q)) || 
       (item.shared_by && item.shared_by.toLowerCase().includes(q)) ||
       (item.user && item.user.toLowerCase().includes(q)) ||
-      (item.group && item.group.toLowerCase().includes(q)) ||
       (item.frappe_role && item.frappe_role.toLowerCase().includes(q))
     )
   }
@@ -460,8 +456,6 @@ const formattedRows = computed(() => {
     let sharedWithLabel = ''
     if (s.share_type === 'User') {
       sharedWithLabel = s.user
-    } else if (s.share_type === 'Group') {
-      sharedWithLabel = s.group
     } else if (s.share_type === 'Role') {
       sharedWithLabel = s.frappe_role
     }
@@ -541,7 +535,6 @@ async function handleShareSecret() {
       shared_doctype: newShareDoctype.value,
       share_type: newShareType.value,
       user: newShareType.value === 'User' ? newShareRecipient.value : undefined,
-      group: newShareType.value === 'Group' ? newShareRecipient.value : undefined,
       frappe_role: newShareType.value === 'Role' ? newShareRecipient.value : undefined,
       permission_level: newSharePermission.value,
       expires_on: newShareExpiresOn.value || undefined,

@@ -123,11 +123,6 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
 
         share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
         
-        user_groups = frappe.get_all("Vault Group Member", filters={"user": user}, pluck="parent")
-        if user_groups:
-            groups_str = ", ".join([frappe.db.escape(g) for g in user_groups])
-            share_conds.append(f"(share_type = 'Group' AND `group` IN ({groups_str}))")
-            
         if roles:
             roles_str = ", ".join([frappe.db.escape(r) for r in roles])
             share_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")

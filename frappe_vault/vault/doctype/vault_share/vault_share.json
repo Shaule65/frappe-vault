@@ -5,16 +5,15 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "share_type", "user", "group", "frappe_role",
+  "share_type", "user", "frappe_role",
   "column_break_1",
   "permission_level", "expires_on",
   "reference_section", "shared_doctype", "shared_name",
   "meta_section", "shared_by", "is_revoked", "revoked_by"
  ],
  "fields": [
-  {"default": "User", "fieldname": "share_type", "fieldtype": "Select", "in_list_view": 1, "label": "Share Type", "options": "User\nGroup\nRole", "reqd": 1},
+  {"default": "User", "fieldname": "share_type", "fieldtype": "Select", "in_list_view": 1, "label": "Share Type", "options": "User\nRole", "reqd": 1},
   {"depends_on": "eval:doc.share_type === 'User'", "fieldname": "user", "fieldtype": "Link", "in_list_view": 1, "label": "User", "options": "User"},
-  {"depends_on": "eval:doc.share_type === 'Group'", "fieldname": "group", "fieldtype": "Link", "label": "Group", "options": "Vault Group"},
   {"depends_on": "eval:doc.share_type === 'Role'", "fieldname": "frappe_role", "fieldtype": "Link", "label": "Role", "options": "Role"},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
   {"default": "View Only", "fieldname": "permission_level", "fieldtype": "Select", "in_list_view": 1, "label": "Permission", "options": "View Only\nView & Copy\nEdit\nFull Control", "reqd": 1},

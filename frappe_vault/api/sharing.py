@@ -5,9 +5,9 @@ from frappe import _
 
 
 @frappe.whitelist()
-def share(shared_name, shared_doctype="Vault Secret", share_type="User", user=None, group=None, frappe_role=None, permission_level="View Only", expires_on=None):
+def share(shared_name, shared_doctype="Vault Secret", share_type="User", user=None, frappe_role=None, permission_level="View Only", expires_on=None):
     from frappe_vault.services.sharing_service import share_secret
-    return share_secret(shared_name=shared_name, shared_doctype=shared_doctype, share_type=share_type, user=user, group=group, frappe_role=frappe_role, permission_level=permission_level, expires_on=expires_on)
+    return share_secret(shared_name=shared_name, shared_doctype=shared_doctype, share_type=share_type, user=user, frappe_role=frappe_role, permission_level=permission_level, expires_on=expires_on)
 
 
 @frappe.whitelist()
@@ -70,15 +70,7 @@ def get_share_options():
             
     user_options = [{"value": u.name, "label": u.full_name or u.name} for u in non_admin_users]
 
-    # 2. Fetch Vault Groups
-    groups = frappe.get_all(
-        "Vault Group",
-        fields=["name", "group_name"],
-        order_by="group_name asc"
-    )
-    group_options = [{"value": g.name, "label": g.group_name} for g in groups]
-
-    # 3. Fetch active system roles
+    # 2. Fetch active system roles
     roles = frappe.get_all(
         "Role",
         filters={
@@ -91,7 +83,6 @@ def get_share_options():
 
     return {
         "users": user_options,
-        "groups": group_options,
         "roles": role_options
     }
 

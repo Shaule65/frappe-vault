@@ -1,4 +1,4 @@
-"""Sharing service — share/unshare secrets and folders with users, groups, roles."""
+"""Sharing service — share/unshare secrets and folders with users, roles."""
 
 import frappe
 from frappe import _
@@ -11,12 +11,11 @@ def share_secret(
     shared_doctype: str = "Vault Secret",
     share_type: str = "User",
     user: str = None,
-    group: str = None,
     frappe_role: str = None,
     permission_level: str = "View Only",
     expires_on: str = None,
 ) -> dict:
-    """Share a secret or folder with a user, group, or role.
+    """Share a secret or folder with a user or role.
 
     Returns:
         dict with share document name
@@ -38,7 +37,6 @@ def share_secret(
         "doctype": "Vault Share",
         "share_type": share_type,
         "user": user if share_type == "User" else None,
-        "group": group if share_type == "Group" else None,
         "frappe_role": frappe_role if share_type == "Role" else None,
         "permission_level": permission_level,
         "shared_doctype": shared_doctype,
@@ -85,7 +83,7 @@ def get_shares_for_secret(secret_name: str) -> list:
             "shared_doctype": "Vault Secret",
             "shared_name": secret_name,
         },
-        fields=["name", "share_type", "user", "group", "frappe_role",
+        fields=["name", "share_type", "user", "frappe_role",
                 "permission_level", "expires_on", "shared_by", "is_revoked", "revoked_by"],
         order_by="creation desc",
     )
@@ -102,11 +100,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
     if is_admin:
         where = "1=1"
     else:
-        user_groups = frappe.get_all("Vault Group Member", filters={"user": user}, pluck="parent")
         conditions = [f"vs.share_type = 'User' AND vs.user = {frappe.db.escape(user)}"]
-        if user_groups:
-            groups_str = ", ".join([frappe.db.escape(g) for g in user_groups])
-            conditions.append(f"vs.share_type = 'Group' AND vs.`group` IN ({groups_str})")
         if user_roles:
             roles_str = ", ".join([frappe.db.escape(r) for r in user_roles])
             conditions.append(f"vs.share_type = 'Role' AND vs.frappe_role IN ({roles_str})")
@@ -115,7 +109,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
     secrets = frappe.db.sql(f"""
         SELECT vs.name as share_name, vs.shared_doctype, vs.shared_name,
                vs.permission_level, vs.shared_by, vs.expires_on,
-               vs.share_type, vs.user, vs.group, vs.frappe_role,
+               vs.share_type, vs.user, vs.frappe_role,
                vs.is_revoked, vs.revoked_by,
                COALESCE(sec.title, fld.folder_name) as title,
                sec.secret_type, sec.url, sec.folder
@@ -226,10 +220,6 @@ def bulk_delete_shares(share_names: list) -> dict:
         if not can_delete:
             if doc.share_type == "User" and doc.user == user:
                 can_delete = True
-            elif doc.share_type == "Group":
-                user_groups = frappe.get_all("Vault Group Member", filters={"user": user}, pluck="parent")
-                if doc.group in user_groups:
-                    can_delete = True
             elif doc.share_type == "Role":
                 if doc.frappe_role in roles:
                     can_delete = True
