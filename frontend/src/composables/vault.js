@@ -203,12 +203,6 @@ export function useSecretActivity(secretName) {
   })
 }
 
-export function useVerifyMasterPassword() {
-  return createResource({
-    url: 'frappe_vault.vault.doctype.vault_settings.vault_settings.verify_master_password',
-  })
-}
-
 // --- Demo Data ---
 export function useGenerateDemoData() {
   return createResource({

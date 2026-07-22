@@ -64,8 +64,6 @@ def stats():
 
 @frappe.whitelist()
 def decrypt(name):
-    """Decrypt a secret's sensitive fields. Requires master password session."""
-    from frappe_vault.vault.doctype.vault_settings.vault_settings import require_master_password
-    require_master_password()
+    """Decrypt a secret's sensitive fields."""
     from frappe_vault.services.secret_service import get_secret
     return get_secret(name, decrypt=True)
