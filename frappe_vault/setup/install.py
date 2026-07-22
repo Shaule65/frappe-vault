@@ -55,10 +55,10 @@ def create_default_settings():
 def create_default_folders():
     """Create starter folders."""
     folders = [
-        {"folder_name": "Work", "icon": "briefcase", "color": "#3B82F6"},
-        {"folder_name": "Personal", "icon": "user", "color": "#10B981"},
-        {"folder_name": "Finance", "icon": "credit-card", "color": "#F59E0B"},
-        {"folder_name": "Servers", "icon": "server", "color": "#8B5CF6"},
+        {"folder_name": "Work", "icon": "briefcase"},
+        {"folder_name": "Personal", "icon": "user"},
+        {"folder_name": "Finance", "icon": "credit-card"},
+        {"folder_name": "Servers", "icon": "server"},
     ]
 
     if frappe.db.exists("DocType", "Vault Folder"):

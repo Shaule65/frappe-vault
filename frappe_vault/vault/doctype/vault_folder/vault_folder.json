@@ -7,15 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "folder_name",
-  "description",
-  "column_break_1",
-  "icon",
-  "color",
-  "is_group",
-  "parent_vault_folder",
-  "lft",
-  "rgt",
-  "old_parent"
+  "icon"
  ],
  "fields": [
   {
@@ -27,60 +19,11 @@
    "unique": 1
   },
   {
-   "fieldname": "description",
-   "fieldtype": "Small Text",
-   "label": "Description"
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "icon",
    "fieldtype": "Data",
    "label": "Icon"
-  },
-  {
-   "fieldname": "color",
-   "fieldtype": "Color",
-   "label": "Color"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_group",
-   "fieldtype": "Check",
-   "label": "Is Group"
-  },
-  {
-   "fieldname": "parent_vault_folder",
-   "fieldtype": "Link",
-   "label": "Parent Folder",
-   "options": "Vault Folder"
-  },
-  {
-   "fieldname": "lft",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Left",
-   "no_copy": 1
-  },
-  {
-   "fieldname": "rgt",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Right",
-   "no_copy": 1
-  },
-  {
-   "fieldname": "old_parent",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Old Parent",
-   "options": "Vault Folder"
   }
  ],
- "is_tree": 1,
- "nsm_parent_field": "parent_vault_folder",
  "index_web_pages_for_search": 0,
  "links": [],
  "modified": "2026-05-13 10:00:00.000000",
@@ -91,13 +34,27 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1, "delete": 1, "read": 1, "role": "System Manager", "share": 1, "write": 1
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
   },
   {
-   "create": 1, "delete": 1, "read": 1, "role": "Vault Admin", "share": 1, "write": 1
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Vault Admin",
+   "share": 1,
+   "write": 1
   },
   {
-   "create": 1, "read": 1, "role": "Vault User", "share": 1, "write": 1
+   "create": 1,
+   "read": 1,
+   "role": "Vault User",
+   "share": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",
