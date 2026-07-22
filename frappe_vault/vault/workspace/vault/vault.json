@@ -1,7 +1,7 @@
 {
  "app": "frappe_vault",
  "charts": [],
- "content": "[{\"id\":\"4z6G1f\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Vault Management</span>\",\"col\":12}},{\"id\":\"J8bX7E\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Secrets\",\"col\":4}},{\"id\":\"M9cY8F\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Folders\",\"col\":4}},{\"id\":\"K0dZ9G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Audit Log\",\"col\":4}},{\"id\":\"A2cF6k\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Sharing &amp; Access</span>\",\"col\":12}},{\"id\":\"P4mQ1s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Shares\",\"col\":4}},{\"id\":\"O9lK5x\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault One Time Links\",\"col\":4}},{\"id\":\"5a7H2g\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Settings &amp; Policies</span>\",\"col\":12}},{\"id\":\"L1eA0H\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Policies\",\"col\":4}},{\"id\":\"N2fB1I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Settings\",\"col\":4}}]",
+ "content": "[{\"id\":\"4z6G1f\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Vault Management</span>\",\"col\":12}},{\"id\":\"J8bX7E\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Secrets\",\"col\":4}},{\"id\":\"M9cY8F\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Folders\",\"col\":4}},{\"id\":\"K0dZ9G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Audit Log\",\"col\":4}},{\"id\":\"A2cF6k\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Sharing &amp; Access</span>\",\"col\":12}},{\"id\":\"P4mQ1s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Shares\",\"col\":4}},{\"id\":\"O9lK5x\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault One Time Links\",\"col\":4}},{\"id\":\"5a7H2g\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Settings</span>\",\"col\":12}},{\"id\":\"N2fB1I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vault Settings\",\"col\":4}}]",
  "creation": "2024-05-13 00:00:00",
  "custom_blocks": [],
  "docstatus": 0,
@@ -63,15 +63,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Vault Policy",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Vault Settings",
    "link_count": 0,
    "link_type": "DocType",
@@ -79,7 +70,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-07-22 11:23:23.471593",
+ "modified": "2026-07-22 12:16:37.238281",
  "modified_by": "Administrator",
  "module": "Vault",
  "name": "Vault",
@@ -123,13 +114,6 @@
    "format": "",
    "label": "Vault One Time Links",
    "link_to": "Vault One Time Link",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "format": "",
-   "label": "Vault Policies",
-   "link_to": "Vault Policy",
    "type": "DocType"
   },
   {
