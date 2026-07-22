@@ -33,15 +33,15 @@ def _create_log(action: str, secret: str = None, folder: str = None, details: di
 # --- Doc event hooks (called from hooks.py doc_events) ---
 
 def log_secret_created(doc, method):
-    _create_log("Created", secret=doc.name)
+    _create_log("Created", secret=doc.name, folder=getattr(doc, "folder", None))
 
 
 def log_secret_updated(doc, method):
-    _create_log("Updated", secret=doc.name)
+    _create_log("Updated", secret=doc.name, folder=getattr(doc, "folder", None))
 
 
 def log_secret_deleted(doc, method):
-    _create_log("Deleted", secret=doc.name, details={"title": doc.title})
+    _create_log("Deleted", secret=doc.name, folder=getattr(doc, "folder", None), details={"title": doc.title})
 
 
 def log_share_created(doc, method):
@@ -53,25 +53,34 @@ def log_share_created(doc, method):
     }
     if doc.expires_on:
         details["expires_on"] = str(doc.expires_on)
-    _create_log("Shared", secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
-                folder=doc.shared_name if doc.shared_doctype == "Vault Folder" else None,
-                details=details)
+    _create_log(
+        "Shared",
+        secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
+        folder=doc.shared_name if doc.shared_doctype == "Vault Folder" else None,
+        details=details
+    )
 
 
 def log_share_removed(doc, method):
     recipient = doc.user if doc.share_type == "User" else doc.frappe_role
-    _create_log("Unshared", secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
-                details={"share_type": doc.share_type, "recipient": recipient})
+    _create_log(
+        "Unshared",
+        secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
+        folder=doc.shared_name if doc.shared_doctype == "Vault Folder" else None,
+        details={"share_type": doc.share_type, "recipient": recipient}
+    )
 
 
 # --- Callable from services ---
 
 def log_secret_viewed(secret_name: str):
-    _create_log("Viewed", secret=secret_name)
+    folder = frappe.db.get_value("Vault Secret", secret_name, "folder")
+    _create_log("Viewed", secret=secret_name, folder=folder)
 
 
 def log_secret_copied(secret_name: str, field: str = "password"):
-    _create_log("Copied", secret=secret_name, details={"field": field})
+    folder = frappe.db.get_value("Vault Secret", secret_name, "folder")
+    _create_log("Copied", secret=secret_name, folder=folder, details={"field": field})
 
 
 def log_password_generated():

@@ -84,12 +84,16 @@ def grant_roles_to_admin():
 
 
 def create_default_settings():
-    """Initialize Vault Settings singleton."""
+    """Initialize Vault Settings singleton and reset docstatus."""
     if frappe.db.exists("DocType", "Vault Settings"):
+        frappe.db.sql("UPDATE `tabDocType` SET is_submittable = 0 WHERE name IN ('Vault Settings', 'Vault Audit Log')")
         if not frappe.db.exists("Vault Settings"):
             frappe.get_doc({
                 "doctype": "Vault Settings"
             }).insert(ignore_permissions=True)
+        else:
+            frappe.db.sql("UPDATE `tabVault Settings` SET docstatus = 0")
+            frappe.db.commit()
 
 
 def create_default_folders():
