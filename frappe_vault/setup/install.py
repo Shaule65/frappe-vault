@@ -14,7 +14,6 @@ def after_install():
     create_roles()
     create_default_settings()
     create_default_folders()
-    create_default_policy()
     create_desktop_icon()
 
     frappe.db.commit()
@@ -34,7 +33,6 @@ def create_roles():
     """Create vault-specific roles."""
     for role_name in [
         "Vault User",
-        "Vault Manager",
         "Vault Admin"
     ]:
         if not frappe.db.exists("Role", role_name):
@@ -73,28 +71,6 @@ def create_default_folders():
                     "doctype": "Vault Folder",
                     **folder
                 }).insert(ignore_permissions=True)
-
-
-def create_default_policy():
-    """Create default password policy."""
-    if frappe.db.exists("DocType", "Vault Policy"):
-        if not frappe.db.exists(
-            "Vault Policy",
-            {"is_default": 1}
-        ):
-            frappe.get_doc({
-                "doctype": "Vault Policy",
-                "policy_name": "Default Policy",
-                "is_default": 1,
-                "min_password_length": 12,
-                "require_uppercase": 1,
-                "require_lowercase": 1,
-                "require_digits": 1,
-                "require_special": 1,
-                "max_password_age_days": 90,
-                "prevent_reuse_count": 3,
-                "auto_lock_timeout_mins": 30,
-            }).insert(ignore_permissions=True)
 
 
 def create_desktop_icon():

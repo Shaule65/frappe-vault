@@ -97,9 +97,6 @@
    "create": 1, "delete": 1, "read": 1, "role": "Vault Admin", "share": 1, "write": 1
   },
   {
-   "create": 1, "read": 1, "role": "Vault Manager", "share": 1, "write": 1
-  },
-  {
    "create": 1, "read": 1, "role": "Vault User", "share": 1, "write": 1
   }
  ],
