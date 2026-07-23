@@ -1,13 +1,11 @@
 """Vault Folder DocType controller."""
 
 import frappe
-from frappe.utils.nestedset import NestedSet
+from frappe.model.document import Document
 
 
-class VaultFolder(NestedSet):
-    """Tree-based folder organization for vault secrets."""
-
-    nsm_parent_field = "parent_vault_folder"
+class VaultFolder(Document):
+    """Folder organization for vault secrets."""
 
     def validate(self):
         if self.folder_name:
