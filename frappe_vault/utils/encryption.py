@@ -5,7 +5,7 @@ from frappe.utils.password import get_decrypted_password
 
 
 def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
-    """Decrypt a password field value.
+    """Decrypt a password field value safely.
 
     Args:
         doctype: DocType name
@@ -15,7 +15,27 @@ def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
     Returns:
         Decrypted string or empty string
     """
-    return get_decrypted_password(doctype, name, fieldname) or ""
+    try:
+        val = get_decrypted_password(doctype, name, fieldname, raise_exception=False)
+        if val:
+            return val
+    except Exception:
+        pass
+
+    # Direct Auth table fallback for unauthenticated guest link consumers
+    try:
+        auth_val = frappe.db.get_value(
+            "__Auth",
+            {"doctype": doctype, "docname": name, "fieldname": fieldname},
+            "password"
+        )
+        if auth_val:
+            from frappe.utils.password import decrypt
+            return decrypt(auth_val)
+    except Exception:
+        pass
+
+    return ""
 
 
 def get_decrypted_secret_data(secret_name: str) -> dict:
@@ -48,7 +68,7 @@ def get_decrypted_secret_data(secret_name: str) -> dict:
         result["db_password"] = decrypt_secret_field("Vault Secret", secret_name, "db_password")
     elif doc.secret_type == "SSH Key":
         result["username"] = doc.username
-        result["ssh_private_key"] = doc.ssh_private_key  # Code field, not encrypted by Frappe
+        result["ssh_private_key"] = doc.ssh_private_key
     elif doc.secret_type == "Certificate":
         result["certificate"] = doc.certificate
 

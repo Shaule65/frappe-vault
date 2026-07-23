@@ -72,10 +72,10 @@ bench --site your-site.local set-config encryption_key "your-secure-32-byte-key-
 
 ### Roles and Permissions
 
-Frappe Vault creates two custom roles on installation:
+Frappe Vault uses two custom roles:
 
-- **Vault User**: Can create, read, and update their own secrets
-- **Vault Manager**: Full access to all vault operations including access logs
+- **Vault User**: Can create, read, update, and share their own secrets and folders
+- **Vault Admin**: Administrative access to vault settings, policies, and audit logs
 
 Assign these roles to users through the User DocType or Role Permissions Manager.
 

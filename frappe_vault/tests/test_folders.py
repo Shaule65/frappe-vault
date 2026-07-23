@@ -12,7 +12,7 @@ class TestFolders(FrappeTestCase):
         frappe.db.commit()
 
     def test_create_and_get_folders(self):
-        folder = create("Test Folder", color="#3b82f6")
+        folder = create("Test Folder", icon="folder")
         self.assertTrue(folder)
         
         folders = get_all()

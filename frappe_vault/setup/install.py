@@ -12,9 +12,9 @@ def after_install():
     frappe.clear_cache()
 
     create_roles()
+    grant_roles_to_admin()
     create_default_settings()
     create_default_folders()
-    create_default_policy()
     create_desktop_icon()
 
     frappe.db.commit()
@@ -34,7 +34,6 @@ def create_roles():
     """Create vault-specific roles."""
     for role_name in [
         "Vault User",
-        "Vault Manager",
         "Vault Admin"
     ]:
         if not frappe.db.exists("Role", role_name):
@@ -45,22 +44,67 @@ def create_roles():
             }).insert(ignore_permissions=True)
 
 
+def grant_roles_to_admin():
+    """Automatically assign Vault Admin and Vault User roles to Administrator and System Managers."""
+    vault_roles = ["Vault Admin", "Vault User"]
+
+    # 1. Assign to Administrator
+    if frappe.db.exists("User", "Administrator"):
+        admin_doc = frappe.get_doc("User", "Administrator")
+        existing_roles = {r.role for r in admin_doc.roles}
+        updated = False
+        for r_name in vault_roles:
+            if r_name not in existing_roles:
+                admin_doc.append("roles", {"role": r_name})
+                updated = True
+        if updated:
+            admin_doc.save(ignore_permissions=True)
+
+    # 2. Assign to active System Manager users
+    sys_managers = frappe.get_all(
+        "Has Role",
+        filters={"role": "System Manager", "parenttype": "User"},
+        pluck="parent"
+    )
+    for u_name in sys_managers:
+        if u_name in ["Administrator", "Guest"]:
+            continue
+        try:
+            u_doc = frappe.get_doc("User", u_name)
+            u_roles = {r.role for r in u_doc.roles}
+            added = False
+            for r_name in vault_roles:
+                if r_name not in u_roles:
+                    u_doc.append("roles", {"role": r_name})
+                    added = True
+            if added:
+                u_doc.save(ignore_permissions=True)
+        except Exception:
+            pass
+
+
 def create_default_settings():
-    """Initialize Vault Settings singleton."""
+    """Initialize Vault Settings singleton and reset docstatus."""
     if frappe.db.exists("DocType", "Vault Settings"):
+        frappe.db.sql("UPDATE `tabDocType` SET is_submittable = 0 WHERE name IN ('Vault Settings', 'Vault Audit Log', 'Vault One Time Link')")
+        if frappe.db.exists("DocType", "Vault One Time Link"):
+            frappe.db.sql("UPDATE `tabVault One Time Link` SET docstatus = 0 WHERE docstatus = 1")
         if not frappe.db.exists("Vault Settings"):
             frappe.get_doc({
                 "doctype": "Vault Settings"
             }).insert(ignore_permissions=True)
+        else:
+            frappe.db.sql("UPDATE `tabVault Settings` SET docstatus = 0")
+            frappe.db.commit()
 
 
 def create_default_folders():
     """Create starter folders."""
     folders = [
-        {"folder_name": "Work", "icon": "briefcase", "color": "#3B82F6"},
-        {"folder_name": "Personal", "icon": "user", "color": "#10B981"},
-        {"folder_name": "Finance", "icon": "credit-card", "color": "#F59E0B"},
-        {"folder_name": "Servers", "icon": "server", "color": "#8B5CF6"},
+        {"folder_name": "Work", "icon": "briefcase"},
+        {"folder_name": "Personal", "icon": "user"},
+        {"folder_name": "Finance", "icon": "credit-card"},
+        {"folder_name": "Servers", "icon": "server"},
     ]
 
     if frappe.db.exists("DocType", "Vault Folder"):
@@ -73,28 +117,6 @@ def create_default_folders():
                     "doctype": "Vault Folder",
                     **folder
                 }).insert(ignore_permissions=True)
-
-
-def create_default_policy():
-    """Create default password policy."""
-    if frappe.db.exists("DocType", "Vault Policy"):
-        if not frappe.db.exists(
-            "Vault Policy",
-            {"is_default": 1}
-        ):
-            frappe.get_doc({
-                "doctype": "Vault Policy",
-                "policy_name": "Default Policy",
-                "is_default": 1,
-                "min_password_length": 12,
-                "require_uppercase": 1,
-                "require_lowercase": 1,
-                "require_digits": 1,
-                "require_special": 1,
-                "max_password_age_days": 90,
-                "prevent_reuse_count": 3,
-                "auto_lock_timeout_mins": 30,
-            }).insert(ignore_permissions=True)
 
 
 def create_desktop_icon():

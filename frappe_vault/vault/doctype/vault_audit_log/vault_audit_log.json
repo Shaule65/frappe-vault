@@ -4,21 +4,97 @@
  "creation": "2026-05-13 10:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["action", "secret", "folder", "column_break_1", "user", "timestamp", "details_section", "ip_address", "user_agent", "details"],
- "fields": [
-  {"fieldname": "action", "fieldtype": "Select", "in_list_view": 1, "in_standard_filter": 1, "label": "Action", "options": "Viewed\nCreated\nUpdated\nDeleted\nShared\nUnshared\nCopied\nGenerated\nExported\nImported\nLogin", "reqd": 1},
-  {"fieldname": "secret", "fieldtype": "Link", "in_list_view": 1, "in_standard_filter": 1, "label": "Secret", "options": "Vault Secret"},
-  {"fieldname": "folder", "fieldtype": "Link", "label": "Folder", "options": "Vault Folder"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "user", "fieldtype": "Link", "in_list_view": 1, "in_standard_filter": 1, "label": "User", "options": "User", "reqd": 1},
-  {"fieldname": "timestamp", "fieldtype": "Datetime", "in_list_view": 1, "label": "Timestamp", "reqd": 1},
-  {"fieldname": "details_section", "fieldtype": "Section Break", "label": "Details", "collapsible": 1},
-  {"fieldname": "ip_address", "fieldtype": "Data", "label": "IP Address", "read_only": 1},
-  {"fieldname": "user_agent", "fieldtype": "Small Text", "label": "User Agent", "read_only": 1},
-  {"fieldname": "details", "fieldtype": "JSON", "label": "Details", "read_only": 1}
+ "field_order": [
+  "action",
+  "secret",
+  "folder",
+  "column_break_1",
+  "user",
+  "timestamp",
+  "details_section",
+  "ip_address",
+  "user_agent",
+  "details"
  ],
- "in_create": 1,
+ "fields": [
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Action",
+   "options": "Viewed\nCreated\nUpdated\nDeleted\nShared\nUnshared\nCopied\nGenerated\nExported\nImported\nLogin",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "secret",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Secret",
+   "options": "Vault Secret",
+   "read_only": 1
+  },
+  {
+   "fieldname": "folder",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Folder",
+   "options": "Vault Folder",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Timestamp",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "read_only": 1
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Small Text",
+   "label": "User Agent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "JSON",
+   "label": "Details",
+   "read_only": 1
+  }
+ ],
+ "in_create": 0,
  "index_web_pages_for_search": 0,
+ "is_submittable": 0,
  "links": [],
  "modified": "2026-05-13 10:00:00.000000",
  "modified_by": "Administrator",
@@ -27,8 +103,14 @@
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
-  {"read": 1, "role": "System Manager"},
-  {"read": 1, "role": "Vault Admin"}
+  {
+   "read": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "role": "Vault Admin"
+  }
  ],
  "sort_field": "timestamp",
  "sort_order": "DESC",

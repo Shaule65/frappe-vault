@@ -4,39 +4,85 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "general_section",
-  "enable_master_password", "master_password", "session_timeout",
   "defaults_section",
-  "default_password_length", "default_password_policy",
+  "default_password_length",
+  "min_password_length",
+  "require_uppercase",
+  "require_lowercase",
   "column_break_defaults",
-  "log_retention_days",
-  "features_section",
-  "enable_breach_check", "enable_one_time_links",
-  "column_break_features",
-  "one_time_link_default_expiry_hours",
-  "import_export_section",
-  "allow_export", "allow_import"
+  "require_digits",
+  "require_special",
+  "max_password_age_days",
+  "prevent_reuse_count",
+  "log_retention_days"
  ],
  "fields": [
-  {"fieldname": "general_section", "fieldtype": "Section Break", "label": "General"},
-  {"default": "0", "fieldname": "enable_master_password", "fieldtype": "Check", "label": "Enable Master Password"},
-  {"depends_on": "enable_master_password", "fieldname": "master_password", "fieldtype": "Password", "label": "Master Password"},
-  {"default": "30", "depends_on": "enable_master_password", "fieldname": "session_timeout", "fieldtype": "Int", "label": "Session Timeout (minutes)"},
-  {"fieldname": "defaults_section", "fieldtype": "Section Break", "label": "Defaults"},
-  {"default": "16", "fieldname": "default_password_length", "fieldtype": "Int", "label": "Default Password Length"},
-  {"fieldname": "default_password_policy", "fieldtype": "Link", "label": "Default Policy", "options": "Vault Policy"},
-  {"fieldname": "column_break_defaults", "fieldtype": "Column Break"},
-  {"default": "365", "fieldname": "log_retention_days", "fieldtype": "Int", "label": "Log Retention (days)"},
-  {"fieldname": "features_section", "fieldtype": "Section Break", "label": "Features"},
-  {"default": "0", "fieldname": "enable_breach_check", "fieldtype": "Check", "label": "Enable Breach Detection (HIBP)"},
-  {"default": "1", "fieldname": "enable_one_time_links", "fieldtype": "Check", "label": "Enable One-Time Links"},
-  {"fieldname": "column_break_features", "fieldtype": "Column Break"},
-  {"default": "24", "depends_on": "enable_one_time_links", "fieldname": "one_time_link_default_expiry_hours", "fieldtype": "Int", "label": "Default Link Expiry (hours)"},
-  {"fieldname": "import_export_section", "fieldtype": "Section Break", "label": "Import / Export"},
-  {"default": "1", "fieldname": "allow_export", "fieldtype": "Check", "label": "Allow Export"},
-  {"default": "1", "fieldname": "allow_import", "fieldtype": "Check", "label": "Allow Import"}
+  {
+   "fieldname": "defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Password Policy & Defaults"
+  },
+  {
+   "default": "16",
+   "fieldname": "default_password_length",
+   "fieldtype": "Int",
+   "label": "Default Password Length"
+  },
+  {
+   "default": "12",
+   "fieldname": "min_password_length",
+   "fieldtype": "Int",
+   "label": "Minimum Password Length"
+  },
+  {
+   "default": "1",
+   "fieldname": "require_uppercase",
+   "fieldtype": "Check",
+   "label": "Require Uppercase (A-Z)"
+  },
+  {
+   "default": "1",
+   "fieldname": "require_lowercase",
+   "fieldtype": "Check",
+   "label": "Require Lowercase (a-z)"
+  },
+  {
+   "fieldname": "column_break_defaults",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "require_digits",
+   "fieldtype": "Check",
+   "label": "Require Digits (0-9)"
+  },
+  {
+   "default": "1",
+   "fieldname": "require_special",
+   "fieldtype": "Check",
+   "label": "Require Symbols (!@#$)"
+  },
+  {
+   "default": "90",
+   "fieldname": "max_password_age_days",
+   "fieldtype": "Int",
+   "label": "Password Expiry Threshold (days)"
+  },
+  {
+   "default": "3",
+   "fieldname": "prevent_reuse_count",
+   "fieldtype": "Int",
+   "label": "Prevent Password Reuse Count"
+  },
+  {
+   "default": "365",
+   "fieldname": "log_retention_days",
+   "fieldtype": "Int",
+   "label": "Log Retention (days)"
+  }
  ],
  "index_web_pages_for_search": 0,
+ "is_submittable": 0,
  "issingle": 1,
  "links": [],
  "modified": "2026-05-13 10:00:00.000000",
@@ -45,10 +91,21 @@
  "name": "Vault Settings",
  "owner": "Administrator",
  "permissions": [
-  {"create": 1, "read": 1, "role": "System Manager", "write": 1},
-  {"read": 1, "role": "Vault Admin", "write": 1},
-  {"read": 1, "role": "Vault Manager"},
-  {"read": 1, "role": "Vault User"}
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Vault Admin",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Vault User"
+  }
  ],
  "sort_field": "modified",
  "sort_order": "DESC",

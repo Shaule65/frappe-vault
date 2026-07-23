@@ -1,15 +1,17 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
-from frappe_vault.services.secret_service import create_secret, get_secret, delete_secret
+from frappe_vault.services.secret_service import create_secret, get_secret, update_secret, delete_secret, toggle_bookmark
+from frappe_vault.services.generator_service import generate_password, calculate_password_strength
+
 
 class TestSecretService(FrappeTestCase):
     def setUp(self):
-        # Ensure we have a clean slate for test secret
-        frappe.db.delete("Vault Secret", {"title": "Test Service Secret"})
+        # Ensure clean slate for test secrets
+        frappe.db.delete("Vault Secret", {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]})
         frappe.db.commit()
 
     def tearDown(self):
-        frappe.db.delete("Vault Secret", {"title": "Test Service Secret"})
+        frappe.db.delete("Vault Secret", {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]})
         frappe.db.commit()
 
     def test_create_and_get_secret(self):
@@ -34,6 +36,26 @@ class TestSecretService(FrappeTestCase):
         decrypted = get_secret(new_secret.get("name"), decrypt=True)
         self.assertEqual(decrypted.get("decrypted", {}).get("password"), "SuperSecretPassword123!")
 
+    def test_update_secret(self):
+        secret_data = {
+            "title": "Test Service Secret",
+            "secret_type": "Password",
+            "username": "admin",
+            "password": "OldPassword123!"
+        }
+        new_secret = create_secret(secret_data)
+        secret_name = new_secret.get("name")
+
+        # Update password & title
+        updated = update_secret(secret_name, {
+            "title": "Test Update Secret",
+            "password": "NewPassword456!"
+        })
+        self.assertEqual(updated.get("title"), "Test Update Secret")
+
+        decrypted = get_secret(secret_name, decrypt=True)
+        self.assertEqual(decrypted.get("decrypted", {}).get("password"), "NewPassword456!")
+
     def test_delete_secret(self):
         secret_data = {
             "title": "Test Service Secret",
@@ -47,7 +69,7 @@ class TestSecretService(FrappeTestCase):
         # Delete it
         delete_secret(secret_name)
         
-        # Ensure it's in trash (Frappe's default behavior) or actually deleted
+        # Ensure it's deleted or trashed
         exists = frappe.db.exists("Vault Secret", secret_name)
         self.assertFalse(exists)
 
@@ -60,8 +82,6 @@ class TestSecretService(FrappeTestCase):
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
         
-        # Ensure it's not bookmarked initially
-        from frappe_vault.services.secret_service import toggle_bookmark
         user = frappe.session.user
         fav_exists = frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name})
         self.assertFalse(fav_exists)
@@ -76,5 +96,11 @@ class TestSecretService(FrappeTestCase):
         self.assertEqual(res.get("is_bookmark"), 0)
         self.assertFalse(frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name}))
         
-        from frappe_vault.services.secret_service import delete_secret
         delete_secret(secret_name)
+
+    def test_generate_password_and_strength(self):
+        pwd = generate_password(length=20, use_uppercase=1, use_lowercase=1, use_digits=1, use_special=1)
+        self.assertEqual(len(pwd), 20)
+
+        strength = calculate_password_strength("P@ssw0rd12345678!")
+        self.assertEqual(strength.get("level"), "excellent")

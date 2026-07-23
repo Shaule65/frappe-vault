@@ -176,7 +176,7 @@ frappe_vault.show_password_generator = function(callback) {
 
 frappe_vault.generate_in_dialog = function(dialog) {
     frappe.xcall(
-        "frappe_vault.frappe_vault.doctype.vault_secret.vault_secret.generate_password",
+        "frappe_vault.api.generator.generate_password",
         {
             length: dialog.get_value("length") || 16,
             use_uppercase: dialog.get_value("use_uppercase") ? 1 : 0,
@@ -221,127 +221,6 @@ frappe_vault.render_strength_indicator = function(dialog, strength) {
     html += `</div>`;
     
     dialog.fields_dict.strength_html.$wrapper.html(html);
-};
-
-// Check vault session status
-frappe_vault.check_session = async function() {
-    return frappe.xcall(
-        "frappe_vault.frappe_vault.doctype.vault_settings.vault_settings.check_vault_session"
-    );
-};
-
-// Master Password Dialog following Frappe UI patterns
-frappe_vault.show_master_password_dialog = function(callback) {
-    const d = new frappe.ui.Dialog({
-        title: __("Unlock Vault"),
-        fields: [
-            {
-                fieldname: "info_html",
-                fieldtype: "HTML",
-                options: `
-                    <div class="mb-4 text-center">
-                        <div class="mb-3">${frappe.utils.icon("lock", "xl")}</div>
-                        <p class="text-muted">${__("Enter your master password to access secrets")}</p>
-                    </div>
-                `
-            },
-            {
-                fieldname: "master_password",
-                fieldtype: "Password",
-                label: __("Master Password"),
-                reqd: 1
-            }
-        ],
-        size: "small",
-        primary_action_label: __("Unlock"),
-        primary_action() {
-            const password = d.get_value("master_password");
-            if (!password) {
-                frappe.toast(__("Please enter the master password"));
-                return;
-            }
-            
-            frappe.xcall(
-                "frappe_vault.frappe_vault.doctype.vault_settings.vault_settings.verify_master_password",
-                { password }
-            ).then(result => {
-                if (result?.success) {
-                    d.hide();
-                    frappe.show_alert({
-                        message: __("Vault unlocked"),
-                        indicator: "green"
-                    });
-                    if (callback) callback(true);
-                } else {
-                    frappe.show_alert({
-                        message: result?.message || __("Invalid master password"),
-                        indicator: "red"
-                    });
-                    if (callback) callback(false);
-                }
-            });
-        }
-    });
-    d.show();
-    
-    // Focus password field
-    setTimeout(() => {
-        d.fields_dict.master_password.$input.focus();
-    }, 100);
-};
-
-// Ensure vault is unlocked before action
-frappe_vault.ensure_unlocked = async function(callback) {
-    const session = await frappe_vault.check_session();
-    
-    if (!session.required || session.valid) {
-        // No master password required or session is valid
-        callback();
-    } else {
-        // Need to unlock
-        frappe_vault.show_master_password_dialog((success) => {
-            if (success) callback();
-        });
-    }
-};
-
-// Reveal password with master password check
-frappe_vault.reveal_password = function(docname, callback) {
-    frappe_vault.ensure_unlocked(async () => {
-        try {
-            const result = await frappe.xcall(
-                "frappe_vault.frappe_vault.doctype.vault_secret.vault_secret.get_decrypted_password",
-                { secret_name: docname }
-            );
-            if (result && callback) {
-                callback(result);
-            }
-        } catch (error) {
-            if (error?.exc_type === "AuthenticationError") {
-                frappe_vault.show_master_password_dialog((success) => {
-                    if (success) {
-                        frappe_vault.reveal_password(docname, callback);
-                    }
-                });
-            }
-        }
-    });
-};
-
-// Lock the vault (end session)
-frappe_vault.lock_vault = async function() {
-    const result = await frappe.xcall(
-        "frappe_vault.frappe_vault.doctype.vault_settings.vault_settings.logout_vault"
-    );
-    
-    if (result?.success) {
-        frappe.show_alert({
-            message: __("Vault locked"),
-            indicator: "blue"
-        });
-    }
-    
-    return result;
 };
 
 // Get icon for secret type (returns Frappe icon markup)

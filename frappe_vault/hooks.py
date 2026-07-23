@@ -20,16 +20,13 @@ add_to_apps_screen = [
 
 # Includes in <head>
 app_include_css = "/assets/frappe_vault/css/frappe_vault.css"
-app_include_js = [
-	"/assets/frappe_vault/js/frappe_vault.js",
-	"/assets/frappe_vault/js/vault_category_tree.js",
-]
+app_include_js = "/assets/frappe_vault/js/frappe_vault.js"
 
 # Fixtures
 fixtures = [
 	{
 		"dt": "Role",
-		"filters": [["name", "in", ["Vault User", "Vault Manager", "Vault Admin"]]],
+		"filters": [["name", "in", ["Vault User", "Vault Admin"]]],
 	}
 ]
 

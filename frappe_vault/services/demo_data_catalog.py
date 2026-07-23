@@ -1,12 +1,12 @@
 """Catalog of demo folders and secrets used for trial environments and testing."""
 
 DEMO_FOLDERS = [
-    {"folder_name": "Infrastructure", "icon": "server", "color": "#6366F1"},
-    {"folder_name": "Operations", "icon": "briefcase", "color": "#EC4899"},
-    {"folder_name": "Engineering & DevOps", "icon": "code", "color": "#10B981"},
-    {"folder_name": "Finance & Accounting", "icon": "dollar-sign", "color": "#F59E0B"},
-    {"folder_name": "Marketing & Sales", "icon": "trending-up", "color": "#3B82F6"},
-    {"folder_name": "Executive & Legal", "icon": "shield", "color": "#8B5CF6"},
+    {"folder_name": "Infrastructure", "icon": "server"},
+    {"folder_name": "Operations", "icon": "briefcase"},
+    {"folder_name": "Engineering & DevOps", "icon": "code"},
+    {"folder_name": "Finance & Accounting", "icon": "dollar-sign"},
+    {"folder_name": "Marketing & Sales", "icon": "trending-up"},
+    {"folder_name": "Executive & Legal", "icon": "shield"},
 ]
 
 DEMO_FOLDER_SHARES = [
