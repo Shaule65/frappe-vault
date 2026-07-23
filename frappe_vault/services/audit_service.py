@@ -93,3 +93,33 @@ def log_export(count: int, format: str):
 
 def log_import(count: int, format: str):
     _create_log("Imported", details={"count": count, "format": format})
+
+
+def log_one_time_link_created(link_doc):
+    folder = frappe.db.get_value("Vault Secret", link_doc.secret, "folder")
+    _create_log(
+        "Shared",
+        secret=link_doc.secret,
+        folder=folder,
+        details={
+            "type": "One Time Link",
+            "one_time_link": link_doc.name,
+            "max_views": link_doc.max_views,
+            "expires_at": str(link_doc.expires_at) if link_doc.expires_at else None,
+        }
+    )
+
+
+def log_one_time_link_consumed(link_doc):
+    folder = frappe.db.get_value("Vault Secret", link_doc.secret, "folder")
+    _create_log(
+        "Viewed",
+        secret=link_doc.secret,
+        folder=folder,
+        details={
+            "type": "One Time Link",
+            "one_time_link": link_doc.name,
+            "view_count": link_doc.view_count,
+            "max_views": link_doc.max_views
+        }
+    )

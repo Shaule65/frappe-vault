@@ -158,6 +158,7 @@ def create_one_time_link(
         "token": doc.token,
         "expires_at": str(doc.expires_at),
         "url": f"/vault/shared/{doc.token}",
+        "share_url": doc.share_url,
     }
 
 
@@ -173,11 +174,25 @@ def consume_one_time_link(token: str, passphrase: str = None) -> dict:
     if not link.is_valid():
         frappe.throw(_("This link has expired or been consumed"))
 
-    # Verify passphrase if set
-    if link.passphrase:
+    # Verify passphrase if configured
+    stored_passphrase = None
+    try:
         from frappe.utils.password import get_decrypted_password
-        stored = get_decrypted_password("Vault One Time Link", link.name, "passphrase")
-        if stored and passphrase != stored:
+        stored_passphrase = get_decrypted_password("Vault One Time Link", link.name, "passphrase", raise_exception=False)
+    except Exception:
+        pass
+
+    if not stored_passphrase:
+        try:
+            auth_val = frappe.db.get_value("__Auth", {"doctype": "Vault One Time Link", "docname": link.name, "fieldname": "passphrase"}, "password")
+            if auth_val:
+                from frappe.utils.password import decrypt
+                stored_passphrase = decrypt(auth_val)
+        except Exception:
+            pass
+
+    if stored_passphrase:
+        if not passphrase or passphrase != stored_passphrase:
             frappe.throw(_("Invalid passphrase"))
 
     # Get secret data
@@ -196,6 +211,13 @@ def consume_one_time_link(token: str, passphrase: str = None) -> dict:
 
     # Consume the link
     link.consume()
+
+    # Log audit event
+    try:
+        from frappe_vault.services.audit_service import log_one_time_link_consumed
+        log_one_time_link_consumed(link)
+    except Exception:
+        pass
 
     return result
 

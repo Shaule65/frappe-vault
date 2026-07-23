@@ -4,19 +4,125 @@
  "creation": "2026-05-13 10:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["secret", "token", "expires_at", "column_break_1", "max_views", "view_count", "is_consumed", "passphrase_section", "passphrase", "meta_section", "created_by"],
+ "is_submittable": 0,
+ "field_order": [
+  "secret",
+  "token",
+  "share_url",
+  "expires_at",
+  "column_break_1",
+  "max_views",
+  "view_count",
+  "is_consumed",
+  "passphrase_section",
+  "passphrase",
+  "access_section",
+  "last_accessed_at",
+  "last_accessed_ip",
+  "last_user_agent",
+  "meta_section",
+  "created_by"
+ ],
  "fields": [
-  {"fieldname": "secret", "fieldtype": "Link", "in_list_view": 1, "label": "Secret", "options": "Vault Secret", "reqd": 1},
-  {"fieldname": "token", "fieldtype": "Data", "in_list_view": 1, "label": "Token", "read_only": 1, "unique": 1},
-  {"fieldname": "expires_at", "fieldtype": "Datetime", "in_list_view": 1, "label": "Expires At", "reqd": 1},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"default": "1", "fieldname": "max_views", "fieldtype": "Int", "label": "Max Views"},
-  {"default": "0", "fieldname": "view_count", "fieldtype": "Int", "label": "View Count", "read_only": 1},
-  {"default": "0", "fieldname": "is_consumed", "fieldtype": "Check", "label": "Consumed", "read_only": 1},
-  {"fieldname": "passphrase_section", "fieldtype": "Section Break", "label": "Protection"},
-  {"fieldname": "passphrase", "fieldtype": "Password", "label": "Passphrase"},
-  {"fieldname": "meta_section", "fieldtype": "Section Break", "label": "Meta"},
-  {"fieldname": "created_by", "fieldtype": "Link", "label": "Created By", "options": "User", "read_only": 1}
+  {
+   "fieldname": "secret",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Secret",
+   "options": "Vault Secret",
+   "reqd": 1
+  },
+  {
+   "fieldname": "token",
+   "fieldtype": "Data",
+   "label": "Token",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "share_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shareable Link URL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expires_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Expires At",
+   "reqd": 0
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "max_views",
+   "fieldtype": "Int",
+   "label": "Max Views"
+  },
+  {
+   "default": "0",
+   "fieldname": "view_count",
+   "fieldtype": "Int",
+   "label": "View Count",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_consumed",
+   "fieldtype": "Check",
+   "label": "Consumed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "passphrase_section",
+   "fieldtype": "Section Break",
+   "label": "Protection"
+  },
+  {
+   "fieldname": "passphrase",
+   "fieldtype": "Password",
+   "label": "Passphrase"
+  },
+  {
+   "fieldname": "access_section",
+   "fieldtype": "Section Break",
+   "label": "Access History"
+  },
+  {
+   "fieldname": "last_accessed_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Accessed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_accessed_ip",
+   "fieldtype": "Data",
+   "label": "Last Accessed IP",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_user_agent",
+   "fieldtype": "Small Text",
+   "label": "Last User Agent / Device",
+   "read_only": 1
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Meta"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  }
  ],
  "index_web_pages_for_search": 0,
  "links": [],
@@ -27,9 +133,26 @@
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
-  {"create": 1, "delete": 1, "read": 1, "role": "System Manager", "write": 1},
-  {"create": 1, "delete": 1, "read": 1, "role": "Vault Admin", "write": 1},
-  {"create": 1, "if_owner": 1, "read": 1, "role": "Vault User"}
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Vault Admin",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "if_owner": 1,
+   "read": 1,
+   "role": "Vault User"
+  }
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
