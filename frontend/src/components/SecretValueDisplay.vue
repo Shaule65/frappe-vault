@@ -1,15 +1,15 @@
 <template>
   <div class="w-full min-w-0 py-3.5 px-4 space-y-1">
     <div class="flex items-center justify-between gap-2">
-      <span class="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ label }}</span>
+      <span class="text-[11px] font-medium uppercase tracking-wider text-ink-gray-5">{{ label }}</span>
       <div class="flex items-center gap-1 shrink-0">
         <!-- Copy Button -->
         <Button
           variant="ghost"
           size="sm"
-          class="!p-1.5 h-auto text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none"
+          class="!p-1.5 h-auto text-ink-gray-5 hover:text-ink-gray-9 focus:outline-none"
           :icon="copied ? 'lucide-check' : 'lucide-copy'"
-          :class="{ 'text-green-600 dark:text-green-400': copied }"
+          :class="{ 'text-ink-green-3': copied }"
           :title="copied ? 'Copied!' : 'Copy to clipboard'"
           @click="copyToClipboard"
         />
@@ -18,7 +18,7 @@
           v-if="sensitive"
           variant="ghost"
           size="sm"
-          class="!p-1.5 h-auto text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none"
+          class="!p-1.5 h-auto text-ink-gray-5 hover:text-ink-gray-9 focus:outline-none"
           :icon="visible ? 'lucide-eye-off' : 'lucide-eye'"
           :title="visible ? 'Hide value' : 'Show value'"
           @click="visible = !visible"
@@ -28,13 +28,13 @@
 
     <pre
       v-if="multiline || String(value).includes('\n')"
-      class="custom-scrollbar max-h-60 overflow-auto whitespace-pre-wrap break-all font-mono text-sm leading-relaxed text-gray-900 dark:text-gray-100 font-normal"
+      class="custom-scrollbar max-h-60 overflow-auto whitespace-pre-wrap break-all font-mono text-sm leading-relaxed text-ink-gray-9 font-normal"
     >{{ displayValue }}</pre>
     
     <p
       v-else
       class="break-all font-mono text-sm select-all"
-      :class="visible ? 'text-gray-900 font-normal dark:text-gray-100' : 'text-gray-400 tracking-wider font-normal dark:text-gray-500'"
+      :class="visible ? 'text-ink-gray-9 font-normal' : 'text-ink-gray-5 tracking-wider font-normal'"
     >{{ displayValue }}</p>
   </div>
 </template>

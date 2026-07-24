@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen w-full bg-gray-50 text-gray-900 flex flex-col items-center justify-center p-4 overflow-y-auto dark:bg-gray-950 dark:text-gray-100">
+  <div class="min-h-screen w-full bg-surface-base text-ink-gray-9 flex flex-col items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-sm my-auto">
       
       <!-- Passphrase Screen -->
@@ -11,13 +11,13 @@
             alt="Frappe Vault Logo"
             class="h-10 w-10 object-contain mb-2.5"
           />
-          <h1 class="text-xl font-semibold text-gray-900 tracking-tight dark:text-gray-100">Passphrase Required</h1>
-          <p class="text-xs text-gray-500 mt-0.5 font-normal dark:text-gray-400">Enter the passphrase to unlock and reveal this secret.</p>
+          <h1 class="text-xl font-semibold text-ink-gray-9 tracking-tight">Passphrase Required</h1>
+          <p class="text-xs text-ink-gray-5 mt-0.5 font-normal">Enter the passphrase to unlock and reveal this secret.</p>
         </div>
 
         <div class="space-y-3.5">
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1.5 dark:text-gray-400">Passphrase</label>
+            <label class="block text-xs font-medium text-ink-gray-5 mb-1.5">Passphrase</label>
             <TextInput
               v-model="passphrase"
               type="password"
@@ -26,12 +26,12 @@
               class="w-full"
               @keyup.enter="openLink"
             />
-            <p v-if="errorMessage" class="text-xs text-red-600 font-medium mt-1 dark:text-red-400">{{ errorMessage }}</p>
+            <p v-if="errorMessage" class="text-xs text-ink-red-3 font-medium mt-1">{{ errorMessage }}</p>
           </div>
 
           <Button
             variant="solid"
-            class="w-full !bg-gray-900 !text-white hover:!bg-black font-medium !py-2.5 shadow-sm dark:!bg-gray-100 dark:!text-gray-900"
+            class="w-full font-medium !py-2.5 shadow-2xs"
             :loading="consume.loading"
             @click="openLink"
             label="Unlock Secret"
@@ -40,7 +40,7 @@
       </div>
 
       <!-- Expired / Error Card Container (App Logo + ! Alert Icon INSIDE the Box Card) -->
-      <div v-else-if="errorMessage" class="w-full min-w-0 bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm text-center space-y-3 dark:bg-gray-900 dark:border-gray-800">
+      <div v-else-if="errorMessage" class="w-full min-w-0 bg-surface-base rounded-2xl border border-outline-gray-1 p-6 shadow-2xs text-center space-y-3">
         <!-- Vault App Logo inside the card -->
         <img
           :src="logoUrl"
@@ -48,12 +48,12 @@
           class="h-9 w-9 object-contain mx-auto mb-1"
         />
         <!-- Soft Red Alert Circle Badge -->
-        <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+        <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-red-1 text-ink-red-3">
           <AlertCircleIcon class="h-5 w-5" />
         </div>
         <div class="space-y-1">
-          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Unable to Open Link</h2>
-          <p class="text-xs text-gray-500 font-normal leading-relaxed dark:text-gray-400">
+          <h2 class="text-base font-semibold text-ink-gray-9">Unable to Open Link</h2>
+          <p class="text-xs text-ink-gray-5 font-normal leading-relaxed">
             {{ errorMessage }}
           </p>
         </div>
@@ -66,27 +66,27 @@
           alt="Frappe Vault Logo"
           class="h-10 w-10 object-contain"
         />
-        <LoaderIcon class="h-6 w-6 animate-spin text-gray-400" />
+        <LoaderIcon class="h-6 w-6 animate-spin text-ink-gray-5" />
       </div>
 
       <!-- Secret Unlocked View (Single Unified Box Card Container) -->
       <div v-else-if="secret" class="space-y-4">
-        <!-- Unified White Box Card Container -->
-        <div class="w-full min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden divide-y divide-gray-100 dark:bg-gray-900 dark:border-gray-800 dark:divide-gray-800">
+        <!-- Unified Box Card Container -->
+        <div class="w-full min-w-0 bg-surface-base rounded-2xl border border-outline-gray-1 shadow-2xs overflow-hidden divide-y divide-outline-gray-1">
           
           <!-- Header Section inside the box card -->
-          <div class="py-4 px-5 text-center bg-gray-50/40 dark:bg-gray-800/40">
+          <div class="py-4 px-5 text-center bg-surface-gray-2">
             <!-- App Vault Logo inside unlocked card -->
             <img
               :src="logoUrl"
               alt="Frappe Vault Logo"
               class="h-8 w-8 object-contain mx-auto mb-2"
             />
-            <span class="inline-flex items-center rounded bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 text-xs font-medium text-blue-900 mb-1.5 dark:bg-blue-950/50 dark:border-blue-900/50 dark:text-blue-200">
+            <span class="inline-flex items-center rounded bg-surface-gray-3 border border-outline-gray-1 px-2.5 py-0.5 text-xs font-medium text-ink-gray-9 mb-1.5">
               {{ secret.secret_type }}
             </span>
-            <h2 class="text-base font-semibold text-gray-900 tracking-tight leading-snug dark:text-gray-100">{{ secret.title }}</h2>
-            <p class="text-xs text-gray-500 mt-0.5 font-normal dark:text-gray-400">Shared One-Time Secret</p>
+            <h2 class="text-base font-semibold text-ink-gray-9 tracking-tight leading-snug">{{ secret.title }}</h2>
+            <p class="text-xs text-ink-gray-5 mt-0.5 font-normal">Shared One-Time Secret</p>
           </div>
 
           <!-- Secret Field Rows inside the box card -->
@@ -103,14 +103,14 @@
           <SecretValueDisplay v-if="secret.notes" label="Notes" :value="secret.notes" multiline />
         </div>
 
-        <p class="text-center text-xs text-gray-400 font-normal dark:text-gray-500">
+        <p class="text-center text-xs text-ink-gray-4 font-normal">
           This one-time link may not remain accessible after viewing.
         </p>
       </div>
 
       <!-- Footer Disclaimer -->
-      <div class="text-center text-xs text-gray-400 pt-4 dark:text-gray-500">
-        Powered by <span class="font-medium text-gray-600 dark:text-gray-300">Frappe Vault</span>
+      <div class="text-center text-xs text-ink-gray-4 pt-4">
+        Powered by <span class="font-medium text-ink-gray-7">Frappe Vault</span>
       </div>
 
     </div>
