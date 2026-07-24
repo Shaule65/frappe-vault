@@ -209,7 +209,7 @@
                             <FeatherIcon name="file-text" class="w-5 h-5 text-ink-gray-7" />
                           </div>
                           <div class="min-w-0">
-                            <p class="text-xs font-semibold text-ink-gray-9 truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{{ getFileName(fileUrl) }}</p>
+                            <p class="text-xs font-semibold text-ink-gray-9 truncate hover:text-ink-blue-link transition-colors">{{ getFileName(fileUrl) }}</p>
                             <p class="text-[11px] text-ink-gray-5 font-mono truncate">{{ fileUrl }}</p>
                           </div>
                         </div>
@@ -251,10 +251,21 @@
                     </div>
 
                     <!-- URL Link -->
-                    <a v-else-if="field.isLink" :href="secretData[field.name]" target="_blank" class="min-w-0 flex-1 text-right font-medium text-blue-600 dark:text-blue-400 hover:underline truncate inline-flex items-center justify-end gap-1">
-                      <span class="truncate">{{ secretData[field.name] }}</span>
-                      <FeatherIcon name="external-link" class="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
-                    </a>
+                    <div v-else-if="field.isLink" class="min-w-0 flex-1 flex items-center justify-end gap-1.5 overflow-hidden">
+                      <a :href="secretData[field.name]" target="_blank" class="min-w-0 font-medium text-ink-blue-link hover:underline truncate inline-flex items-center justify-end gap-1">
+                        <span class="truncate">{{ secretData[field.name] }}</span>
+                        <FeatherIcon name="external-link" class="w-3.5 h-3.5 shrink-0 text-ink-blue-link" />
+                      </a>
+                      <Button
+                        v-if="canCopy"
+                        variant="ghost"
+                        :icon="copiedField === field.name ? 'lucide-check' : 'lucide-copy'"
+                        :class="copiedField === field.name ? 'text-ink-green-3 hover:text-ink-green-4' : 'text-ink-gray-4 hover:text-ink-gray-9'"
+                        class="!p-1 h-auto focus:outline-none shrink-0"
+                        :title="'Copy ' + field.label"
+                        @click="copyFieldData(field.name)"
+                      />
+                    </div>
 
                     <!-- Password/Hidden Field -->
                     <div v-else-if="field.type === 'password'" class="min-w-0 flex-1 flex items-center justify-end gap-2">
@@ -268,9 +279,20 @@
                     </div>
 
                     <!-- Standard Text Field -->
-                    <span v-else class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate" :class="field.mono ? 'font-mono' : ''">
-                      {{ field.name === 'db_host' ? secretData.db_host + (secretData.db_port ? ':' + secretData.db_port : '') : secretData[field.name] }}
-                    </span>
+                    <div v-else class="min-w-0 flex-1 flex items-center justify-end gap-1.5 overflow-hidden">
+                      <span class="min-w-0 font-medium text-ink-gray-9 truncate" :class="field.mono ? 'font-mono' : ''">
+                        {{ field.name === 'db_host' ? secretData.db_host + (secretData.db_port ? ':' + secretData.db_port : '') : secretData[field.name] }}
+                      </span>
+                      <Button
+                        v-if="canCopy"
+                        variant="ghost"
+                        :icon="copiedField === field.name ? 'lucide-check' : 'lucide-copy'"
+                        :class="copiedField === field.name ? 'text-ink-green-3 hover:text-ink-green-4' : 'text-ink-gray-4 hover:text-ink-gray-9'"
+                        class="!p-1 h-auto focus:outline-none shrink-0"
+                        :title="'Copy ' + field.label"
+                        @click="copyFieldData(field.name)"
+                      />
+                    </div>
                   </div>
                 </template>
               </div>
@@ -609,7 +631,7 @@
     <Dialog v-model="previewModalOpen" :options="{ size: 'xl', title: 'Image Preview' }">
       <template #body-content>
         <div class="flex flex-col items-center gap-4 py-2">
-          <div class="relative w-full max-h-[75vh] flex items-center justify-center bg-black/90 rounded-2xl overflow-hidden p-2">
+          <div class="relative w-full max-h-[75vh] flex items-center justify-center bg-surface-gray-7 rounded-2xl overflow-hidden p-2">
             <img :src="previewImageUrl" class="max-w-full max-h-[70vh] object-contain rounded-lg" />
           </div>
           <div class="w-full flex items-center justify-between px-1">
@@ -1073,13 +1095,21 @@ async function toggleField(fieldName, isEdit = false) {
 }
 
 async function copyFieldData(fieldName) {
-  await ensureDecrypted(() => {
-    if (decryptedData.value?.[fieldName]) {
-      copyField(decryptedData.value[fieldName], fieldName)
-    } else {
-      toast.error('Field is empty')
-    }
-  })
+  let val = decryptedData.value?.[fieldName] || secretData.value?.[fieldName]
+  if (!val && fieldName === 'db_host' && secretData.value?.db_host) {
+    val = secretData.value.db_host + (secretData.value.db_port ? ':' + secretData.value.db_port : '')
+  }
+  if (val) {
+    copyField(val, fieldName)
+  } else {
+    await ensureDecrypted(() => {
+      if (decryptedData.value?.[fieldName]) {
+        copyField(decryptedData.value[fieldName], fieldName)
+      } else {
+        toast.error('Field is empty')
+      }
+    })
+  }
 }
 
 async function toggleEditMode() {

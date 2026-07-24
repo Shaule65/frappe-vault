@@ -42,6 +42,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Button } from 'frappe-ui'
+import { useClipboard } from '../composables/clipboard'
 
 const props = defineProps({
   label: String,
@@ -51,7 +52,9 @@ const props = defineProps({
 })
 
 const visible = ref(!props.sensitive)
-const copied = ref(false)
+const clipboard = useClipboard()
+
+const copied = computed(() => clipboard.copied.value)
 
 const displayValue = computed(() => {
   if (visible.value) return props.value
@@ -60,10 +63,6 @@ const displayValue = computed(() => {
 
 function copyToClipboard() {
   if (!props.value) return
-  navigator.clipboard.writeText(String(props.value))
-  copied.value = true
-  setTimeout(() => {
-    copied.value = false
-  }, 2000)
+  clipboard.copy(String(props.value))
 }
 </script>
