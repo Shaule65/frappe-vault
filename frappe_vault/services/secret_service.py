@@ -156,6 +156,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "url": doc.url,
         "username": doc.username,
         "email": doc.email,
+        "attachment": doc.attachment,
         "notes": doc.notes,
         "is_bookmark": 1 if frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name}) else 0,
         "password_strength": doc.password_strength,
@@ -179,6 +180,8 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         result["db_host"] = doc.db_host
         result["db_port"] = doc.db_port
         result["db_name"] = doc.db_name
+    elif doc.secret_type == "SSH Key":
+        result["ssh_private_key"] = doc.ssh_private_key
 
     if decrypt:
         from frappe_vault.utils.encryption import get_decrypted_secret_data
@@ -189,6 +192,17 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
     doc.update_access_metadata()
 
     return result
+
+
+def sanitize_url(url: str) -> str:
+    if not url:
+        return ""
+    url = str(url).strip()
+    if not url:
+        return ""
+    if not (url.startswith("http://") or url.startswith("https://") or "://" in url):
+        return f"https://{url}"
+    return url
 
 
 def create_secret(data: dict) -> dict:
@@ -208,6 +222,9 @@ def create_secret(data: dict) -> dict:
         from frappe_vault.utils.permissions import has_folder_permission
         if not has_folder_permission(folder, ptype="write"):
             frappe.throw(_("You don't have permission to add secrets to this folder"), frappe.PermissionError)
+
+    if "url" in data:
+        data["url"] = sanitize_url(data["url"])
 
     doc = frappe.get_doc({
         "doctype": "Vault Secret",
@@ -239,10 +256,13 @@ def update_secret(name: str, data: dict) -> dict:
         if not has_folder_permission(new_folder, ptype="write"):
             frappe.throw(_("You don't have permission to move secrets to this folder"), frappe.PermissionError)
 
+    if "url" in data:
+        data["url"] = sanitize_url(data["url"])
+
     allowed_fields = [
         "title", "secret_type", "folder", "url", "username", "email",
         "password", "api_key", "api_secret", "notes", "is_bookmark",
-        "ssh_private_key", "certificate", "card_holder", "card_number",
+        "ssh_private_key", "attachment", "card_holder", "card_number",
         "card_expiry", "card_cvv", "db_host", "db_port", "db_name",
         "db_password", "expires_on", "custom_fields_json",
     ]

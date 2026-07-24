@@ -104,3 +104,40 @@ class TestSecretService(FrappeTestCase):
 
         strength = calculate_password_strength("P@ssw0rd12345678!")
         self.assertEqual(strength.get("level"), "excellent")
+
+    def test_media_attachment_and_url_sanitization(self):
+        secret_data = {
+            "title": "Test Media Secret",
+            "secret_type": "Media",
+            "url": "example.com",
+            "attachment": '["/private/files/1.jpeg","/private/files/2.jpeg"]'
+        }
+        new_secret = create_secret(secret_data)
+        secret_name = new_secret.get("name")
+
+        retrieved = get_secret(secret_name)
+        self.assertEqual(retrieved.get("url"), "https://example.com")
+        self.assertEqual(retrieved.get("attachment"), '["/private/files/1.jpeg","/private/files/2.jpeg"]')
+
+        # Update attachment
+        update_secret(secret_name, {"attachment": '["/private/files/1.jpeg"]'})
+        updated = get_secret(secret_name)
+        self.assertEqual(updated.get("attachment"), '["/private/files/1.jpeg"]')
+
+        delete_secret(secret_name)
+
+    def test_ssh_key_secret(self):
+        secret_data = {
+            "title": "Test SSH Key Secret",
+            "secret_type": "SSH Key",
+            "username": "ubuntu",
+            "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----"
+        }
+        new_secret = create_secret(secret_data)
+        secret_name = new_secret.get("name")
+
+        retrieved = get_secret(secret_name)
+        self.assertEqual(retrieved.get("username"), "ubuntu")
+        self.assertIn("OPENSSH PRIVATE KEY", retrieved.get("ssh_private_key", ""))
+
+        delete_secret(secret_name)
