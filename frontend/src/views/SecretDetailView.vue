@@ -199,11 +199,12 @@
                         :key="fileUrl + aIdx"
                         class="bg-surface-gray-2 border border-outline-gray-1 rounded-xl p-3 flex items-center justify-between gap-3 hover:border-outline-gray-2 transition-colors shadow-2xs"
                       >
-                        <div class="flex items-center gap-3 overflow-hidden min-w-0 cursor-pointer" @click="isImageUrl(fileUrl) ? openImagePreview(fileUrl) : openFileUrl(fileUrl)">
+                        <div class="flex items-center gap-3 overflow-hidden min-w-0 cursor-pointer" @click="isImageUrl(fileUrl) && !imageLoadErrorMap[fileUrl] ? openImagePreview(fileUrl) : openFileUrl(fileUrl)">
                           <img
-                            v-if="isImageUrl(fileUrl)"
+                            v-if="isImageUrl(fileUrl) && !imageLoadErrorMap[fileUrl]"
                             :src="fileUrl"
                             class="w-10 h-10 object-cover rounded-lg shrink-0 border border-outline-gray-1 bg-surface-base hover:opacity-90 transition-opacity"
+                            @error="imageLoadErrorMap[fileUrl] = true"
                           />
                           <div v-else class="w-10 h-10 rounded-lg bg-surface-gray-3 border border-outline-gray-1 flex items-center justify-center shrink-0">
                             <FeatherIcon name="file-text" class="w-5 h-5 text-ink-gray-7" />
@@ -216,7 +217,7 @@
 
                         <div class="flex items-center gap-1.5 shrink-0">
                           <Button
-                            v-if="isImageUrl(fileUrl)"
+                            v-if="isImageUrl(fileUrl) && !imageLoadErrorMap[fileUrl]"
                             variant="subtle"
                             size="xs"
                             icon="eye"
@@ -226,6 +227,7 @@
                           />
 
                           <a
+                            v-if="canCopy"
                             :href="fileUrl"
                             target="_blank"
                             download
@@ -416,7 +418,7 @@
 
                 <!-- If Not Owner or Admin, show who shared it with them -->
                 <div v-if="!isOwnerOrAdmin" class="p-4 bg-surface-gray-2 border border-outline-gray-1 rounded-xl text-sm leading-relaxed text-ink-gray-7 font-medium shadow-sm flex items-start gap-3">
-                  <div class="w-9 h-9 rounded-full bg-surface-blue-2 border border-outline-blue-1 text-ink-blue-3 flex items-center justify-center shrink-0">
+                  <div class="w-9 h-9 rounded-full bg-surface-gray-3 border border-outline-gray-1 flex items-center justify-center shrink-0 text-ink-gray-7">
                     <FeatherIcon name="share-2" class="w-4.5 h-4.5" />
                   </div>
                   <div>
@@ -438,16 +440,38 @@
                       class="flex items-center justify-between p-3.5 bg-surface-elevation-1 border border-outline-gray-1 rounded-xl shadow-sm hover:border-outline-gray-3 transition-colors"
                     >
                       <div class="flex items-center gap-3.5 min-w-0">
-                        <div class="w-9 h-9 rounded-full bg-surface-gray-2 border border-outline-gray-1 shadow-sm flex items-center justify-center shrink-0">
+                        <div class="w-9 h-9 rounded-full bg-surface-gray-2 border border-outline-gray-1 shadow-2xs flex items-center justify-center shrink-0">
                           <FeatherIcon
-                            :name="item.share_type === 'User' ? 'user' : 'shield'"
+                            :name="item.share_type === 'UserGroup' || item.user_count > 1 ? 'users' : (item.share_type === 'Role' ? 'shield' : 'user')"
                             class="w-4.5 h-4.5 text-ink-gray-5"
                           />
                         </div>
                         <div class="min-w-0">
-                          <p class="text-sm font-semibold text-ink-gray-9 truncate leading-snug">
-                            {{ item.share_type === 'User' ? item.user : item.frappe_role }}
-                          </p>
+                          <div class="flex items-center gap-1.5 min-w-0">
+                            <p class="text-sm font-semibold text-ink-gray-9 truncate leading-snug">
+                              {{ item.share_type === 'User' ? item.user : (item.share_type === 'UserGroup' ? item.user : item.frappe_role) }}
+                            </p>
+                            <Button
+                              v-if="item.share_type === 'Role'"
+                              variant="ghost"
+                              size="sm"
+                              class="!h-6 !px-1.5 text-xs text-ink-blue-link hover:underline shrink-0"
+                              title="View role members"
+                              @click="openRoleUsersModal(item.frappe_role)"
+                            >
+                              View Members
+                            </Button>
+                            <Button
+                              v-else-if="item.share_type === 'UserGroup' || item.user_count > 1"
+                              variant="ghost"
+                              size="sm"
+                              class="!h-6 !px-1.5 text-xs text-ink-blue-link hover:underline shrink-0"
+                              title="View shared users"
+                              @click="openUserGroupModal(item)"
+                            >
+                              View Members
+                            </Button>
+                          </div>
                           <p class="text-xs text-ink-gray-4 mt-1 font-medium flex items-center gap-1.5 leading-none">
                             <span>{{ item.share_type }}</span>
                             <span class="w-1 h-1 rounded-full bg-surface-gray-4" />
@@ -458,7 +482,27 @@
                       </div>
 
                       <div class="flex items-center gap-3 shrink-0">
+                        <Dropdown
+                          v-if="!item.is_revoked && isOwnerOrAdmin"
+                          :options="[
+                            { label: 'View Only', onClick: () => handleUpdateSharePermission(item.name, 'View Only') },
+                            { label: 'View & Copy', onClick: () => handleUpdateSharePermission(item.name, 'View & Copy') },
+                            { label: 'Edit', onClick: () => handleUpdateSharePermission(item.name, 'Edit') },
+                            { label: 'Full Control', onClick: () => handleUpdateSharePermission(item.name, 'Full Control') }
+                          ]"
+                        >
+                          <Badge
+                            :theme="permissionTheme[item.permission_level] || 'gray'"
+                            variant="subtle"
+                            size="sm"
+                            class="cursor-pointer hover:opacity-80 transition-opacity"
+                            title="Click to update permission level"
+                          >
+                            {{ item.permission_level }} ▾
+                          </Badge>
+                        </Dropdown>
                         <Badge
+                          v-else
                           :theme="item.is_revoked ? 'red' : (permissionTheme[item.permission_level] || 'gray')"
                           variant="subtle"
                           size="sm"
@@ -555,13 +599,96 @@
             />
           </div>
 
-          <!-- Recipient Selection -->
-          <FormControl
-            :label="`Select ${newShareType}`"
-            type="select"
-            v-model="newShareRecipient"
-            :options="recipientOptions"
-          />
+          <!-- Recipient Selection: MultiSelect Component vs Single Role Select -->
+          <div v-if="newShareType === 'User'" class="space-y-1.5">
+            <label class="block text-p-sm-medium text-ink-gray-7">Select Users</label>
+            <MultiSelect
+              v-model="selectedUserEmails"
+              :options="userMembers"
+              placeholder="Select users to share with…"
+              class="w-full"
+            >
+              <template #prefix>
+                <div v-if="visibleSelected.length" class="flex -space-x-1.5">
+                  <Avatar
+                    v-for="m in visibleSelected"
+                    :key="m.value"
+                    :image="m.image"
+                    :label="m.label"
+                    size="sm"
+                  />
+                  <span
+                    v-if="overflowCount > 0"
+                    class="z-10 grid size-5 place-items-center rounded-full bg-surface-gray-3 text-p-xs-medium text-ink-gray-7"
+                  >
+                    +{{ overflowCount }}
+                  </span>
+                </div>
+                <FeatherIcon v-else name="users" class="w-4 h-4 text-ink-gray-5" />
+              </template>
+
+              <template #summary="{ selectedOptions, summary }">
+                <template v-if="selectedOptions.length">
+                  {{ selectedOptions.map((o) => o.label).join(', ') }}
+                </template>
+                <template v-else>{{ summary }}</template>
+              </template>
+
+              <template #item-prefix="{ item }">
+                <Avatar :image="item.image" :label="item.label" size="sm" />
+              </template>
+
+              <template #item-label="{ item }">
+                <div class="min-w-0 flex items-center justify-between w-full">
+                  <div class="truncate font-medium text-ink-gray-9 text-xs">{{ item.label }}</div>
+                  <div class="truncate text-[11px] text-ink-gray-5 font-mono ml-2">{{ item.value }}</div>
+                </div>
+              </template>
+            </MultiSelect>
+          </div>
+
+          <!-- Role Selection: MultiSelect Component -->
+          <div v-else class="space-y-1.5">
+            <label class="block text-p-sm-medium text-ink-gray-7">Select Roles</label>
+            <MultiSelect
+              v-model="selectedRoles"
+              :options="roleMembers"
+              placeholder="Select roles to share with…"
+              class="w-full"
+            >
+              <template #prefix>
+                <div v-if="visibleSelectedRoles.length" class="flex -space-x-1.5">
+                  <span
+                    v-for="r in visibleSelectedRoles"
+                    :key="r.value"
+                    class="z-10 inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-surface-blue-2 text-ink-blue-link text-xs font-medium border border-outline-blue-1"
+                  >
+                    {{ r.label }}
+                  </span>
+                  <span
+                    v-if="overflowRoleCount > 0"
+                    class="z-10 grid size-5 place-items-center rounded-full bg-surface-gray-3 text-p-xs-medium text-ink-gray-7"
+                  >
+                    +{{ overflowRoleCount }}
+                  </span>
+                </div>
+                <FeatherIcon v-else name="shield" class="w-4 h-4 text-ink-gray-5" />
+              </template>
+
+              <template #summary="{ selectedOptions, summary }">
+                <template v-if="selectedOptions.length">
+                  {{ selectedOptions.map((o) => o.label).join(', ') }}
+                </template>
+                <template v-else>{{ summary }}</template>
+              </template>
+
+              <template #item-label="{ item }">
+                <div class="min-w-0 flex items-center justify-between w-full">
+                  <div class="truncate font-medium text-ink-gray-9 text-xs">{{ item.label }}</div>
+                </div>
+              </template>
+            </MultiSelect>
+          </div>
 
           <!-- Permission Level Selection -->
           <FormControl
@@ -590,7 +717,7 @@
           variant="solid"
           label="Share"
           :loading="isSharing"
-          :disabled="!newShareRecipient"
+          :disabled="newShareType === 'User' ? selectedUserEmails.length === 0 : selectedRoles.length === 0"
           @click="handleShareSecret"
           class="font-semibold shadow-sm focus:outline-none"
         />
@@ -648,6 +775,141 @@
         </div>
       </template>
     </Dialog>
+
+    <!-- Role Users Modal -->
+    <Dialog v-model="showRoleUsersModal" :options="{ title: selectedRoleName ? `People with ${selectedRoleName} Role` : 'People with Access', size: 'lg' }">
+      <template #body-content>
+        <div class="flex flex-col gap-4 py-1">
+          <TextInput
+            v-model="roleMemberSearchQuery"
+            type="text"
+            placeholder="Search members by name or email…"
+            iconLeft="search"
+            class="w-full"
+          />
+
+          <div class="space-y-4">
+            <!-- Active Members Section -->
+            <div>
+              <h4 class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider mb-2">
+                Active Members ({{ activeRoleUsersList.length }})
+              </h4>
+
+              <div v-if="roleUsersResource.loading" class="py-6 flex flex-col items-center justify-center space-y-2">
+                <FeatherIcon name="loader" class="w-5 h-5 animate-spin text-ink-gray-5" />
+                <span class="text-xs text-ink-gray-5">Loading members...</span>
+              </div>
+
+              <div v-else-if="activeRoleUsersList.length" class="flex flex-col max-h-56 overflow-y-auto divide-y divide-outline-gray-1 bg-surface-base border border-outline-gray-1 rounded-xl">
+                <div
+                  v-for="u in activeRoleUsersList"
+                  :key="u.user"
+                  class="flex items-center justify-between gap-3 p-2.5 hover:bg-surface-gray-1 transition-colors"
+                >
+                  <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <Avatar :label="u.full_name || u.user" size="md" />
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-ink-gray-9 truncate">
+                        {{ u.full_name || u.user }}
+                      </div>
+                      <div class="truncate text-xs text-ink-gray-5">
+                        {{ u.user }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Permission Level Selector -->
+                  <FormControl
+                    v-if="isOwnerOrAdmin"
+                    type="select"
+                    :modelValue="getUserPermissionLevel(u)"
+                    :options="[
+                      { label: 'View Only', value: 'View Only' },
+                      { label: 'View & Copy', value: 'View & Copy' },
+                      { label: 'Edit', value: 'Edit' },
+                      { label: 'Full Control', value: 'Full Control' }
+                    ]"
+                    class="!w-36 text-xs shrink-0"
+                    @update:modelValue="(val) => handleUpdateUserPermission(u, val)"
+                    @change="(val) => handleUpdateUserPermission(u, val)"
+                  />
+
+                  <!-- Three-Dot Menu -->
+                  <Dropdown
+                    v-if="isOwnerOrAdmin"
+                    :options="[
+                      {
+                        label: 'Revoke Access',
+                        icon: 'lucide-user-minus',
+                        theme: 'red',
+                        onClick: () => handleRevokeRoleMember(u)
+                      }
+                    ]"
+                  >
+                    <template #default="{ open }">
+                      <Button variant="ghost" icon="lucide-more-vertical" class="!p-1.5 text-ink-gray-5 hover:text-ink-gray-9 focus:outline-none" />
+                    </template>
+                  </Dropdown>
+                </div>
+              </div>
+              <p v-else class="text-xs text-ink-gray-5 italic py-4 text-center">No active members.</p>
+            </div>
+
+            <!-- Revoked / Removed Members Section -->
+            <div v-if="revokedRoleUsersList.length">
+              <h4 class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider mb-2">
+                Revoked / Removed Members ({{ revokedRoleUsersList.length }})
+              </h4>
+
+              <div class="flex flex-col max-h-44 overflow-y-auto divide-y divide-outline-gray-1 bg-surface-gray-2 border border-outline-gray-1 rounded-xl">
+                <div
+                  v-for="u in revokedRoleUsersList"
+                  :key="u.user"
+                  class="flex items-center justify-between gap-3 p-2.5 hover:bg-surface-gray-1 transition-colors"
+                >
+                  <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <Avatar :label="u.full_name || u.user" size="md" class="opacity-60" />
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-ink-gray-7 truncate flex items-center gap-2">
+                        <span>{{ u.full_name || u.user }}</span>
+                        <Badge variant="subtle" theme="red" size="sm">Revoked</Badge>
+                      </div>
+                      <div class="truncate text-xs text-ink-gray-5">
+                        {{ u.user }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Re-grant Access Button -->
+                  <Button
+                    v-if="isOwnerOrAdmin"
+                    variant="subtle"
+                    theme="blue"
+                    label="Re-grant Access"
+                    icon="lucide-user-plus"
+                    size="sm"
+                    class="shrink-0 font-medium"
+                    @click="handleRegrantRoleMember(u)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #actions="{ close }">
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" label="Cancel" @click="close" />
+          <Button
+            v-if="isOwnerOrAdmin"
+            variant="solid"
+            label="Save Changes"
+            :loading="isSavingRoleMembers"
+            @click="handleSaveRoleMemberPermissions"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -661,6 +923,7 @@ import {
   TextInput,
   FormControl,
   Dialog,
+  Dropdown,
   ErrorMessage,
   Breadcrumbs,
   Tooltip,
@@ -669,9 +932,11 @@ import {
   Tabs,
   PageHeaderBase,
   PageHeaderTitle,
-  ScrollArea
+  ScrollArea,
+  Avatar,
+  MultiSelect
 } from 'frappe-ui'
-import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders } from '../composables/vault'
+import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders, useRoleUsers, useUpdateSharePermission, useSaveRoleMemberPermission } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
 import StrengthBadge from '../components/StrengthBadge.vue'
@@ -898,7 +1163,7 @@ const isOwnerOrAdmin = computed(() => {
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
-  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (roles.includes('Vault Admin')) return true
   return secretData.value?.owner === currentSessionUser.value || secretData.value?.user_permission === 'Full Control'
 })
 
@@ -908,7 +1173,7 @@ const canEdit = computed(() => {
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
-  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (roles.includes('Vault Admin')) return true
   if (secretData.value?.owner === currentSessionUser.value) return true
   return ['Edit', 'Full Control'].includes(userPermission.value)
 })
@@ -917,7 +1182,7 @@ const canDelete = computed(() => {
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
-  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (roles.includes('Vault Admin')) return true
   if (secretData.value?.owner === currentSessionUser.value) return true
   return userPermission.value === 'Full Control'
 })
@@ -926,16 +1191,57 @@ const canCopy = computed(() => {
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
-  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (roles.includes('Vault Admin')) return true
   if (secretData.value?.owner === currentSessionUser.value) return true
   return ['View & Copy', 'Edit', 'Full Control'].includes(userPermission.value)
 })
 
+const selectedUserEmails = ref([])
+const selectedRoles = ref([])
 
+const userMembers = computed(() => {
+  const users = shareOptions.value.users || []
+  return users.map(u => ({
+    label: u.label || u.value,
+    value: u.value,
+    image: null,
+  }))
+})
+
+const roleMembers = computed(() => {
+  const roles = shareOptions.value.roles || []
+  return roles.map(r => ({
+    label: r.label || r.value,
+    value: r.value,
+  }))
+})
+
+const MAX_AVATARS = 3
+const visibleSelected = computed(() =>
+  selectedUserEmails.value
+    .map((v) => userMembers.value.find((m) => m.value === v))
+    .filter(Boolean)
+    .slice(0, MAX_AVATARS)
+)
+const overflowCount = computed(() =>
+  Math.max(0, selectedUserEmails.value.length - MAX_AVATARS)
+)
+
+const visibleSelectedRoles = computed(() =>
+  selectedRoles.value
+    .map((v) => roleMembers.value.find((m) => m.value === v))
+    .filter(Boolean)
+    .slice(0, MAX_AVATARS)
+)
+const overflowRoleCount = computed(() =>
+  Math.max(0, selectedRoles.value.length - MAX_AVATARS)
+)
 
 function openShareDialog() {
   newShareType.value = 'User'
   newShareRecipient.value = ''
+  selectedUserEmails.value = []
+  selectedRoles.value = []
   newSharePermission.value = 'View Only'
   newShareExpiresOn.value = ''
   showShareDialog.value = true
@@ -943,27 +1249,46 @@ function openShareDialog() {
 }
 
 async function handleShareSecret() {
-  if (!newShareRecipient.value) {
-    toast.error('Please select a recipient')
+  if (newShareType.value === 'User' && selectedUserEmails.value.length === 0) {
+    toast.error('Please select at least one user')
+    return
+  }
+  if (newShareType.value === 'Role' && selectedRoles.value.length === 0) {
+    toast.error('Please select at least one role')
     return
   }
 
   isSharing.value = true
   try {
-    await shareResource.submit({
-      shared_name: props.name,
-      shared_doctype: 'Vault Secret',
-      share_type: newShareType.value,
-      user: newShareType.value === 'User' ? newShareRecipient.value : undefined,
-      frappe_role: newShareType.value === 'Role' ? newShareRecipient.value : undefined,
-      permission_level: newSharePermission.value,
-      expires_on: newShareExpiresOn.value || undefined,
-    })
+    if (newShareType.value === 'User') {
+      for (const email of selectedUserEmails.value) {
+        await shareResource.submit({
+          shared_name: props.name,
+          shared_doctype: 'Vault Secret',
+          share_type: 'User',
+          user: email,
+          permission_level: newSharePermission.value,
+          expires_on: newShareExpiresOn.value || undefined,
+        })
+      }
+      toast.success(`Shared successfully with ${selectedUserEmails.value.length} user(s)`)
+    } else {
+      for (const role of selectedRoles.value) {
+        await shareResource.submit({
+          shared_name: props.name,
+          shared_doctype: 'Vault Secret',
+          share_type: 'Role',
+          frappe_role: role,
+          permission_level: newSharePermission.value,
+          expires_on: newShareExpiresOn.value || undefined,
+        })
+      }
+      toast.success(`Shared successfully with ${selectedRoles.value.length} role(s)`)
+    }
 
-    toast.success(`Secret shared successfully with ${newShareRecipient.value}`)
-
-    // Reset fields and close
     newShareRecipient.value = ''
+    selectedUserEmails.value = []
+    selectedRoles.value = []
     newShareExpiresOn.value = ''
     showShareDialog.value = false
     await sharesResource.fetch({ secret_name: props.name })
@@ -972,6 +1297,148 @@ async function handleShareSecret() {
     toast.error(err.messages?.[0] || err.message || 'Failed to share secret')
   } finally {
     isSharing.value = false
+  }
+}
+
+const imageLoadErrorMap = reactive({})
+const showRoleUsersModal = ref(false)
+const selectedRoleName = ref('')
+const roleMemberSearchQuery = ref('')
+const revokedUserIds = ref(new Set())
+const userPermissionOverrides = ref({})
+const isSavingRoleMembers = ref(false)
+const roleUsersResource = useRoleUsers()
+const saveRoleMemberPermResource = useSaveRoleMemberPermission()
+const updateSharePermResource = useUpdateSharePermission()
+
+const roleUsersList = computed(() => roleUsersResource.data || [])
+const filteredRoleUsersList = computed(() => {
+  if (!roleMemberSearchQuery.value.trim()) return roleUsersList.value
+  const q = roleMemberSearchQuery.value.toLowerCase().trim()
+  return roleUsersList.value.filter(u =>
+    (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+    (u.user && u.user.toLowerCase().includes(q))
+  )
+})
+
+watch(() => roleUsersResource.data, (data) => {
+  if (data && Array.isArray(data)) {
+    const rev = new Set()
+    const perms = {}
+    data.forEach(u => {
+      if (u.is_revoked) rev.add(u.user)
+      if (u.permission_level) perms[u.user] = u.permission_level
+    })
+    revokedUserIds.value = rev
+    userPermissionOverrides.value = perms
+  }
+})
+
+const activeRoleUsersList = computed(() => {
+  return filteredRoleUsersList.value.filter(u => !revokedUserIds.value.has(u.user))
+})
+
+const revokedRoleUsersList = computed(() => {
+  return filteredRoleUsersList.value.filter(u => revokedUserIds.value.has(u.user))
+})
+
+function openRoleUsersModal(roleName) {
+  if (!roleName) return
+  selectedRoleName.value = roleName
+  roleMemberSearchQuery.value = ''
+  revokedUserIds.value = new Set()
+  userPermissionOverrides.value = {}
+  showRoleUsersModal.value = true
+  roleUsersResource.submit({
+    role_name: roleName,
+    shared_name: props.name,
+    shared_doctype: 'Vault Secret'
+  })
+}
+
+function openUserGroupModal(item) {
+  selectedRoleName.value = ''
+  roleMemberSearchQuery.value = ''
+  revokedUserIds.value = new Set()
+  userPermissionOverrides.value = {}
+  showRoleUsersModal.value = true
+  roleUsersResource.submit({
+    shared_name: props.name,
+    shared_doctype: 'Vault Secret'
+  })
+}
+
+function getUserPermissionLevel(userObj) {
+  if (userPermissionOverrides.value && userPermissionOverrides.value[userObj.user]) {
+    return userPermissionOverrides.value[userObj.user]
+  }
+  return userObj.permission_level || 'View Only'
+}
+
+function handleUpdateUserPermission(userObj, val) {
+  let permValue = 'View Only'
+  if (typeof val === 'string') {
+    permValue = val
+  } else if (val && typeof val === 'object') {
+    if (val.target && val.target.value) {
+      permValue = val.target.value
+    } else if (val.value) {
+      permValue = val.value
+    }
+  }
+  userPermissionOverrides.value = {
+    ...userPermissionOverrides.value,
+    [userObj.user]: permValue
+  }
+}
+
+function handleRevokeRoleMember(userObj) {
+  const updatedSet = new Set(revokedUserIds.value)
+  updatedSet.add(userObj.user)
+  revokedUserIds.value = updatedSet
+}
+
+function handleRegrantRoleMember(userObj) {
+  const updatedSet = new Set(revokedUserIds.value)
+  updatedSet.delete(userObj.user)
+  revokedUserIds.value = updatedSet
+}
+
+async function handleSaveRoleMemberPermissions() {
+  isSavingRoleMembers.value = true
+  try {
+    const users = roleUsersList.value || []
+    for (const u of users) {
+      const isRev = revokedUserIds.value.has(u.user)
+      const permLevel = userPermissionOverrides.value[u.user] || u.permission_level || 'View Only'
+      await saveRoleMemberPermResource.submit({
+        shared_name: props.name,
+        shared_doctype: 'Vault Secret',
+        user: u.user,
+        permission_level: permLevel,
+        is_revoked: isRev,
+      })
+    }
+    toast.success('Role member permissions saved successfully')
+    showRoleUsersModal.value = false
+    await sharesResource.fetch({ secret_name: props.name })
+  } catch (err) {
+    toast.error(err.messages?.[0] || err.message || 'Failed to save role member permissions')
+  } finally {
+    isSavingRoleMembers.value = false
+  }
+}
+
+async function handleUpdateSharePermission(shareName, permissionLevel) {
+  try {
+    await updateSharePermResource.submit({
+      share_name: shareName,
+      permission_level: permissionLevel,
+    })
+    toast.success(`Permission updated to ${permissionLevel}`)
+    await sharesResource.fetch({ secret_name: props.name })
+  } catch (err) {
+    toast.error(err.messages?.[0] || err.message || 'Failed to update permission')
   }
 }
 
