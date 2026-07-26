@@ -75,4 +75,5 @@ permission_query_conditions = {
 has_permission = {
 	"Vault Secret": "frappe_vault.utils.permissions.has_secret_permission",
 	"Vault Folder": "frappe_vault.utils.permissions.has_folder_permission",
+	"File": "frappe_vault.utils.permissions.has_file_permission",
 }

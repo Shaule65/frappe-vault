@@ -549,7 +549,7 @@ const isAdmin = computed(() => {
   const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name || ''
   if (user === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
-  return roles.includes('Vault Admin') || roles.includes('System Manager')
+  return roles.includes('Vault Admin')
 })
 
 // Single reactive sidebar config — mirrors the frappe-ui docs pattern

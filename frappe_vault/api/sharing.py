@@ -46,35 +46,38 @@ def get_share_options():
     if not frappe.session.user or frappe.session.user == "Guest":
         frappe.throw(_("Not logged in"), frappe.PermissionError)
 
-    # 1. Fetch active, non-system users (excluding guest, administrator, and current user)
-    users = frappe.get_all(
-        "User",
+    # 1. Fetch users who have 'Vault User' role (excluding Guest, Administrator, and current user)
+    vault_users = frappe.get_all(
+        "Has Role",
         filters={
-            "enabled": 1,
-            "user_type": "System User",
-            "name": ["not in", ["Guest", "Administrator", frappe.session.user]]
+            "role": "Vault User",
+            "parenttype": "User",
+            "parent": ["not in", ["Guest", "Administrator", frappe.session.user]]
         },
-        fields=["name", "full_name"],
-        order_by="full_name asc"
+        pluck="parent"
     )
-    
-    # Filter out users with admin roles as they already have full access
-    admin_users = set(
-        frappe.get_all(
-            "Has Role",
-            filters={"role": ["in", ["Vault Admin", "System Manager"]]},
-            pluck="parent"
-        )
-    )
-    non_admin_users = [u for u in users if u.name not in admin_users]
-            
-    user_options = [{"value": u.name, "label": u.full_name or u.name} for u in non_admin_users]
 
-    # 2. Fetch active system roles
+    if vault_users:
+        users = frappe.get_all(
+            "User",
+            filters={
+                "enabled": 1,
+                "name": ["in", vault_users]
+            },
+            fields=["name", "full_name"],
+            order_by="full_name asc"
+        )
+        user_options = [{"value": u.name, "label": u.full_name or u.name} for u in users]
+    else:
+        user_options = []
+
+    # 2. Fetch active system roles (excluding internal system roles)
+    excluded_roles = ["Administrator", "Guest", "All", "Script Manager", "Blogger"]
     roles = frappe.get_all(
         "Role",
         filters={
             "disabled": 0,
+            "name": ["not in", excluded_roles]
         },
         fields=["name"],
         order_by="name asc"
@@ -93,4 +96,24 @@ def bulk_delete_shares(share_names):
     if isinstance(share_names, str):
         share_names = frappe.parse_json(share_names)
     return _bulk_delete(share_names)
+
+
+@frappe.whitelist()
+def update_share_permission(share_name, permission_level):
+    from frappe_vault.services.sharing_service import update_share_permission as _update_perm
+    return _update_perm(share_name, permission_level)
+
+
+@frappe.whitelist()
+def get_role_users(role_name=None, shared_name=None, shared_doctype="Vault Secret"):
+    from frappe_vault.services.sharing_service import get_role_users as _get_role_users
+    return _get_role_users(role_name=role_name, shared_name=shared_name, shared_doctype=shared_doctype)
+
+
+@frappe.whitelist()
+def save_role_member_permission(shared_name, shared_doctype="Vault Secret", user=None, permission_level="View Only", is_revoked=False):
+    from frappe_vault.services.sharing_service import save_role_member_permission as _save_role_member_perm
+    if isinstance(is_revoked, str):
+        is_revoked = is_revoked.lower() in ("true", "1")
+    return _save_role_member_perm(shared_name=shared_name, shared_doctype=shared_doctype, user=user, permission_level=permission_level, is_revoked=bool(is_revoked))
 

@@ -116,46 +116,76 @@ def has_secret_permission(doc, ptype="read", user=None):
         if folder_owner == user:
             return True
 
-    # Check active shares (secret itself or parent folder) applying to the user
-    conditions = [
+    # Check if user has an explicit revoked share record for this secret
+    if frappe.db.exists(
+        "Vault Share",
+        {
+            "shared_name": doc_name,
+            "shared_doctype": "Vault Secret",
+            "share_type": "User",
+            "user": user,
+            "is_revoked": 1,
+        }
+    ):
+        return False
+
+    # Check active user-specific share first (explicit user level takes priority over role share)
+    user_share_conds = [
+        "share_type = 'User'",
+        f"user = {frappe.db.escape(user)}",
         "(expires_on IS NULL OR expires_on > NOW())",
         "is_revoked = 0"
     ]
     target_conds = [f"(shared_doctype = 'Vault Secret' AND shared_name = {frappe.db.escape(doc_name)})"]
     if doc_folder:
         target_conds.append(f"(shared_doctype = 'Vault Folder' AND shared_name = {frappe.db.escape(doc_folder)})")
-    conditions.append("(" + " OR ".join(target_conds) + ")")
+    user_share_conds.append("(" + " OR ".join(target_conds) + ")")
 
-    share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
-    
-    if roles:
-        roles_str = ", ".join([frappe.db.escape(r) for r in roles])
-        share_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
-        
-    conditions.append("(" + " OR ".join(share_conds) + ")")
-    
-    shares = frappe.db.sql(f"""
+    user_shares = frappe.db.sql(f"""
         SELECT permission_level FROM `tabVault Share`
-        WHERE {" AND ".join(conditions)}
+        WHERE {" AND ".join(user_share_conds)}
     """, as_dict=True)
-    
-    if shares:
-        perm_map = {
-            "View Only": 1,
-            "View & Copy": 2,
-            "Edit": 3,
-            "Full Control": 4
-        }
-        highest_share = max(shares, key=lambda s: perm_map.get(s.permission_level, 0))
+
+    perm_map = {
+        "View Only": 1,
+        "View & Copy": 2,
+        "Edit": 3,
+        "Full Control": 4
+    }
+
+    if user_shares:
+        highest_share = max(user_shares, key=lambda s: perm_map.get(s.permission_level, 0))
         level = perm_map.get(highest_share.permission_level, 1)
-        
         if ptype in ("read",):
             return level >= 1
         elif ptype in ("write",):
             return level >= 3
         elif ptype in ("delete", "share"):
             return level >= 4
-            
+
+    # Check active role shares if no explicit user share exists
+    if roles:
+        role_share_conds = [
+            "share_type = 'Role'",
+            f"frappe_role IN ({', '.join([frappe.db.escape(r) for r in roles])})",
+            "(expires_on IS NULL OR expires_on > NOW())",
+            "is_revoked = 0"
+        ]
+        role_share_conds.append("(" + " OR ".join(target_conds) + ")")
+        role_shares = frappe.db.sql(f"""
+            SELECT permission_level FROM `tabVault Share`
+            WHERE {" AND ".join(role_share_conds)}
+        """, as_dict=True)
+        if role_shares:
+            highest_share = max(role_shares, key=lambda s: perm_map.get(s.permission_level, 0))
+            level = perm_map.get(highest_share.permission_level, 1)
+            if ptype in ("read",):
+                return level >= 1
+            elif ptype in ("write",):
+                return level >= 3
+            elif ptype in ("delete", "share"):
+                return level >= 4
+
     return False
 
 
@@ -227,41 +257,83 @@ def has_folder_permission(doc, ptype="read", user=None):
     if doc_owner == user:
         return True
 
-    # Check active shares for this folder
-    conditions = [
+    # Check explicit active user-specific share for this folder first
+    user_share_conds = [
         "shared_doctype = 'Vault Folder'",
         f"shared_name = {frappe.db.escape(doc_name)}",
-        "is_revoked = 0"
+        "share_type = 'User'",
+        f"user = {frappe.db.escape(user)}",
+        "is_revoked = 0",
+        "(expires_on IS NULL OR expires_on > NOW())"
     ]
-    share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
-    
-    if roles:
-        roles_str = ", ".join([frappe.db.escape(r) for r in roles])
-        share_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
-        
-    conditions.append("(" + " OR ".join(share_conds) + ")")
-    conditions.append("(expires_on IS NULL OR expires_on > NOW())")
-    
-    shares = frappe.db.sql(f"""
+    user_shares = frappe.db.sql(f"""
         SELECT permission_level FROM `tabVault Share`
-        WHERE {" AND ".join(conditions)}
+        WHERE {" AND ".join(user_share_conds)}
     """, as_dict=True)
-    
-    if shares:
-        perm_map = {
-            "View Only": 1,
-            "View & Copy": 2,
-            "Edit": 3,
-            "Full Control": 4
-        }
-        highest_share = max(shares, key=lambda s: perm_map.get(s.permission_level, 0))
+
+    perm_map = {
+        "View Only": 1,
+        "View & Copy": 2,
+        "Edit": 3,
+        "Full Control": 4
+    }
+
+    if user_shares:
+        highest_share = max(user_shares, key=lambda s: perm_map.get(s.permission_level, 0))
         level = perm_map.get(highest_share.permission_level, 1)
-        
         if ptype in ("read",):
             return level >= 1
         elif ptype in ("write",):
             return level >= 3
         elif ptype in ("delete", "share"):
             return level >= 4
-                
+
+    # Check active role shares if no explicit user share exists for this folder
+    if roles:
+        role_share_conds = [
+            "shared_doctype = 'Vault Folder'",
+            f"shared_name = {frappe.db.escape(doc_name)}",
+            "share_type = 'Role'",
+            f"frappe_role IN ({', '.join([frappe.db.escape(r) for r in roles])})",
+            "is_revoked = 0",
+            "(expires_on IS NULL OR expires_on > NOW())"
+        ]
+        role_shares = frappe.db.sql(f"""
+            SELECT permission_level FROM `tabVault Share`
+            WHERE {" AND ".join(role_share_conds)}
+        """, as_dict=True)
+        if role_shares:
+            highest_share = max(role_shares, key=lambda s: perm_map.get(s.permission_level, 0))
+            level = perm_map.get(highest_share.permission_level, 1)
+            if ptype in ("read",):
+                return level >= 1
+            elif ptype in ("write",):
+                return level >= 3
+            elif ptype in ("delete", "share"):
+                return level >= 4
+
     return False
+
+
+def has_file_permission(doc, ptype="read", user=None):
+    """Check if user has permission to read a File attached to a Vault Secret."""
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator":
+        return True
+
+    roles = frappe.get_roles(user)
+    if "Vault Admin" in roles or "System Manager" in roles:
+        return True
+
+    if isinstance(doc, str):
+        try:
+            doc = frappe.get_doc("File", doc)
+        except Exception:
+            return None
+
+    if doc and doc.attached_to_doctype == "Vault Secret" and doc.attached_to_name:
+        return has_secret_permission(doc.attached_to_name, ptype="read", user=user)
+
+    return None
