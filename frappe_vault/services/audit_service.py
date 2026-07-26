@@ -41,7 +41,14 @@ def log_secret_updated(doc, method):
 
 
 def log_secret_deleted(doc, method):
-    _create_log("Deleted", secret=doc.name, folder=getattr(doc, "folder", None), details={"title": doc.title})
+    try:
+        frappe.db.sql(
+            "UPDATE `tabVault Audit Log` SET secret = NULL WHERE secret = %s",
+            (doc.name,)
+        )
+    except Exception:
+        pass
+    _create_log("Deleted", secret=None, folder=getattr(doc, "folder", None), details={"secret_name": doc.name, "title": getattr(doc, "title", doc.name)})
 
 
 def log_share_created(doc, method):

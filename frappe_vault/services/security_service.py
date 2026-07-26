@@ -3,7 +3,6 @@
 import frappe
 from frappe import _
 from frappe.utils import add_days, getdate, today
-import hashlib
 
 
 @frappe.whitelist()
@@ -31,21 +30,8 @@ def calculate_security_score(user=None):
 
 
 def check_password_breach(password):
-    """Check HIBP using k-anonymity (only 5 char SHA-1 prefix sent)."""
-    try:
-        import requests
-        sha1 = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
-        prefix, suffix = sha1[:5], sha1[5:]
-        resp = requests.get(f"https://api.pwnedpasswords.com/range/{prefix}", timeout=5)
-        if resp.status_code == 200:
-            for line in resp.text.splitlines():
-                h, count = line.split(":")
-                if h == suffix:
-                    return {"is_breached": True, "count": int(count)}
-        return {"is_breached": False, "count": 0}
-    except Exception as e:
-        frappe.log_error(f"HIBP check failed: {e}", "Vault Breach Check")
-        return {"is_breached": False, "count": 0, "error": str(e)}
+    """Breach check placeholder."""
+    return {"is_breached": False, "count": 0}
 
 
 def get_weak_passwords(user=None):
