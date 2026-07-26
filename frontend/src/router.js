@@ -31,6 +31,7 @@ const routes = [
     path: '/shares',
     name: 'ManageShares',
     component: () => import('./views/ManageSharesView.vue'),
+    meta: { requiresAdmin: true },
   },
   {
     path: '/shared/:token',
@@ -47,12 +48,26 @@ const routes = [
     path: '/audit',
     name: 'AuditLog',
     component: () => import('./views/AuditLogView.vue'),
+    meta: { requiresAdmin: true },
   },
 ]
 
 const router = createRouter({
   history: createWebHistory('/vault'),
   routes,
+})
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAdmin) {
+    const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name || ''
+    const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+    const isAdmin = user === 'Administrator' || roles.includes('Vault Admin')
+
+    if (!isAdmin) {
+      return next({ name: 'SharedWithMe' })
+    }
+  }
+  next()
 })
 
 export default router

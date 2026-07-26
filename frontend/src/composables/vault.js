@@ -146,6 +146,24 @@ export function useBulkDeleteShares() {
   })
 }
 
+export function useUpdateSharePermission() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.update_share_permission',
+  })
+}
+
+export function useRoleUsers() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.get_role_users',
+  })
+}
+
+export function useSaveRoleMemberPermission() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.save_role_member_permission',
+  })
+}
+
 export function useCreateOneTimeLink() {
   return createResource({
     url: 'frappe_vault.api.sharing.create_one_time_link',
