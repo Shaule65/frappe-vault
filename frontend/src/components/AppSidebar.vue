@@ -145,9 +145,14 @@
         <template #default="{ close }">
           <div class="bg-surface-elevation-1 rounded-2xl p-6 shadow-xl border border-outline-gray-1 text-ink-gray-9">
             <!-- App Logo and Title -->
-            <div class="flex flex-col items-center justify-center pb-3">
-              <img :src="sidebarConfig.header.logo" class="size-12 object-contain rounded-xl shadow-sm" />
-              <h3 class="mt-3 text-lg font-semibold text-ink-gray-9">Frappe Vault</h3>
+            <div class="flex flex-col items-center justify-center pb-2">
+              <img :src="sidebarConfig.header.logo" class="size-12 object-contain rounded-xl shadow-2xs" />
+              <div class="mt-3 flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-ink-gray-9">Frappe Vault</h3>
+                <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-surface-gray-3 border border-outline-gray-1 text-ink-gray-6">
+                  v{{ vaultVersion }}
+                </span>
+              </div>
             </div>
 
             <!-- Top Divider -->
@@ -172,7 +177,7 @@
 
             <!-- Footer -->
             <div class="text-center text-xs text-ink-gray-5 pt-1">
-              ©lubus solutions and contributors
+              Brewed by <a href="https://lubus.in/" target="_blank" class="font-medium text-ink-gray-7 hover:text-ink-gray-9 hover:underline transition-colors">LUBUS</a>
             </div>
           </div>
         </template>
@@ -513,12 +518,16 @@ const isSidebarCollapsed = computed({
 
 const showAboutModal = ref(false)
 
+const vaultVersion = computed(() => {
+  return window.frappe?.boot?.versions?.frappe_vault || '0.0.1'
+})
+
 const aboutLinks = [
-  { label: 'Website', href: 'https://frappe.io', icon: GlobeIcon },
-  { label: 'GitHub Repository', href: 'https://github.com/frappe/frappe-vault', icon: HelpCircleIcon },
-  { label: 'Documentation', href: 'https://github.com/frappe/frappe-vault#readme', icon: BookOpenIcon },
-  { label: 'Report an Issue', href: 'https://github.com/frappe/frappe-vault/issues', icon: BugIcon },
-  { label: 'Contact Support', href: 'https://t.me/frappeframework', icon: HeadphonesIcon },
+  { label: 'Website', href: 'https://lubus.in/', icon: GlobeIcon },
+  { label: 'GitHub Repository', href: 'https://github.com/lubusIN/frappe-vault', icon: HelpCircleIcon },
+  { label: 'Documentation', href: 'https://github.com/lubusIN/frappe-vault#readme', icon: BookOpenIcon },
+  { label: 'Report an Issue', href: 'https://github.com/lubusIN/frappe-vault/issues', icon: BugIcon },
+  { label: 'Contact Support', href: 'https://lubus.in/contact-us/', icon: HeadphonesIcon },
 ]
 
 const folders = computed(() => foldersResource.data || [])
