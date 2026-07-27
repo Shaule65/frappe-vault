@@ -122,18 +122,19 @@
               <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
-                  <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1">
-                    <SecretTypeIcon :type="item.secret_type" />
+                  <div v-if="column.key === 'title'" class="flex items-center py-1">
                     <span class="min-w-0 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
-                  <span v-else-if="column.key === 'secret_type'" class="text-base text-ink-gray-9">{{ item }}</span>
+                  <div v-else-if="column.key === 'secret_type'" class="flex items-center text-base text-ink-gray-9">
+                    <SecretTypeIcon :type="item" show-label />
+                  </div>
 
                   <!-- Folder column -->
                   <div v-else-if="column.key === 'folder'" class="flex items-center gap-1.5 text-base text-ink-gray-9">
                     <template v-if="item">
-                      <FeatherIcon name="folder" class="w-3.5 h-3.5 text-ink-gray-5 shrink-0" />
+                      <FeatherIcon :name="row.folder_icon || getFolderIcon(item, foldersResource.data)" class="w-3.5 h-3.5 text-ink-gray-5 shrink-0" />
                       <span class="truncate">{{ item }}</span>
                     </template>
                     <span class="text-base text-ink-gray-4" v-else>—</span>
@@ -224,7 +225,7 @@
           <p class="text-sm text-ink-gray-6 mt-1 leading-normal" v-else>
             Are you sure you want to permanently delete <strong>{{ selectedSecrets.size }} secrets</strong>? This action cannot be undone.
           </p>
-          <div v-if="deleteError" class="text-sm text-ink-red-3 bg-surface-red-2 p-3 rounded-lg border border-outline-red-1">
+          <div v-if="deleteError" class="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-200 font-medium leading-relaxed">
             {{ deleteError }}
           </div>
         </div>
@@ -280,7 +281,7 @@ import {
   useFilterableFields,
   useSortOptions,
 } from '../composables/vault'
-import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
+import { typeFilterOptions, formatDate as formatTime, getFolderIcon } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import NewSecretDialog from '../components/NewSecretDialog.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
@@ -363,7 +364,8 @@ const formattedRows = computed(() => {
         secret_type: secret.secret_type,
       },
       secret_type: secret.secret_type,
-      folder: foldersResource.data?.find(f => f.name === secret.folder)?.folder_name || secret.folder || '',
+      folder: secret.folder_name || foldersResource.data?.find(f => f.name === secret.folder)?.folder_name || secret.folder || '',
+      folder_icon: secret.folder_icon || foldersResource.data?.find(f => f.name === secret.folder)?.icon || '',
       password_strength: secret.password_strength || '',
       modified: {
         raw: secret.modified,

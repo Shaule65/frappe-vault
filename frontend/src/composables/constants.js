@@ -107,3 +107,9 @@ export function formatRelativeTime(dt) {
   const years = Math.floor(days / 365)
   return `${years} year${years > 1 ? 's' : ''} ago`
 }
+
+export function getFolderIcon(folderName, foldersData) {
+  if (!folderName) return 'folder'
+  const found = (foldersData || []).find(f => f.folder_name === folderName || f.name === folderName)
+  return found?.icon || 'folder'
+}

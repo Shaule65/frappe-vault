@@ -259,11 +259,11 @@
             <p class="text-sm text-ink-gray-7" v-if="loadingCount">Analyzing folder secrets...</p>
             <template v-else>
               <div class="space-y-3" v-if="deleteSecretsCount > 0">
-                <div class="p-3 bg-surface-red-2 border border-outline-red-1 rounded-lg text-ink-red-3 flex items-start gap-2.5">
-                  <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5" />
+                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-start gap-2.5">
+                  <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
                   <div class="text-sm">
-                    <p class="font-semibold text-ink-red-4">Warning: Contains Secrets</p>
-                    <p class="mt-1 leading-relaxed">
+                    <p class="font-semibold text-red-800">Warning: Contains Secrets</p>
+                    <p class="mt-1 leading-relaxed text-red-700">
                       This folder contains <span class="font-bold">{{ deleteSecretsCount }}</span> {{ deleteSecretsCount === 1 ? 'secret' : 'secrets' }}. Deleting this folder will <span class="font-bold">permanently delete the folder and all secrets stored inside it</span>!
                     </p>
                   </div>
@@ -277,7 +277,7 @@
                   Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
                 </p>
               </div>
-              <div v-if="deleteFolderError" class="text-sm text-ink-red-3 bg-surface-red-2 p-3 rounded-lg border border-outline-red-1 mt-2">
+              <div v-if="deleteFolderError" class="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-200 mt-2 font-medium leading-relaxed">
                 {{ deleteFolderError }}
               </div>
             </template>
