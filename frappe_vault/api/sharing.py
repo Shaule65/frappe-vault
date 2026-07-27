@@ -105,9 +105,9 @@ def update_share_permission(share_name, permission_level):
 
 
 @frappe.whitelist()
-def get_role_users(role_name=None, shared_name=None, shared_doctype="Vault Secret"):
+def get_role_users(role_name=None, shared_name=None, shared_doctype="Vault Secret", shared_by=None, user_list=None):
     from frappe_vault.services.sharing_service import get_role_users as _get_role_users
-    return _get_role_users(role_name=role_name, shared_name=shared_name, shared_doctype=shared_doctype)
+    return _get_role_users(role_name=role_name, shared_name=shared_name, shared_doctype=shared_doctype, shared_by=shared_by, user_list=user_list)
 
 
 @frappe.whitelist()
