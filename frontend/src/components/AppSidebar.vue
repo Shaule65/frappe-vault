@@ -159,19 +159,19 @@
             <div class="border-t border-outline-gray-1 my-2" />
 
             <!-- Links List -->
-            <div class="flex flex-col py-1 space-y-1">
+            <div class="flex flex-col py-1 space-y-0.5">
               <a
                 v-for="link in aboutLinks"
                 :key="link.label"
                 :href="link.href"
                 target="_blank"
-                class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-ink-gray-7 hover:bg-surface-gray-2 hover:text-ink-gray-9 transition-colors group"
+                class="flex items-center justify-between p-2 rounded-sm text-sm text-ink-gray-8 hover:bg-surface-gray-2 transition-colors"
               >
                 <div class="flex items-center gap-3">
                   <component :is="link.icon" class="size-4 text-ink-gray-6 shrink-0" />
-                  <span class="font-medium text-ink-gray-8 group-hover:text-ink-gray-9">{{ link.label }}</span>
+                  <span class="font-medium">{{ link.label }}</span>
                 </div>
-                <ArrowRightIcon class="size-4 text-ink-gray-5 group-hover:text-ink-gray-8 transition-colors shrink-0" />
+                <ArrowRightIcon class="size-4 text-ink-gray-6 shrink-0" />
               </a>
             </div>
 
