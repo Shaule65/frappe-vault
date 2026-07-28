@@ -159,16 +159,19 @@
             <div class="border-t border-outline-gray-1 my-2" />
 
             <!-- Links List -->
-            <div class="flex flex-col py-1 space-y-0.5">
+            <div class="flex flex-col py-1 space-y-1">
               <a
                 v-for="link in aboutLinks"
                 :key="link.label"
                 :href="link.href"
                 target="_blank"
-                class="flex items-center gap-3 p-2 rounded-sm text-sm text-ink-gray-8 hover:bg-surface-gray-2 transition-colors"
+                class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-ink-gray-7 hover:bg-surface-gray-2 hover:text-ink-gray-9 transition-colors group"
               >
-                <component :is="link.icon" class="size-4 text-ink-gray-6 shrink-0" />
-                <span class="font-medium">{{ link.label }}</span>
+                <div class="flex items-center gap-3">
+                  <component :is="link.icon" class="size-4 text-ink-gray-6 shrink-0" />
+                  <span class="font-medium text-ink-gray-8 group-hover:text-ink-gray-9">{{ link.label }}</span>
+                </div>
+                <ArrowRightIcon class="size-4 text-ink-gray-5 group-hover:text-ink-gray-8 transition-colors shrink-0" />
               </a>
             </div>
 
@@ -176,8 +179,10 @@
             <div class="border-t border-outline-gray-1 my-2" />
 
             <!-- Footer -->
-            <div class="text-center text-xs text-ink-gray-5 pt-1">
-              Brewed by <a href="https://lubus.in/" target="_blank" class="font-medium text-ink-gray-7 hover:text-ink-gray-9 hover:underline transition-colors">LUBUS</a>
+            <div class="text-center text-xs pt-1">
+              <a href="https://lubus.in/" target="_blank" class="font-medium text-ink-gray-5 hover:text-ink-gray-9 hover:underline transition-colors">
+                \ Made by Lubus /
+              </a>
             </div>
           </div>
         </template>
@@ -309,9 +314,10 @@ import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateF
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
-import BookOpenIcon from '~icons/lucide/book-open'
+import HeartIcon from '~icons/lucide/heart'
 import BugIcon from '~icons/lucide/bug'
 import HeadphonesIcon from '~icons/lucide/headphones'
+import ArrowRightIcon from '~icons/lucide/arrow-right'
 import BrushCleaningIcon from '~icons/lucide/brush-cleaning'
 import SparklesIcon from '~icons/lucide/sparkles'
 
@@ -523,11 +529,10 @@ const vaultVersion = computed(() => {
 })
 
 const aboutLinks = [
-  { label: 'Website', href: 'https://lubus.in/', icon: GlobeIcon },
-  { label: 'GitHub Repository', href: 'https://github.com/lubusIN/frappe-vault', icon: HelpCircleIcon },
-  { label: 'Documentation', href: 'https://github.com/lubusIN/frappe-vault#readme', icon: BookOpenIcon },
-  { label: 'Report an Issue', href: 'https://github.com/lubusIN/frappe-vault/issues', icon: BugIcon },
-  { label: 'Contact Support', href: 'https://lubus.in/contact-us/', icon: HeadphonesIcon },
+  { label: 'GitHub', href: 'https://github.com/lubusIN/frappe-vault', icon: HelpCircleIcon },
+  { label: 'Submit Feedback', href: 'https://github.com/lubusIN/frappe-vault/issues', icon: BugIcon },
+  { label: 'Buy us a coffee', href: 'https://github.com/sponsors/lubusIN', icon: HeartIcon },
+  { label: 'Get in touch', href: 'https://lubus.in/contact-us/', icon: HeadphonesIcon },
 ]
 
 const folders = computed(() => foldersResource.data || [])

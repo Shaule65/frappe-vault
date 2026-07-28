@@ -337,3 +337,4 @@ def has_file_permission(doc, ptype="read", user=None):
         return has_secret_permission(doc.attached_to_name, ptype="read", user=user)
 
     return None
+

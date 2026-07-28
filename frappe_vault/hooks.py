@@ -8,6 +8,11 @@ app_logo_url = "/assets/frappe_vault/images/vault-logo.svg"
 app_home = "/vault"
 required_apps = ["frappe"]
 
+# Role Home Page — redirect Vault Users directly to Vault SPA on login
+role_home_page = {
+	"Vault User": "/vault",
+}
+
 # Apps Screen
 add_to_apps_screen = [
 	{
@@ -34,6 +39,8 @@ fixtures = [
 website_route_rules = [
 	{"from_route": "/vault/<path:app_path>", "to_route": "vault"},
 	{"from_route": "/vault", "to_route": "vault"},
+	{"from_route": "/desk/vault/<path:app_path>", "to_route": "vault"},
+	{"from_route": "/desk/vault", "to_route": "vault"},
 ]
 
 # Installation
