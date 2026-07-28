@@ -67,9 +67,30 @@ def get_secrets(
         limit_start=offset,
     )
 
-    # Populate is_bookmark dynamically per-user
+    # Populate folder_name and folder_icon for all distinct folders from DB dynamically
+    folder_ids = list(set([s["folder"] for s in secrets if s.get("folder")]))
+    folder_map = {}
+    if folder_ids:
+        folder_docs = frappe.get_all(
+            "Vault Folder",
+            or_filters=[
+                ["name", "in", folder_ids],
+                ["folder_name", "in", folder_ids],
+            ],
+            fields=["name", "folder_name", "icon"],
+            ignore_permissions=True,
+        )
+        for f in folder_docs:
+            folder_map[f["name"]] = f
+            folder_map[f["folder_name"]] = f
+
+    # Populate is_bookmark and folder details dynamically per-user
     for s in secrets:
         s["is_bookmark"] = 1 if s["name"] in user_bookmarks else 0
+        folder_val = s.get("folder")
+        if folder_val and folder_val in folder_map:
+            s["folder_name"] = folder_map[folder_val]["folder_name"]
+            s["folder_icon"] = folder_map[folder_val]["icon"]
 
     # Fix total count leak by counting only visible records
     total = len(frappe.get_list("Vault Secret", filters=filters, or_filters=or_filters, pluck="name"))
@@ -130,7 +151,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         conditions.append("(" + " OR ".join(share_conds) + ")")
         
         shares = frappe.db.sql(f"""
-            SELECT permission_level, shared_by FROM `tabVault Share`
+            SELECT permission_level, shared_by, share_type, shared_doctype, is_role_override FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}
         """, as_dict=True)
         
@@ -141,9 +162,16 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
                 "Edit": 3,
                 "Full Control": 4
             }
-            highest_share = max(shares, key=lambda s: perm_map.get(s.permission_level, 0))
-            user_permission = highest_share.permission_level
-            shared_by = highest_share.shared_by
+            def share_priority_key(s):
+                direct_priority = 2 if not getattr(s, "is_role_override", 0) else 1
+                type_priority = 2 if s.share_type == "User" else 1
+                doc_priority = 2 if s.shared_doctype == "Vault Secret" else 1
+                perm_score = perm_map.get(s.permission_level, 0)
+                return (direct_priority, type_priority, doc_priority, perm_score)
+
+            best_share = max(shares, key=share_priority_key)
+            user_permission = best_share.permission_level
+            shared_by = best_share.shared_by
         else:
             user_permission = "View Only"
             shared_by = doc.owner
@@ -168,6 +196,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "shared_by": shared_by,
         "modified": str(doc.modified),
         "user_permission": user_permission,
+        "permission_level": user_permission,
     }
 
     # Type-specific non-sensitive fields

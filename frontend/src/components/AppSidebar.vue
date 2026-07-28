@@ -165,10 +165,13 @@
                 :key="link.label"
                 :href="link.href"
                 target="_blank"
-                class="flex items-center gap-3 p-2 rounded-sm text-sm text-ink-gray-8 hover:bg-surface-gray-2 transition-colors"
+                class="flex items-center justify-between p-2 rounded-sm text-sm text-ink-gray-8 hover:bg-surface-gray-2 transition-colors"
               >
-                <component :is="link.icon" class="size-4 text-ink-gray-6 shrink-0" />
-                <span class="font-medium">{{ link.label }}</span>
+                <div class="flex items-center gap-3">
+                  <component :is="link.icon" class="size-4 text-ink-gray-6 shrink-0" />
+                  <span class="font-medium">{{ link.label }}</span>
+                </div>
+                <ArrowRightIcon class="size-4 text-ink-gray-6 shrink-0" />
               </a>
             </div>
 
@@ -176,8 +179,10 @@
             <div class="border-t border-outline-gray-1 my-2" />
 
             <!-- Footer -->
-            <div class="text-center text-xs text-ink-gray-5 pt-1">
-              Brewed by <a href="https://lubus.in/" target="_blank" class="font-medium text-ink-gray-7 hover:text-ink-gray-9 hover:underline transition-colors">LUBUS</a>
+            <div class="text-center text-xs pt-1">
+              <a href="https://lubus.in/" target="_blank" class="font-medium text-ink-gray-5 hover:text-ink-gray-9 hover:underline transition-colors">
+                \ Made by Lubus /
+              </a>
             </div>
           </div>
         </template>
@@ -259,11 +264,11 @@
             <p class="text-sm text-ink-gray-7" v-if="loadingCount">Analyzing folder secrets...</p>
             <template v-else>
               <div class="space-y-3" v-if="deleteSecretsCount > 0">
-                <div class="p-3 bg-surface-red-2 border border-outline-red-1 rounded-lg text-ink-red-3 flex items-start gap-2.5">
-                  <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5" />
+                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-start gap-2.5">
+                  <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
                   <div class="text-sm">
-                    <p class="font-semibold text-ink-red-4">Warning: Contains Secrets</p>
-                    <p class="mt-1 leading-relaxed">
+                    <p class="font-semibold text-red-800">Warning: Contains Secrets</p>
+                    <p class="mt-1 leading-relaxed text-red-700">
                       This folder contains <span class="font-bold">{{ deleteSecretsCount }}</span> {{ deleteSecretsCount === 1 ? 'secret' : 'secrets' }}. Deleting this folder will <span class="font-bold">permanently delete the folder and all secrets stored inside it</span>!
                     </p>
                   </div>
@@ -277,7 +282,7 @@
                   Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
                 </p>
               </div>
-              <div v-if="deleteFolderError" class="text-sm text-ink-red-3 bg-surface-red-2 p-3 rounded-lg border border-outline-red-1 mt-2">
+              <div v-if="deleteFolderError" class="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-200 mt-2 font-medium leading-relaxed">
                 {{ deleteFolderError }}
               </div>
             </template>
@@ -309,9 +314,10 @@ import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateF
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
-import BookOpenIcon from '~icons/lucide/book-open'
+import HeartIcon from '~icons/lucide/heart'
 import BugIcon from '~icons/lucide/bug'
 import HeadphonesIcon from '~icons/lucide/headphones'
+import ArrowRightIcon from '~icons/lucide/arrow-right'
 import BrushCleaningIcon from '~icons/lucide/brush-cleaning'
 import SparklesIcon from '~icons/lucide/sparkles'
 
@@ -523,11 +529,10 @@ const vaultVersion = computed(() => {
 })
 
 const aboutLinks = [
-  { label: 'Website', href: 'https://lubus.in/', icon: GlobeIcon },
-  { label: 'GitHub Repository', href: 'https://github.com/lubusIN/frappe-vault', icon: HelpCircleIcon },
-  { label: 'Documentation', href: 'https://github.com/lubusIN/frappe-vault#readme', icon: BookOpenIcon },
-  { label: 'Report an Issue', href: 'https://github.com/lubusIN/frappe-vault/issues', icon: BugIcon },
-  { label: 'Contact Support', href: 'https://lubus.in/contact-us/', icon: HeadphonesIcon },
+  { label: 'GitHub', href: 'https://github.com/lubusIN/frappe-vault', icon: HelpCircleIcon },
+  { label: 'Submit Feedback', href: 'https://github.com/lubusIN/frappe-vault/issues', icon: BugIcon },
+  { label: 'Buy us a coffee', href: 'https://github.com/sponsors/lubusIN', icon: HeartIcon },
+  { label: 'Get in touch', href: 'https://lubus.in/contact-us/', icon: HeadphonesIcon },
 ]
 
 const folders = computed(() => foldersResource.data || [])

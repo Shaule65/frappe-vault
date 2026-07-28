@@ -77,18 +77,24 @@
               <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
-                  <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-2xs bg-surface-gray-3 text-ink-gray-7">
-                       <FeatherIcon name="folder" class="w-4 h-4" />
-                    </div>
-                    <SecretTypeIcon v-else :type="item.secret_type" />
+                  <div v-if="column.key === 'title'" class="flex items-center py-1 min-w-0">
                     <span class="min-w-0 flex-1 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
-                  <span v-else-if="column.key === 'secret_type'" class="text-base text-ink-gray-9">
-                    {{ row.shared_doctype === 'Vault Folder' ? 'Folder' : item }}
-                  </span>
+                  <div v-else-if="column.key === 'secret_type'" class="flex items-center text-base text-ink-gray-9">
+                    <template v-if="row.shared_doctype === 'Vault Folder'">
+                      <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-gray-3 text-ink-gray-7">
+                          <FeatherIcon :name="getFolderIcon(row.title, foldersResource.data)" class="w-4 h-4" />
+                        </div>
+                        <span>Folder</span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <SecretTypeIcon :type="item" show-label />
+                    </template>
+                  </div>
 
                   <!-- Shared By column -->
                   <span v-else-if="column.key === 'shared_by'" class="text-base text-ink-gray-6 truncate">{{ item }}</span>
@@ -173,14 +179,15 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import RefreshIcon from '../components/RefreshIcon.vue'
 import { Badge, Button, TextInput, FeatherIcon, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Dialog, Breadcrumbs, toast } from 'frappe-ui'
-import { mobileSidebarOpened, useSharedWithMe, useBulkDeleteShares } from '../composables/vault'
+import { mobileSidebarOpened, useSharedWithMe, useBulkDeleteShares, useFolders } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
-import { permissionTheme, formatDateTime as formatTime } from '../composables/constants'
+import { permissionTheme, formatDateTime as formatTime, getFolderIcon } from '../composables/constants'
 
 const router = useRouter()
 const shared = useSharedWithMe()
 const bulkDeleteResource = useBulkDeleteShares()
+const foldersResource = useFolders()
 
 const titleQuery = ref('')
 const selectedShares = ref(new Set())

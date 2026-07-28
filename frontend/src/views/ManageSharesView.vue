@@ -91,18 +91,24 @@
               <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
-                  <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <div v-if="row.shared_doctype === 'Vault Folder'" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-outline-gray-1 shadow-2xs bg-surface-gray-3 text-ink-gray-7">
-                       <FeatherIcon name="folder" class="w-4 h-4" />
-                    </div>
-                    <SecretTypeIcon v-else :type="item.secret_type" />
+                  <div v-if="column.key === 'title'" class="flex items-center py-1 min-w-0">
                     <span class="min-w-0 flex-1 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
-                  <span v-else-if="column.key === 'secret_type'" class="text-base text-ink-gray-9">
-                    {{ row.shared_doctype === 'Vault Folder' ? 'Folder' : item }}
-                  </span>
+                  <div v-else-if="column.key === 'secret_type'" class="flex items-center text-base text-ink-gray-9">
+                    <template v-if="row.shared_doctype === 'Vault Folder'">
+                      <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-gray-3 text-ink-gray-7">
+                          <FeatherIcon :name="getFolderIcon(row.title, foldersResource.data)" class="w-4 h-4" />
+                        </div>
+                        <span>Folder</span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <SecretTypeIcon :type="item" show-label />
+                    </template>
+                  </div>
 
                   <!-- Shared By column -->
                   <span v-else-if="column.key === 'shared_by'" class="text-base text-ink-gray-6 truncate">{{ item }}</span>
@@ -145,8 +151,9 @@
 
                   <!-- Permission column -->
                   <div v-else-if="column.key === 'permission_level'" class="flex items-center gap-1.5" @click.stop>
+                    <!-- Single User: inline permission dropdown -->
                     <Dropdown
-                      v-if="!row.is_revoked"
+                      v-if="!row.is_revoked && row.share_type === 'User' && !(row.user_count > 1)"
                       :options="permissionOptionsList.map(p => ({
                         label: p,
                         onClick: () => handleUpdateSharePermission(row.name, p)
@@ -162,6 +169,18 @@
                         {{ item }} ▾
                       </Badge>
                     </Dropdown>
+                    <!-- Multi-User Group / Role: "Manage Access" badge -->
+                    <Badge
+                      v-else-if="!row.is_revoked && (row.share_type === 'UserGroup' || row.user_count > 1 || row.share_type === 'Role')"
+                      theme="blue"
+                      variant="subtle"
+                      size="sm"
+                      class="cursor-pointer hover:opacity-80 transition-opacity"
+                      title="Manage individual member permissions"
+                      @click="row.share_type === 'Role' ? openRoleUsersModal(row.frappe_role || item, row) : openUserGroupModal(row)"
+                    >
+                      Manage Access ›
+                    </Badge>
                     <Badge
                       v-else
                       :theme="permissionTheme[item] || 'gray'"
@@ -395,36 +414,11 @@
     </Dialog>
 
     <!-- Revoke Confirmation Dialog -->
-    <Dialog
+    <RevokeShareDialog
       v-model="showRevokeConfirm"
-      :options="{
-        title: 'Revoke Share Access',
-        size: 'sm',
-      }"
-    >
-      <template #body-content>
-        <div class="pt-2">
-          <p class="text-sm text-ink-gray-7">
-            Are you sure you want to revoke share access for
-            <span class="font-bold text-ink-gray-9">{{ shareToRevoke?.shared_with }}</span> on {{ shareToRevoke?.shared_doctype === 'Vault Folder' ? 'folder' : 'secret' }}
-            <span class="font-bold text-ink-gray-9">"{{ shareToRevoke?.title?.title || shareToRevoke?.title }}"</span>?
-          </p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-2 px-4 pb-4">
-          <Button variant="ghost" label="Cancel" @click="showRevokeConfirm = false" class="text-ink-gray-7 focus:outline-none" />
-          <Button
-            variant="solid"
-            theme="red"
-            label="Revoke Access"
-            :loading="unshareResource.loading"
-            @click="handleRevokeShare"
-            class="px-4 font-semibold shadow-sm focus:outline-none"
-          />
-        </div>
-      </template>
-    </Dialog>
+      :share="shareToRevoke"
+      @revoked="shared.reload()"
+    />
 
     <!-- Bulk Revoke Confirmation Dialog -->
     <Dialog
@@ -467,8 +461,8 @@
           <p class="text-sm text-ink-gray-7">
             Are you sure you want to permanently delete the <span class="font-semibold text-ink-gray-9">{{ selectedShares.size }}</span> selected sharing logs? This action cannot be undone.
           </p>
-          <div v-if="hasActiveSharesSelected" class="bg-surface-red-2 text-ink-red-4 text-sm p-3 rounded-md flex items-start gap-2 border border-outline-red-1">
-            <FeatherIcon name="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0" />
+          <div v-if="hasActiveSharesSelected" class="bg-red-50 text-red-700 text-sm p-3 rounded-md flex items-start gap-2 border border-red-200 font-medium leading-relaxed">
+            <FeatherIcon name="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
             <p>You have selected active shares. Deleting these logs will <b>immediately revoke access</b> for the recipients.</p>
           </div>
         </div>
@@ -487,136 +481,16 @@
         </div>
       </template>
     </Dialog>
-    <!-- Role Users Modal -->
-    <Dialog v-model="showRoleUsersModal" :options="{ title: selectedRoleName ? `People with ${selectedRoleName} Role` : 'People with Access', size: 'lg' }">
-      <template #body-content>
-        <div class="flex flex-col gap-4 py-1">
-          <TextInput
-            v-model="roleMemberSearchQuery"
-            type="text"
-            placeholder="Search members by name or email…"
-            iconLeft="search"
-            class="w-full"
-          />
-
-          <div class="space-y-4">
-            <!-- Active Members Section -->
-            <div>
-              <h4 class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider mb-2">
-                Active Members ({{ activeRoleUsersList.length }})
-              </h4>
-
-              <div v-if="roleUsersResource.loading" class="py-6 flex flex-col items-center justify-center space-y-2">
-                <FeatherIcon name="loader" class="w-5 h-5 animate-spin text-ink-gray-5" />
-                <span class="text-xs text-ink-gray-5">Loading members...</span>
-              </div>
-
-              <div v-else-if="activeRoleUsersList.length" class="flex flex-col max-h-56 overflow-y-auto divide-y divide-outline-gray-1 bg-surface-base border border-outline-gray-1 rounded-xl">
-                <div
-                  v-for="u in activeRoleUsersList"
-                  :key="u.user"
-                  class="flex items-center justify-between gap-3 p-2.5 hover:bg-surface-gray-1 transition-colors"
-                >
-                  <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <Avatar :label="u.full_name || u.user" size="md" />
-                    <div class="min-w-0">
-                      <div class="text-sm font-medium text-ink-gray-9 truncate">
-                        {{ u.full_name || u.user }}
-                      </div>
-                      <div class="truncate text-xs text-ink-gray-5">
-                        {{ u.user }}
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Permission Level Selector -->
-                  <FormControl
-                    type="select"
-                    :modelValue="getUserPermissionLevel(u)"
-                    :options="[
-                      { label: 'View Only', value: 'View Only' },
-                      { label: 'View & Copy', value: 'View & Copy' },
-                      { label: 'Edit', value: 'Edit' },
-                      { label: 'Full Control', value: 'Full Control' }
-                    ]"
-                    class="!w-36 text-xs shrink-0"
-                    @update:modelValue="(val) => handleUpdateUserPermission(u, val)"
-                    @change="(val) => handleUpdateUserPermission(u, val)"
-                  />
-
-                  <!-- Three-Dot Menu -->
-                  <Dropdown
-                    :options="[
-                      {
-                        label: 'Revoke Access',
-                        icon: 'lucide-user-minus',
-                        theme: 'red',
-                        onClick: () => handleRevokeRoleMember(u)
-                      }
-                    ]"
-                  >
-                    <template #default="{ open }">
-                      <Button variant="ghost" icon="lucide-more-vertical" class="!p-1.5 text-ink-gray-5 hover:text-ink-gray-9 focus:outline-none" />
-                    </template>
-                  </Dropdown>
-                </div>
-              </div>
-              <p v-else class="text-xs text-ink-gray-5 italic py-4 text-center">No active members.</p>
-            </div>
-
-            <!-- Revoked / Removed Members Section -->
-            <div v-if="revokedRoleUsersList.length">
-              <h4 class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider mb-2">
-                Revoked / Removed Members ({{ revokedRoleUsersList.length }})
-              </h4>
-
-              <div class="flex flex-col max-h-44 overflow-y-auto divide-y divide-outline-gray-1 bg-surface-gray-2 border border-outline-gray-1 rounded-xl">
-                <div
-                  v-for="u in revokedRoleUsersList"
-                  :key="u.user"
-                  class="flex items-center justify-between gap-3 p-2.5 hover:bg-surface-gray-1 transition-colors"
-                >
-                  <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <Avatar :label="u.full_name || u.user" size="md" class="opacity-60" />
-                    <div class="min-w-0">
-                      <div class="text-sm font-medium text-ink-gray-7 truncate flex items-center gap-2">
-                        <span>{{ u.full_name || u.user }}</span>
-                        <Badge variant="subtle" theme="red" size="sm">Revoked</Badge>
-                      </div>
-                      <div class="truncate text-xs text-ink-gray-5">
-                        {{ u.user }}
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Re-grant Access Button -->
-                  <Button
-                    variant="subtle"
-                    theme="blue"
-                    label="Re-grant Access"
-                    icon="lucide-user-plus"
-                    size="sm"
-                    class="shrink-0 font-medium"
-                    @click="handleRegrantRoleMember(u)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-      <template #actions="{ close }">
-        <div class="flex justify-end gap-2">
-          <Button variant="ghost" label="Cancel" @click="close" />
-          <Button
-            variant="solid"
-            label="Save Changes"
-            :loading="isSavingRoleMembers"
-            @click="handleSaveRoleMemberPermissions"
-          />
-        </div>
-      </template>
-    </Dialog>
+    <!-- People with Access Modal -->
+    <PeopleWithAccessModal
+      v-model="showRoleUsersModal"
+      :roleName="selectedRoleName"
+      :sharedName="selectedRoleItem?.secret_name || selectedRoleItem?.shared_name || ''"
+      :sharedDoctype="selectedRoleItem?.shared_doctype || 'Vault Secret'"
+      :item="selectedRoleItem"
+      :isOwnerOrAdmin="true"
+      @saved="sharedWithMeResource.fetch()"
+    />
   </div>
 </template>
 
@@ -629,7 +503,9 @@ import { Badge, Button, TextInput, FeatherIcon, FormControl, ListView, ListHeade
 import { mobileSidebarOpened, useSharedWithMe, useShareSecret, useUnshare, useShareOptions, useSecrets, useFolders, useBulkDeleteShares, useRoleUsers, useUpdateSharePermission, useVaultStats, useSaveRoleMemberPermission } from '../composables/vault'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
-import { permissionTheme, formatDateTime as formatTime } from '../composables/constants'
+import PeopleWithAccessModal from '../components/PeopleWithAccessModal.vue'
+import RevokeShareDialog from '../components/RevokeShareDialog.vue'
+import { permissionTheme, formatDateTime as formatTime, getFolderIcon } from '../composables/constants'
 
 const router = useRouter()
 const stats = useVaultStats()
@@ -699,29 +575,14 @@ function openRoleUsersModal(roleName, row) {
   if (!roleName) return
   selectedRoleName.value = roleName
   selectedRoleItem.value = row || null
-  roleMemberSearchQuery.value = ''
-  revokedUserIds.value = new Set()
-  userPermissionOverrides.value = {}
   showRoleUsersModal.value = true
-  roleUsersResource.submit({
-    role_name: roleName,
-    shared_name: row?.secret_name || row?.shared_name || undefined,
-    shared_doctype: row?.shared_doctype || 'Vault Secret'
-  })
 }
 
 function openUserGroupModal(row) {
   if (!row) return
   selectedRoleName.value = ''
   selectedRoleItem.value = row
-  roleMemberSearchQuery.value = ''
-  revokedUserIds.value = new Set()
-  userPermissionOverrides.value = {}
   showRoleUsersModal.value = true
-  roleUsersResource.submit({
-    shared_name: row.secret_name || row.shared_name,
-    shared_doctype: row.shared_doctype || 'Vault Secret'
-  })
 }
 
 function getUserPermissionLevel(userObj) {

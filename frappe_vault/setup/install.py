@@ -31,17 +31,22 @@ def ensure_module():
 
 
 def create_roles():
-    """Create vault-specific roles."""
-    for role_name in [
-        "Vault User",
-        "Vault Admin"
-    ]:
-        if not frappe.db.exists("Role", role_name):
-            frappe.get_doc({
-                "doctype": "Role",
-                "role_name": role_name,
-                "desk_access": 1
-            }).insert(ignore_permissions=True)
+    """Create vault-specific roles with native Desk access settings."""
+    if not frappe.db.exists("Role", "Vault User"):
+        frappe.get_doc({
+            "doctype": "Role",
+            "role_name": "Vault User",
+            "desk_access": 0
+        }).insert(ignore_permissions=True)
+    else:
+        frappe.db.set_value("Role", "Vault User", "desk_access", 0)
+
+    if not frappe.db.exists("Role", "Vault Admin"):
+        frappe.get_doc({
+            "doctype": "Role",
+            "role_name": "Vault Admin",
+            "desk_access": 1
+        }).insert(ignore_permissions=True)
 
 
 def grant_roles_to_admin():

@@ -109,18 +109,19 @@
               <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
                 <template #default>
                   <!-- Title column -->
-                  <div v-if="column.key === 'title'" class="flex items-center gap-3 py-1 min-w-0">
-                    <SecretTypeIcon :type="item.secret_type" />
+                  <div v-if="column.key === 'title'" class="flex items-center py-1 min-w-0">
                     <span class="min-w-0 font-medium text-ink-gray-9 cursor-pointer text-base truncate block leading-normal">{{ item.title }}</span>
                   </div>
 
                   <!-- Type column -->
-                  <span v-else-if="column.key === 'secret_type'" class="text-base text-ink-gray-9">{{ item }}</span>
+                  <div v-else-if="column.key === 'secret_type'" class="flex items-center text-base text-ink-gray-9">
+                    <SecretTypeIcon :type="item" show-label />
+                  </div>
 
                   <!-- Folder column -->
                   <div v-else-if="column.key === 'folder'" class="flex items-center gap-1.5 text-base text-ink-gray-9">
                     <template v-if="item">
-                      <FeatherIcon name="folder" class="w-3.5 h-3.5 text-ink-gray-5 shrink-0" />
+                      <FeatherIcon :name="row.folder_icon || getFolderIcon(item, foldersResource.data)" class="w-3.5 h-3.5 text-ink-gray-5 shrink-0" />
                       <span class="truncate">{{ item }}</span>
                     </template>
                     <span class="text-base text-ink-gray-4" v-else>—</span>
@@ -184,7 +185,7 @@ import SortPanel from '../components/SortPanel.vue'
 import ColumnPanel from '../components/ColumnPanel.vue'
 import { Button, FeatherIcon, TextInput, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Breadcrumbs, Select } from 'frappe-ui'
 import { mobileSidebarOpened, useSecrets, useFolders, useToggleBookmark, useFilterableFields, useSortOptions } from '../composables/vault'
-import { typeFilterOptions, formatDate as formatTime } from '../composables/constants'
+import { typeFilterOptions, formatDate as formatTime, getFolderIcon } from '../composables/constants'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
 import StrengthBadge from '../components/StrengthBadge.vue'
@@ -231,7 +232,8 @@ const formattedRows = computed(() => {
         secret_type: secret.secret_type,
       },
       secret_type: secret.secret_type,
-      folder: foldersResource.data?.find(f => f.name === secret.folder)?.folder_name || secret.folder || '',
+      folder: secret.folder_name || foldersResource.data?.find(f => f.name === secret.folder)?.folder_name || secret.folder || '',
+      folder_icon: secret.folder_icon || foldersResource.data?.find(f => f.name === secret.folder)?.icon || '',
       password_strength: secret.password_strength || '',
       modified: {
         raw: secret.modified,

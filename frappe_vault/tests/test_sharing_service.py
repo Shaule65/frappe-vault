@@ -49,6 +49,10 @@ class TestSharingService(FrappeTestCase):
     def test_get_role_users(self):
         users = get_role_users("System Manager")
         self.assertIsInstance(users, list)
+        
+        # Test with shared_by and user_list parameters
+        filtered_users = get_role_users("System Manager", shared_by=frappe.session.user, user_list=["Administrator"])
+        self.assertIsInstance(filtered_users, list)
 
     def test_save_role_member_permission(self):
         from frappe_vault.services.sharing_service import save_role_member_permission
