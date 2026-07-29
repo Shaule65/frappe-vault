@@ -4,7 +4,7 @@
     <div
       v-if="item.type == 'number_chart'"
       @click="handleStatClick(item.name)"
-      class="flex h-full w-full rounded-xl bg-surface-elevation-1 border border-outline-gray-1 overflow-hidden p-4 items-center justify-between group shadow-none cursor-pointer"
+      class="flex h-full w-full rounded-xl bg-surface-elevation-1 border border-outline-gray-1 overflow-hidden p-4 items-center justify-between group/stat shadow-none cursor-pointer"
     >
       <Tooltip v-if="item.data" :text="item.data.tooltip" class="flex-1">
         <div class="flex items-center justify-between w-full">
@@ -20,7 +20,7 @@
               />
             </div>
           </div>
-          <div class="p-2.5 rounded-lg bg-surface-gray-2 text-ink-gray-6 group-hover:text-ink-gray-9 transition-colors shrink-0">
+          <div class="p-2.5 rounded-lg bg-surface-gray-2 text-ink-gray-6 group-hover/stat:text-ink-gray-9 transition-colors shrink-0">
             <FeatherIcon :name="getStatIcon(item.name)" class="w-4.5 h-4.5" />
           </div>
         </div>
@@ -80,14 +80,14 @@
           v-for="s in item.data.recent_secrets"
           :key="s.name"
           :to="`/secrets?secret=${s.name}`"
-          class="flex items-center py-2 px-4 hover:bg-surface-gray-2 transition-colors group"
+          class="flex items-center py-2 px-4 hover:bg-surface-gray-2 text-ink-gray-9 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group/row"
         >
           <SecretTypeIcon :type="s.secret_type" class="mr-2.5 shrink-0" />
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-ink-gray-9 truncate group-hover:text-blue-600 transition-colors">{{ s.title }}</p>
+            <p class="text-xs font-medium truncate">{{ s.title }}</p>
             <p class="text-[11px] text-ink-gray-5 truncate">{{ s.secret_type }}</p>
           </div>
-          <FeatherIcon name="chevron-right" class="w-3.5 h-3.5 text-ink-gray-4 ml-2 shrink-0 group-hover:translate-x-1 transition-transform" />
+          <FeatherIcon name="chevron-right" class="w-3.5 h-3.5 text-ink-gray-4 ml-2 shrink-0 group-hover/row:translate-x-1 transition-transform" />
         </router-link>
       </div>
       <div v-else class="p-4 text-center">

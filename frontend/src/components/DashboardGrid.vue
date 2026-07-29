@@ -17,12 +17,12 @@
       "
     >
       <template #item="{ index }">
-        <div class="group relative flex h-full w-full p-2 text-ink-gray-8">
+        <div class="group/card relative flex h-full w-full p-2 text-ink-gray-8">
           <div
             class="flex h-full w-full items-center justify-center"
             :class="
               editing
-                ? 'pointer-events-none [&>div:first-child]:rounded [&>div:first-child]:group-hover:ring-2 [&>div:first-child]:group-hover:ring-outline-gray-2'
+                ? 'pointer-events-none [&>div:first-child]:rounded [&>div:first-child]:group-hover/card:ring-2 [&>div:first-child]:group-hover/card:ring-outline-gray-2'
                 : ''
             "
           >
@@ -34,7 +34,7 @@
           </div>
           <div
             v-if="editing"
-            class="flex absolute right-2 top-2 bg-surface-gray-6 rounded cursor-pointer opacity-0 group-hover:opacity-100 z-10 transition-opacity"
+            class="flex absolute right-2 top-2 bg-surface-gray-6 rounded cursor-pointer opacity-0 group-hover/card:opacity-100 z-10 transition-opacity"
           >
             <div
               class="rounded p-1.5 hover:bg-surface-gray-5"
