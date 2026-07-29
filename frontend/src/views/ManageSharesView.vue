@@ -99,8 +99,8 @@
                   <div v-else-if="column.key === 'secret_type'" class="flex items-center text-base text-ink-gray-9">
                     <template v-if="row.shared_doctype === 'Vault Folder'">
                       <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-gray-3 text-ink-gray-7">
-                          <FeatherIcon :name="getFolderIcon(row.title, foldersResource.data)" class="w-4 h-4" />
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-surface-gray-3 text-ink-gray-7">
+                          <FeatherIcon :name="getFolderIcon(row.title, foldersResource.data)" class="w-3 h-3" />
                         </div>
                         <span>Folder</span>
                       </div>
@@ -152,8 +152,18 @@
                   <!-- Permission column -->
                   <div v-else-if="column.key === 'permission_level'" class="flex items-center gap-1.5" @click.stop>
                     <!-- Single User: inline permission dropdown -->
+                    <!-- Revoked Share: static red badge -->
+                    <Badge
+                      v-if="row.is_revoked"
+                      theme="red"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      Revoked
+                    </Badge>
+                    <!-- Single User Active: inline permission dropdown -->
                     <Dropdown
-                      v-if="!row.is_revoked && row.share_type === 'User' && !(row.user_count > 1)"
+                      v-else-if="row.share_type === 'User' && !(row.user_count > 1)"
                       :options="permissionOptionsList.map(p => ({
                         label: p,
                         onClick: () => handleUpdateSharePermission(row.name, p)
@@ -169,9 +179,9 @@
                         {{ item }} ▾
                       </Badge>
                     </Dropdown>
-                    <!-- Multi-User Group / Role: "Manage Access" badge -->
+                    <!-- Multi-User Group / Role Active: "Manage Access" badge -->
                     <Badge
-                      v-else-if="!row.is_revoked && (row.share_type === 'UserGroup' || row.user_count > 1 || row.share_type === 'Role')"
+                      v-else-if="row.share_type === 'UserGroup' || row.user_count > 1 || row.share_type === 'Role'"
                       theme="blue"
                       variant="subtle"
                       size="sm"
@@ -270,7 +280,7 @@
               class="w-full"
             >
               <template #item-prefix="{ item }">
-                <SecretTypeIcon v-if="item.secret_type" :type="item.secret_type" class="w-6 h-6 !w-6 !h-6 shrink-0" />
+                <SecretTypeIcon v-if="item.secret_type" :type="item.secret_type" class="shrink-0" />
               </template>
             </MultiSelect>
           </div>
