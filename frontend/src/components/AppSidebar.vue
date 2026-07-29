@@ -1,10 +1,9 @@
 <template>
-  <div class="relative flex h-full">
-    <Sidebar
-      v-model:collapsed="isSidebarCollapsed"
-      :disable-collapse="isMobile"
-      class="select-none vault-sidebar"
-    >
+  <Sidebar
+    v-model:collapsed="sidebarCollapsedComputed"
+    :disable-collapse="isMobile"
+    class="select-none vault-sidebar"
+  >
       <div class="flex h-full flex-col p-2">
         <!-- Header -->
         <SidebarHeader
@@ -306,11 +305,7 @@
           </div>
         </template>
       </Dialog>
-
-    </Sidebar>
-    <!-- Notifications Panel -->
-    <NotificationsPanel />
-  </div>
+  </Sidebar>
 </template>
 
 <script setup>
@@ -318,8 +313,7 @@ import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
 import { IconPicker, Icon } from 'frappe-ui/icons'
-import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData } from '../composables/vault'
-import NotificationsPanel from './NotificationsPanel.vue'
+import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData, mobileSidebarOpened, isSidebarCollapsed } from '../composables/vault'
 import {
   visible,
   notifications,
@@ -327,7 +321,6 @@ import {
   toggleNotificationPanel,
 } from '../stores/notifications'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
-import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
 import HeartIcon from '~icons/lucide/heart'
 import BugIcon from '~icons/lucide/bug'
@@ -528,12 +521,11 @@ async function handleClearDemo() {
   }
 }
 
-// Persist collapsed state in localStorage
-const _isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
-const isSidebarCollapsed = computed({
-  get: () => props.isMobile ? false : _isSidebarCollapsed.value,
+// Persist collapsed state in localStorage via shared composable ref
+const sidebarCollapsedComputed = computed({
+  get: () => props.isMobile ? false : isSidebarCollapsed.value,
   set: (val) => {
-    _isSidebarCollapsed.value = val
+    isSidebarCollapsed.value = val
     localStorage.setItem('isSidebarCollapsed', String(val))
   }
 })
@@ -678,6 +670,9 @@ const sidebarConfig = reactive({
           isNotification: true,
           onClick: () => {
             toggleNotificationPanel()
+            if (props.isMobile) {
+              mobileSidebarOpened.value = false
+            }
           },
           isActive: visible.value,
         },

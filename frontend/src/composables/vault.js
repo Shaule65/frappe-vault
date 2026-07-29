@@ -5,6 +5,7 @@ import { createResource } from 'frappe-ui'
 import { ref } from 'vue'
 
 export const mobileSidebarOpened = ref(false)
+export const isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
 
 // --- Secrets ---
 export function useSecrets(initialFilters = {}) {
