@@ -85,8 +85,8 @@
                   <div v-else-if="column.key === 'secret_type'" class="flex items-center text-base text-ink-gray-9">
                     <template v-if="row.shared_doctype === 'Vault Folder'">
                       <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-gray-3 text-ink-gray-7">
-                          <FeatherIcon :name="getFolderIcon(row.title, foldersResource.data)" class="w-4 h-4" />
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-surface-gray-3 text-ink-gray-7">
+                          <FeatherIcon :name="getFolderIcon(row.title, foldersResource.data)" class="w-3 h-3" />
                         </div>
                         <span>Folder</span>
                       </div>

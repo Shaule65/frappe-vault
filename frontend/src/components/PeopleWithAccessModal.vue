@@ -9,6 +9,12 @@
   >
     <template #body-content>
       <div class="flex flex-col gap-4 py-1">
+        <!-- Read-Only Banner for Revoked Shares -->
+        <div v-if="isShareRevoked" class="flex items-center gap-2.5 p-3 rounded-xl bg-surface-gray-2 border border-outline-gray-1 text-ink-gray-9 font-medium text-xs">
+          <FeatherIcon name="alert-circle" class="w-4 h-4 text-ink-gray-7 shrink-0" />
+          <span>This share has been revoked. Member access details are read-only.</span>
+        </div>
+
         <TextInput
           v-model="searchQuery"
           type="text"
@@ -18,8 +24,8 @@
         />
 
         <div class="space-y-4">
-          <!-- Active Members Section -->
-          <div>
+          <!-- Active Members Section (Hidden when share is revoked and 0 active members) -->
+          <div v-if="!isShareRevoked || activeMembers.length">
             <div class="flex items-center gap-2 mb-2">
               <h4 class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider">
                 Active Members
@@ -63,7 +69,7 @@
 
                 <!-- Permission Level Selector -->
                 <FormControl
-                  v-if="isOwnerOrAdmin"
+                  v-if="isOwnerOrAdmin && !isShareRevoked"
                   type="select"
                   :modelValue="getUserPermissionLevel(u)"
                   :options="[
@@ -76,10 +82,19 @@
                   @update:modelValue="(val) => handleUpdateUserPermission(u, val)"
                   @change="(val) => handleUpdateUserPermission(u, val)"
                 />
+                <Badge
+                  v-else
+                  :theme="isShareRevoked ? 'red' : 'gray'"
+                  variant="subtle"
+                  size="sm"
+                  class="!w-36 flex items-center justify-center shrink-0"
+                >
+                  {{ isShareRevoked ? 'Revoked' : getUserPermissionLevel(u) }}
+                </Badge>
 
                 <!-- Three-Dot Menu -->
                 <Dropdown
-                  v-if="isOwnerOrAdmin"
+                  v-if="isOwnerOrAdmin && !isShareRevoked"
                   :options="[
                     {
                       label: 'Revoke Access',
@@ -93,6 +108,7 @@
                     <Button variant="ghost" icon="lucide-more-vertical" class="!p-1.5 text-ink-gray-5 hover:text-ink-gray-9 focus:outline-none" />
                   </template>
                 </Dropdown>
+                <span v-else class="w-7"></span>
               </div>
             </div>
             <p v-else class="text-xs text-ink-gray-5 italic py-4 text-center">No active members.</p>
@@ -102,14 +118,14 @@
           <div v-if="revokedMembers.length">
             <div class="flex items-center gap-2 mb-2">
               <h4 class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider">
-                Revoked / Removed Members
+                Revoked Members
               </h4>
               <Badge variant="subtle" theme="red" size="sm" class="!rounded-full font-medium">
                 {{ revokedMembers.length }}
               </Badge>
             </div>
 
-            <div class="flex flex-col max-h-44 overflow-y-auto divide-y divide-outline-gray-1 bg-surface-gray-2 border border-outline-gray-1 rounded-xl">
+            <div class="flex flex-col max-h-56 overflow-y-auto divide-y divide-outline-gray-1 bg-surface-gray-2 border border-outline-gray-1 rounded-xl">
               <div
                 v-for="u in revokedMembers"
                 :key="u.user"
@@ -129,7 +145,7 @@
                 </div>
 
                 <Button
-                  v-if="isOwnerOrAdmin"
+                  v-if="isOwnerOrAdmin && !isShareRevoked"
                   variant="ghost"
                   size="sm"
                   label="Re-grant"
@@ -144,9 +160,9 @@
     </template>
     <template #actions>
       <div class="flex justify-end gap-2 px-4 pb-4">
-        <Button variant="ghost" label="Cancel" @click="emit('update:modelValue', false)" class="text-ink-gray-7 focus:outline-none" />
+        <Button variant="ghost" :label="isShareRevoked ? 'Close' : 'Cancel'" @click="emit('update:modelValue', false)" class="text-ink-gray-7 focus:outline-none" />
         <Button
-          v-if="isOwnerOrAdmin"
+          v-if="isOwnerOrAdmin && !isShareRevoked"
           variant="solid"
           theme="gray"
           label="Save Changes"
@@ -179,6 +195,8 @@ const dialogTitle = computed(() => {
   return props.roleName ? `People with ${props.roleName} Role` : 'People with Access'
 })
 
+const isShareRevoked = computed(() => Boolean(props.item?.is_revoked))
+
 const searchQuery = ref('')
 const revokedUserIds = ref(new Set())
 const userPermissionOverrides = ref({})
@@ -199,11 +217,11 @@ const filteredRoleUsersList = computed(() => {
 })
 
 const activeMembers = computed(() => {
-  return filteredRoleUsersList.value.filter(u => !revokedUserIds.value.has(u.user))
+  return filteredRoleUsersList.value.filter(u => !revokedUserIds.value.has(u.user) && !u.is_revoked)
 })
 
 const revokedMembers = computed(() => {
-  return filteredRoleUsersList.value.filter(u => revokedUserIds.value.has(u.user))
+  return filteredRoleUsersList.value.filter(u => revokedUserIds.value.has(u.user) || u.is_revoked)
 })
 
 watch(() => props.modelValue, (isOpen) => {
@@ -229,12 +247,21 @@ watch(() => roleUsersResource.data, (data) => {
 })
 
 function fetchMembers() {
+  let userListArg = undefined
+  if (props.item?.user_list) {
+    userListArg = Array.isArray(props.item.user_list)
+      ? JSON.stringify(props.item.user_list)
+      : props.item.user_list
+  } else if (props.item?.user && props.item.user.includes('@')) {
+    userListArg = JSON.stringify([props.item.user])
+  }
+
   roleUsersResource.submit({
     role_name: props.roleName || undefined,
     shared_name: props.sharedName,
     shared_doctype: props.sharedDoctype,
     shared_by: props.item?.shared_by || undefined,
-    user_list: props.item?.user_list ? JSON.stringify(props.item.user_list) : undefined
+    user_list: userListArg
   })
 }
 

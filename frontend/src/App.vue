@@ -23,6 +23,9 @@
     <main class="flex-1 flex flex-col overflow-hidden min-w-0">
       <router-view />
     </main>
+
+    <!-- Global Notifications Panel -->
+    <NotificationsPanel />
   </div>
 </template>
 
@@ -30,6 +33,7 @@
 import { computed, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
+import NotificationsPanel from './components/NotificationsPanel.vue'
 import { mobileSidebarOpened } from './composables/vault'
 
 const route = useRoute()

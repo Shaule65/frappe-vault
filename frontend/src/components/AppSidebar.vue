@@ -1,36 +1,39 @@
 <template>
   <Sidebar
-    v-model:collapsed="isSidebarCollapsed"
+    v-model:collapsed="sidebarCollapsedComputed"
     :disable-collapse="isMobile"
     class="select-none vault-sidebar"
   >
-    <div class="flex h-full flex-col p-2">
-      <!-- Header -->
-      <SidebarHeader
-        v-if="sidebarConfig.header"
-        :title="sidebarConfig.header.title"
-        :subtitle="sidebarConfig.header.subtitle"
-        :logo="sidebarConfig.header.logo"
-        :menu-items="sidebarConfig.header.menuItems"
-      />
+      <div class="flex h-full flex-col p-2">
+        <!-- Header -->
+        <SidebarHeader
+          v-if="sidebarConfig.header"
+          :title="sidebarConfig.header.title"
+          :subtitle="sidebarConfig.header.subtitle"
+          :logo="sidebarConfig.header.logo"
+          :menu-items="sidebarConfig.header.menuItems"
+        />
 
-      <div class="flex-1 overflow-y-auto overflow-x-hidden">
-        <!-- Main Links Section -->
-        <nav class="flex flex-col gap-0.5 mt-2">
-          <SidebarItem
-            v-for="item in sidebarConfig.sections[0].items"
-            :key="item.label"
-            :label="item.label"
-            :icon="item.icon"
-            :to="item.to"
-            :isActive="item.isActive"
-            class="vault-sidebar-item"
-          >
-            <template v-if="item.count" #suffix>
-              <Badge :label="String(item.count)" variant="subtle" theme="gray" />
-            </template>
-          </SidebarItem>
-        </nav>
+        <div class="flex-1 overflow-y-auto overflow-x-hidden">
+          <!-- Main Links Section -->
+          <nav class="flex flex-col gap-0.5 mt-2">
+            <SidebarItem
+              v-for="item in sidebarConfig.sections[0].items"
+              :key="item.label"
+              :id="item.id"
+              :label="item.label"
+              :icon="item.icon"
+              :to="item.to"
+              :onClick="item.onClick"
+              :isActive="item.isActive"
+              class="vault-sidebar-item cursor-pointer"
+              :class="{ 'notifications-btn-trigger': item.isNotification }"
+            >
+              <template v-if="item.count" #suffix>
+                <Badge :label="String(item.count)" variant="subtle" :theme="item.isNotification && item.count > 0 ? 'red' : 'gray'" />
+              </template>
+            </SidebarItem>
+          </nav>
 
         <!-- Folders Section -->
         <div class="mt-4 flex flex-col gap-0.5">
@@ -310,9 +313,14 @@ import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
 import { IconPicker, Icon } from 'frappe-ui/icons'
-import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData } from '../composables/vault'
+import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData, mobileSidebarOpened, isSidebarCollapsed } from '../composables/vault'
+import {
+  visible,
+  notifications,
+  unreadNotificationsCount,
+  toggleNotificationPanel,
+} from '../stores/notifications'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
-import GlobeIcon from '~icons/lucide/globe'
 import HelpCircleIcon from '~icons/lucide/help-circle'
 import HeartIcon from '~icons/lucide/heart'
 import BugIcon from '~icons/lucide/bug'
@@ -329,6 +337,7 @@ const route = useRoute()
 const router = useRouter()
 const stats = useVaultStats()
 const foldersResource = useFolders()
+// Notifications state is managed by stores/notifications.js (visible, notifications, unreadNotificationsCount, toggleNotificationPanel)
 const generateDemo = useGenerateDemoData()
 const clearDemo = useClearDemoData()
 const showClearDemoConfirm = ref(false)
@@ -512,12 +521,11 @@ async function handleClearDemo() {
   }
 }
 
-// Persist collapsed state in localStorage
-const _isSidebarCollapsed = ref(localStorage.getItem('isSidebarCollapsed') === 'true')
-const isSidebarCollapsed = computed({
-  get: () => props.isMobile ? false : _isSidebarCollapsed.value,
+// Persist collapsed state in localStorage via shared composable ref
+const sidebarCollapsedComputed = computed({
+  get: () => props.isMobile ? false : isSidebarCollapsed.value,
   set: (val) => {
-    _isSidebarCollapsed.value = val
+    isSidebarCollapsed.value = val
     localStorage.setItem('isSidebarCollapsed', String(val))
   }
 })
@@ -557,7 +565,7 @@ const isAdmin = computed(() => {
   return roles.includes('Vault Admin')
 })
 
-// Single reactive sidebar config — mirrors the frappe-ui docs pattern
+// Single reactive sidebar config
 function checkActive(to) {
   if (!to) return false
   const pathStr = typeof to === 'string' ? to : to.path || ''
@@ -645,6 +653,20 @@ const sidebarConfig = reactive({
     {
       label: '',
       items: [
+        {
+          id: 'notifications-btn',
+          label: 'Notifications',
+          icon: 'lucide-bell',
+          count: unreadNotificationsCount.value,
+          isNotification: true,
+          onClick: () => {
+            toggleNotificationPanel()
+            if (props.isMobile) {
+              mobileSidebarOpened.value = false
+            }
+          },
+          isActive: visible.value,
+        },
         { label: 'Dashboard', icon: LayoutDashboard, to: '/', isActive: checkActive('/') },
         { label: 'Secrets', icon: 'lucide-key-round', to: '/secrets', count: stats.data?.total_secrets, isActive: checkActive('/secrets') },
         { label: 'Bookmarks', icon: 'lucide-bookmark', to: '/bookmarks', count: stats.data?.bookmarks, isActive: checkActive('/bookmarks') },

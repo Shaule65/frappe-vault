@@ -69,6 +69,8 @@ def log_share_created(doc, method):
 
 
 def log_share_removed(doc, method):
+    if doc.get("is_revoked"):
+        return
     recipient = doc.user if doc.share_type == "User" else doc.frappe_role
     _create_log(
         "Unshared",

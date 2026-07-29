@@ -386,7 +386,7 @@
                         <span class="ml-auto text-xs text-ink-gray-4 shrink-0 whitespace-nowrap text-right pt-0.5">{{ formatRelativeTime(item.timestamp) }}</span>
                       </div>
                       
-                      <!-- Activity Details Card / Bubble (matching CRM lead comment box) -->
+                      <!-- Activity Details Card / Bubble -->
                       <div v-if="hasActivityDetails(item)" class="mt-1.5 p-3 rounded-lg bg-surface-gray-2 border border-outline-gray-1 text-sm text-ink-gray-8 leading-relaxed w-full font-normal shadow-2xs">
                         {{ getActivityDetailText(item) }}
                       </div>
@@ -433,9 +433,9 @@
                   <!-- Active Shares List -->
                   <div class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider pl-0.5">Active Shares</div>
 
-                  <div v-if="sharesList.length" class="space-y-3">
+                  <div v-if="activeSharesList.length" class="space-y-3">
                     <div
-                      v-for="item in sharesList"
+                      v-for="item in activeSharesList"
                       :key="item.name"
                       class="flex items-center justify-between p-3.5 bg-surface-elevation-1 border border-outline-gray-1 rounded-xl shadow-sm hover:border-outline-gray-3 transition-colors"
                     >
@@ -484,7 +484,7 @@
                       <div class="flex items-center gap-3 shrink-0">
                         <!-- Single User: inline permission dropdown -->
                         <Dropdown
-                          v-if="!item.is_revoked && isOwnerOrAdmin && item.share_type === 'User' && !(item.user_count > 1)"
+                          v-if="isOwnerOrAdmin && item.share_type === 'User' && !(item.user_count > 1)"
                           :options="[
                             { label: 'View Only', onClick: () => handleUpdateSharePermission(item.name, 'View Only') },
                             { label: 'View & Copy', onClick: () => handleUpdateSharePermission(item.name, 'View & Copy') },
@@ -504,7 +504,7 @@
                         </Dropdown>
                         <!-- Multi-User Group / Role: "Manage Access" badge that opens dialog -->
                         <Badge
-                          v-else-if="!item.is_revoked && (item.share_type === 'UserGroup' || item.user_count > 1 || item.share_type === 'Role')"
+                          v-else-if="item.share_type === 'UserGroup' || item.user_count > 1 || item.share_type === 'Role'"
                           theme="blue"
                           variant="subtle"
                           size="sm"
@@ -516,16 +516,15 @@
                         </Badge>
                         <Badge
                           v-else
-                          :theme="item.is_revoked ? 'red' : (permissionTheme[item.permission_level] || 'gray')"
+                          :theme="permissionTheme[item.permission_level] || 'gray'"
                           variant="subtle"
                           size="sm"
                         >
-                          {{ item.is_revoked ? 'Revoked' : item.permission_level }}
+                          {{ item.permission_level }}
                         </Badge>
 
                         <!-- Revoke Access Action -->
                         <Button
-                          v-if="!item.is_revoked"
                           variant="ghost"
                           icon="lucide-trash-2"
                           class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-surface-red-2"
@@ -546,6 +545,79 @@
                       This secret is private. Use the Share button to give access to other users or roles.
                     </p>
                   </div>
+
+                  <!-- Revoked Shares Section -->
+                  <div v-if="revokedSharesList.length" class="mt-6 space-y-3">
+                    <div class="flex items-center gap-2 pl-0.5">
+                      <span class="text-xs font-bold text-ink-gray-5 uppercase tracking-wider">Revoked Shares</span>
+                      <Badge variant="subtle" theme="red" size="sm" class="!rounded-full font-medium">
+                        {{ revokedSharesList.length }}
+                      </Badge>
+                    </div>
+
+                    <div
+                      v-for="item in revokedSharesList"
+                      :key="item.name"
+                      class="flex items-center justify-between p-3.5 bg-surface-gray-2 border border-outline-gray-1 rounded-xl opacity-80 hover:opacity-100 transition-opacity"
+                    >
+                      <div class="flex items-center gap-3.5 min-w-0">
+                        <div class="w-9 h-9 rounded-full bg-surface-gray-3 border border-outline-gray-1 shadow-2xs flex items-center justify-center shrink-0">
+                          <FeatherIcon
+                            :name="item.share_type === 'UserGroup' || item.user_count > 1 ? 'users' : (item.share_type === 'Role' ? 'shield' : 'user')"
+                            class="w-4.5 h-4.5 text-ink-gray-4"
+                          />
+                        </div>
+                        <div class="min-w-0">
+                          <div class="flex items-center gap-1.5 min-w-0">
+                            <p class="text-sm font-semibold text-ink-gray-7 truncate leading-snug line-through">
+                              {{ item.share_type === 'User' ? item.user : (item.share_type === 'UserGroup' ? item.user : item.frappe_role) }}
+                            </p>
+                            <Button
+                              v-if="item.share_type === 'Role'"
+                              variant="ghost"
+                              size="sm"
+                              class="!h-6 !px-1.5 text-xs text-ink-blue-link hover:underline shrink-0"
+                              title="View role members"
+                              @click="openRoleUsersModal(item.frappe_role, item)"
+                            >
+                              View Members
+                            </Button>
+                            <Button
+                              v-else-if="item.share_type === 'UserGroup' || item.user_count > 1"
+                              variant="ghost"
+                              size="sm"
+                              class="!h-6 !px-1.5 text-xs text-ink-blue-link hover:underline shrink-0"
+                              title="View shared users"
+                              @click="openUserGroupModal(item)"
+                            >
+                              View Members
+                            </Button>
+                          </div>
+                          <p class="text-xs text-ink-gray-4 mt-1 font-medium flex items-center gap-1.5 leading-none">
+                            <span>{{ item.share_type }}</span>
+                            <span class="w-1 h-1 rounded-full bg-surface-gray-4" />
+                            <span>Revoked</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-3 shrink-0">
+                        <Badge theme="red" variant="subtle" size="sm">
+                          Revoked
+                        </Badge>
+
+                        <!-- Delete Share Entry Action -->
+                        <Button
+                          v-if="isOwnerOrAdmin"
+                          variant="ghost"
+                          icon="lucide-trash-2"
+                          class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-surface-red-2"
+                          title="Delete Share Record Permanently"
+                          @click="handleDeleteShareLogEntry(item)"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -559,7 +631,7 @@
       <div class="h-8 w-8 border-2 border-ink-blue-3 border-t-transparent rounded-full animate-spin" />
     </div>
 
-    <!-- Delete Confirmation Dialog (matching CRM/Frappe UI styles) -->
+    <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model="showDeleteDialog"
       :options="{
@@ -662,7 +734,7 @@ import {
   Avatar,
   MultiSelect
 } from 'frappe-ui'
-import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders, useRoleUsers, useUpdateSharePermission, useSaveRoleMemberPermission } from '../composables/vault'
+import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders, useRoleUsers, useUpdateSharePermission, useSaveRoleMemberPermission, useBulkDeleteShares } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
 import StrengthBadge from '../components/StrengthBadge.vue'
@@ -851,6 +923,21 @@ const breadcrumbs = computed(() => {
 const decryptedData = computed(() => decryptResource.data?.decrypted)
 const activityList = computed(() => activity.data || [])
 const sharesList = computed(() => sharesResource.data || [])
+const activeSharesList = computed(() => sharesList.value.filter(s => !s.is_revoked))
+const revokedSharesList = computed(() => sharesList.value.filter(s => s.is_revoked))
+const bulkDeleteSharesResource = useBulkDeleteShares()
+
+async function handleDeleteShareLogEntry(shareItem) {
+  if (!shareItem) return
+  try {
+    let shareNames = [shareItem.name]
+    await bulkDeleteSharesResource.submit({ share_names: shareNames })
+    toast.success('Share log entry permanently deleted')
+    sharesResource.fetch({ secret_name: props.name })
+  } catch (err) {
+    toast.error(err.messages?.[0] || err.message || 'Failed to delete share log entry')
+  }
+}
 const shareOptions = computed(() => shareOptionsResource.data || { users: [], roles: [] })
 
 const recipientOptions = computed(() => {
