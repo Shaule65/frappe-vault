@@ -318,9 +318,14 @@ function resetToDefault() {
   })
 }
 
-function onSecretCreated() {
+function onSecretCreated(newSecret) {
   showAddSecretModal.value = false
   dashboardItems.reload()
   scoreResource.reload()
+  if (newSecret && newSecret.name) {
+    router.push(`/secrets?secret=${newSecret.name}`)
+  } else {
+    router.push('/secrets')
+  }
 }
 </script>

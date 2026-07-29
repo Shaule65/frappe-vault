@@ -73,7 +73,7 @@
     >
       <div class="px-4 py-2.5 border-b border-outline-gray-1 flex items-center justify-between shrink-0">
         <h2 class="text-sm font-semibold text-ink-gray-9">Recently Accessed</h2>
-        <Button variant="ghost" size="sm" label="View All" iconRight="chevron-right" @click="$router.push('/secrets')" />
+        <Button variant="ghost" size="sm" label="View All" iconRight="chevron-right" @click="goToSecrets" />
       </div>
       <div v-if="item.data?.recent_secrets?.length" class="divide-y divide-outline-gray-1 overflow-y-auto flex-1 custom-scrollbar">
         <router-link
@@ -117,10 +117,10 @@
     <!-- Donut Chart (Secrets by Folder) -->
     <div
       v-else-if="item.type == 'donut_chart'"
-      class="h-full w-full rounded-xl bg-surface-elevation-1 border border-outline-gray-1 p-4 overflow-hidden shadow-none flex flex-col"
+      class="h-full w-full rounded-xl bg-surface-elevation-1 border border-outline-gray-1 p-4 overflow-hidden shadow-none flex flex-col justify-between"
     >
-      <div class="flex-1 min-h-0 w-full">
-        <DonutChart v-if="item.data && item.data.data && item.data.data.length" :config="item.data" />
+      <div class="flex-1 min-h-0 w-full flex items-center justify-center relative overflow-hidden">
+        <DonutChart v-if="item.data && item.data.data && item.data.data.length" :config="item.data" class="w-full h-full" />
         <div v-else class="h-full flex items-center justify-center text-xs text-ink-gray-4">Loading chart...</div>
       </div>
     </div>
@@ -140,6 +140,11 @@ const props = defineProps({
 })
 
 const router = useRouter()
+
+function goToSecrets() {
+  if (props.editing) return
+  router.push('/secrets')
+}
 
 function handleStatClick(name) {
   if (props.editing) return

@@ -32,17 +32,17 @@ def get_default_layout():
         {
             "name": "recently_accessed",
             "type": "recently_accessed",
-            "layout": {"x": 0, "y": 3, "w": 10, "h": 6, "i": "recently_accessed_1"},
+            "layout": {"x": 0, "y": 3, "w": 10, "h": 8, "i": "recently_accessed_1"},
         },
         {
             "name": "secrets_by_folder",
             "type": "donut_chart",
-            "layout": {"x": 10, "y": 3, "w": 10, "h": 6, "i": "secrets_by_folder_1"},
+            "layout": {"x": 10, "y": 3, "w": 10, "h": 8, "i": "secrets_by_folder_1"},
         },
         {
             "name": "vault_trend",
             "type": "axis_chart",
-            "layout": {"x": 0, "y": 9, "w": 20, "h": 7, "i": "vault_trend_1"},
+            "layout": {"x": 0, "y": 11, "w": 20, "h": 7, "i": "vault_trend_1"},
         },
     ]
 
