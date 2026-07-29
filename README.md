@@ -9,7 +9,7 @@ Secrets and password management application. Securely store, share, and manage s
 
 ## Features
 
-- **Secure Storage**: Store passwords, API keys, SSH keys, certificates, and notes with encryption
+- **Secure Storage**: Store passwords, API keys, SSH keys, notes, credit cards, databases, and media files with encryption
 - **Folders**: Organize secrets in a tree-based folder structure
 - **Access Logging**: Track who accessed which secrets and when
 - **Sharing**: Share secrets with specific users or roles
@@ -102,24 +102,22 @@ All secrets are accessible via REST API for integration with other applications.
 
 ```bash
 # Get all secrets
-curl -X GET "https://your-site.local/api/method/frappe-vault.api.get_secrets" \
+curl -X GET "https://your-site.local/api/method/frappe_vault.api.secrets.list" \
   -H "Authorization: token api_key:api_secret"
 
 # Get a specific secret with decrypted password
-curl -X GET "https://your-site.local/api/method/frappe-vault.api.get_secret" \
+curl -X POST "https://your-site.local/api/method/frappe_vault.api.secrets.decrypt" \
   -H "Authorization: token api_key:api_secret" \
-  -d "name=VS-0001"
+  -H "Content-Type: application/json" \
+  -d '{"name": "VS-0001"}'
 
 # Create a new secret
-curl -X POST "https://your-site.local/api/method/frappe-vault.api.create_secret" \
+curl -X POST "https://your-site.local/api/method/frappe_vault.api.secrets.create" \
   -H "Authorization: token api_key:api_secret" \
-  -d "title=My Secret&secret_type=Password&password=hunter2"
-
-# Generate a password
-curl -X GET "https://your-site.local/api/method/frappe-vault.api.generate_password" \
-  -H "Authorization: token api_key:api_secret" \
-  -d "length=20&use_special=1"
+  -H "Content-Type: application/json" \
+  -d '{"title": "My Secret", "secret_type": "Password", "password": "hunter2"}'
 ```
+
 
 ## DocTypes
 
@@ -130,7 +128,7 @@ Main document for storing credentials.
 | Field | Type | Description |
 |-------|------|-------------|
 | title | Data | Name/title of the secret |
-| secret_type | Select | Password, API Key, Note, SSH Key, Certificate, Other |
+| secret_type | Select | Password, API Key, Note, SSH Key, Media, Credit Card, Database, Other |
 | folder | Link | Reference to Vault Folder |
 | url | Data | Associated website/service URL |
 | username | Data | Username for the credential |
@@ -175,4 +173,4 @@ For issues and feature requests, please use the GitHub issue tracker.
 
 ## License
 
-Frappe Local is open-sourced licensed under the [MIT License](LICENSE).
+Frappe Vault is open-sourced licensed under the [MIT License](LICENSE).
