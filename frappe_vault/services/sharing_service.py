@@ -58,6 +58,18 @@ def share_secret(
                 },
             )
             doc = frappe.get_doc("Vault Share", existing_share)
+            from frappe_vault.services.notification_service import send_vault_notification
+            item_title = frappe.db.get_value(shared_doctype, shared_name, "title" if shared_doctype == "Vault Secret" else "folder_name") or shared_name
+            sharer_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+            send_vault_notification(
+                for_user=user,
+                subject=f"{sharer_name} shared '{item_title}' with you",
+                email_content=f"You have been granted '{permission_level}' access to {shared_doctype} '{item_title}'.",
+                notification_type="Share",
+                document_type=shared_doctype,
+                document_name=shared_name,
+                from_user=frappe.session.user
+            )
             return {"name": doc.name}
 
     doc = frappe.get_doc({
@@ -72,6 +84,43 @@ def share_secret(
         "shared_by": frappe.session.user,
     })
     doc.insert()
+
+    # Send notifications
+    from frappe_vault.services.notification_service import send_vault_notification, notify_vault_admins
+    item_title = frappe.db.get_value(shared_doctype, shared_name, "title" if shared_doctype == "Vault Secret" else "folder_name") or shared_name
+    sharer_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+
+    if share_type == "User" and user:
+        send_vault_notification(
+            for_user=user,
+            subject=f"Secret Shared with You: '{item_title}'",
+            email_content=f"<b>{sharer_name}</b> shared {shared_doctype} <b>'{item_title}'</b> with you with <b>'{permission_level}'</b> access.",
+            notification_type="Share",
+            document_type=shared_doctype,
+            document_name=shared_name,
+            from_user=frappe.session.user
+        )
+    elif share_type == "Role" and frappe_role:
+        role_users = frappe.get_all("Has Role", filters={"role": frappe_role, "parenttype": "User"}, pluck="parent")
+        for r_user in set(role_users):
+            if r_user != frappe.session.user:
+                send_vault_notification(
+                    for_user=r_user,
+                    subject=f"Secret Shared via Role ({frappe_role}): '{item_title}'",
+                    email_content=f"You have been granted <b>'{permission_level}'</b> access to {shared_doctype} <b>'{item_title}'</b> via role {frappe_role}.",
+                    notification_type="Share",
+                    document_type=shared_doctype,
+                    document_name=shared_name,
+                    from_user=frappe.session.user
+                )
+
+    # Notify Vault Admins
+    notify_vault_admins(
+        subject=f"Secret Shared: '{item_title}'",
+        email_content=f"<b>{sharer_name}</b> shared {shared_doctype} <b>'{item_title}'</b> with {user or frappe_role} (Access: {permission_level}).",
+        document_type=shared_doctype,
+        document_name=shared_name
+    )
 
     return {"name": doc.name}
 
@@ -97,7 +146,32 @@ def unshare(share_name: str) -> dict:
     # Log the activity
     from frappe_vault.services.audit_service import log_share_removed
     log_share_removed(doc, None)
-    
+
+    item_title = frappe.db.get_value(doc.shared_doctype, doc.shared_name, "title" if doc.shared_doctype == "Vault Secret" else "folder_name") or doc.shared_name
+    revoker_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+
+    # Notify recipient if revoked
+    if doc.share_type == "User" and doc.user:
+        from frappe_vault.services.notification_service import send_vault_notification
+        send_vault_notification(
+            for_user=doc.user,
+            subject=f"Access Revoked for '{item_title}'",
+            email_content=f"<b>{revoker_name}</b> revoked your access to {doc.shared_doctype} <b>'{item_title}'</b>.",
+            notification_type="Alert",
+            document_type=doc.shared_doctype,
+            document_name=doc.shared_name,
+            from_user=frappe.session.user
+        )
+
+    # Notify Vault Admins
+    from frappe_vault.services.notification_service import notify_vault_admins
+    notify_vault_admins(
+        subject=f"Access Revoked: '{item_title}'",
+        email_content=f"<b>{revoker_name}</b> revoked access to {doc.shared_doctype} <b>'{item_title}'</b> for {doc.user or doc.frappe_role}.",
+        document_type=doc.shared_doctype,
+        document_name=doc.shared_name
+    )
+
     frappe.db.commit()
     return {"removed": share_name}
 
@@ -141,6 +215,30 @@ def update_share_permission(share_name: str, permission_level: str) -> dict:
             frappe.db.set_value("Vault Share", ov_name, "permission_level", permission_level)
 
     frappe.db.commit()
+
+    # Send notifications for permission update
+    item_title = frappe.db.get_value(doc.shared_doctype, doc.shared_name, "title" if doc.shared_doctype == "Vault Secret" else "folder_name") or doc.shared_name
+    updater_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+
+    if doc.share_type == "User" and doc.user:
+        from frappe_vault.services.notification_service import send_vault_notification
+        send_vault_notification(
+            for_user=doc.user,
+            subject=f"Permission Updated for '{item_title}'",
+            email_content=f"<b>{updater_name}</b> updated your access on {doc.shared_doctype} <b>'{item_title}'</b> to <b>'{permission_level}'</b>.",
+            notification_type="Share",
+            document_type=doc.shared_doctype,
+            document_name=doc.shared_name,
+            from_user=frappe.session.user
+        )
+
+    from frappe_vault.services.notification_service import notify_vault_admins
+    notify_vault_admins(
+        subject=f"Share Permission Updated: '{item_title}'",
+        email_content=f"<b>{updater_name}</b> updated {doc.user or doc.frappe_role}'s access on {doc.shared_doctype} <b>'{item_title}'</b> to <b>'{permission_level}'</b>.",
+        document_type=doc.shared_doctype,
+        document_name=doc.shared_name
+    )
 
     return {"name": share_name, "permission_level": permission_level}
 

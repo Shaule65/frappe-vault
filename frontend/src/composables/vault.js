@@ -1,6 +1,5 @@
 /**
  * Composables for Frappe Vault data fetching.
- * Uses createResource from frappe-ui.
  */
 import { createResource } from 'frappe-ui'
 import { ref } from 'vue'
@@ -252,4 +251,35 @@ export function useSortOptions(doctype = 'Vault Secret') {
     cache: ['vault-sort-options', doctype],
   })
 }
+
+// --- Notifications ---
+export function useNotifications(limit = 20) {
+  return createResource({
+    url: 'frappe_vault.api.notifications.get_notifications',
+    params: { limit },
+    auto: true,
+  })
+}
+
+export function useMarkNotificationRead() {
+  return createResource({
+    url: 'frappe_vault.api.notifications.mark_read',
+  })
+}
+
+export function useMarkAllNotificationsRead() {
+  return createResource({
+    url: 'frappe_vault.api.notifications.mark_all_read',
+  })
+}
+
+// --- Dashboard ---
+export function useVaultDashboard() {
+  return createResource({
+    url: 'frappe_vault.api.dashboard.get_vault_dashboard',
+    auto: false,
+  })
+}
+
+
 

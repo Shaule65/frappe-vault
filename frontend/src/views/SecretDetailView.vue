@@ -386,7 +386,7 @@
                         <span class="ml-auto text-xs text-ink-gray-4 shrink-0 whitespace-nowrap text-right pt-0.5">{{ formatRelativeTime(item.timestamp) }}</span>
                       </div>
                       
-                      <!-- Activity Details Card / Bubble (matching CRM lead comment box) -->
+                      <!-- Activity Details Card / Bubble -->
                       <div v-if="hasActivityDetails(item)" class="mt-1.5 p-3 rounded-lg bg-surface-gray-2 border border-outline-gray-1 text-sm text-ink-gray-8 leading-relaxed w-full font-normal shadow-2xs">
                         {{ getActivityDetailText(item) }}
                       </div>
@@ -559,7 +559,7 @@
       <div class="h-8 w-8 border-2 border-ink-blue-3 border-t-transparent rounded-full animate-spin" />
     </div>
 
-    <!-- Delete Confirmation Dialog (matching CRM/Frappe UI styles) -->
+    <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model="showDeleteDialog"
       :options="{

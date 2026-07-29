@@ -261,6 +261,16 @@ def create_secret(data: dict) -> dict:
     })
     doc.insert()
 
+    # Notify Vault Admins of new secret creation
+    from frappe_vault.services.notification_service import notify_vault_admins
+    creator_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"New Secret Created: '{doc.title}'",
+        email_content=f"{creator_name} created secret '{doc.title}'.",
+        document_type="Vault Secret",
+        document_name=doc.name
+    )
+
     return {"name": doc.name, "title": doc.title}
 
 
