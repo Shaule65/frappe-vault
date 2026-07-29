@@ -653,15 +653,6 @@ const sidebarConfig = reactive({
     {
       label: '',
       items: [
-        { label: 'Dashboard', icon: LayoutDashboard, to: '/', isActive: checkActive('/') },
-        { label: 'Secrets', icon: 'lucide-key-round', to: '/secrets', count: stats.data?.total_secrets, isActive: checkActive('/secrets') },
-        { label: 'Bookmarks', icon: 'lucide-bookmark', to: '/bookmarks', count: stats.data?.bookmarks, isActive: checkActive('/bookmarks') },
-        {
-          label: isAdmin.value ? 'Shares' : 'Shared with Me',
-          icon: 'lucide-share-2',
-          to: isAdmin.value ? '/shares' : '/shared',
-          isActive: checkActive(isAdmin.value ? '/shares' : '/shared'),
-        },
         {
           id: 'notifications-btn',
           label: 'Notifications',
@@ -675,6 +666,15 @@ const sidebarConfig = reactive({
             }
           },
           isActive: visible.value,
+        },
+        { label: 'Dashboard', icon: LayoutDashboard, to: '/', isActive: checkActive('/') },
+        { label: 'Secrets', icon: 'lucide-key-round', to: '/secrets', count: stats.data?.total_secrets, isActive: checkActive('/secrets') },
+        { label: 'Bookmarks', icon: 'lucide-bookmark', to: '/bookmarks', count: stats.data?.bookmarks, isActive: checkActive('/bookmarks') },
+        {
+          label: isAdmin.value ? 'Shares' : 'Shared with Me',
+          icon: 'lucide-share-2',
+          to: isAdmin.value ? '/shares' : '/shared',
+          isActive: checkActive(isAdmin.value ? '/shares' : '/shared'),
         },
       ],
     },
