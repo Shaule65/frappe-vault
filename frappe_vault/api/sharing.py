@@ -72,8 +72,8 @@ def get_share_options():
     else:
         user_options = []
 
-    # 2. Fetch active system roles (excluding internal system roles)
-    excluded_roles = ["Administrator", "Guest", "All", "Script Manager", "Blogger"]
+    # 2. Fetch active system roles (excluding admin/system roles who already have full access)
+    excluded_roles = ["Administrator", "System Manager", "Vault Admin", "Guest", "All", "Script Manager", "Blogger"]
     roles = frappe.get_all(
         "Role",
         filters={
