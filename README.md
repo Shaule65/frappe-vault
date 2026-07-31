@@ -1,7 +1,7 @@
 <p align="center"><img width="160" src=".github/assets/logo.svg"></p>
 
 
-<img src=".github/assets/banner.png" />
+<img src=".github/assets/banner.jpg" />
 
 # Frappe Vault
 
