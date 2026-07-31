@@ -109,8 +109,6 @@ def import_secrets(data: str, format: str = "json") -> dict:
             except Exception as e:
                 errors.append(f"Row {idx}: {str(e)}")
         
-        frappe.db.commit()
-        
     except Exception as e:
         frappe.throw(_("Failed to parse import data: {0}").format(str(e)))
     

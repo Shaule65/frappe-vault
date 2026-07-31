@@ -7,15 +7,14 @@ from frappe.utils import add_days, getdate, today
 
 @frappe.whitelist()
 def calculate_security_score(user=None):
-    secrets = frappe.get_list("Vault Secret", filters={"secret_type": "Password"},
-                             fields=["name", "password_strength", "password_last_changed", "expires_on"])
-    if not secrets:
-        return {"score": 100, "breakdown": {}, "suggestions": []}
+    total = frappe.db.count("Vault Secret", filters={"secret_type": "Password"})
+    if not total:
+        return {"score": 100, "breakdown": {"total": 0, "weak": 0, "old": 0, "strong": 0}, "suggestions": []}
 
-    total = len(secrets)
-    weak_count = sum(1 for s in secrets if s.password_strength in ("weak", "fair"))
-    old_count = sum(1 for s in secrets if s.password_last_changed and getdate(s.password_last_changed) < getdate(add_days(today(), -90)))
-    strong_count = sum(1 for s in secrets if s.password_strength in ("strong", "excellent"))
+    weak_count = frappe.db.count("Vault Secret", filters={"secret_type": "Password", "password_strength": ["in", ["weak", "fair"]]})
+    threshold_date = add_days(today(), -90)
+    old_count = frappe.db.count("Vault Secret", filters={"secret_type": "Password", "password_last_changed": ["<", threshold_date]})
+    strong_count = frappe.db.count("Vault Secret", filters={"secret_type": "Password", "password_strength": ["in", ["strong", "excellent"]]})
 
     score = 100 - (weak_count / total) * 40 - (old_count / total) * 30
     score = max(0, min(100, score))

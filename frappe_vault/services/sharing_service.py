@@ -151,17 +151,15 @@ def unshare(share_name: str) -> dict:
             WHERE `shared_doctype` = %s AND `shared_name` = %s AND `share_type` = 'Role' AND `frappe_role` = %s
         """, (frappe.session.user, doc.shared_doctype, doc.shared_name, doc.frappe_role))
 
-        role_users = frappe.get_all("Has Role", filters={"role": doc.frappe_role, "parenttype": "User"}, pluck="parent")
+        role_users = set(frappe.get_all("Has Role", filters={"role": doc.frappe_role, "parenttype": "User"}, pluck="parent"))
         if role_users:
-            users_str = ", ".join([frappe.db.escape(u) for u in set(role_users) if u])
-            if users_str:
-                frappe.db.sql(f"""
-                    UPDATE `tabVault Share`
-                    SET `is_revoked` = 1, `revoked_by` = {frappe.db.escape(frappe.session.user)}
-                    WHERE `shared_doctype` = {frappe.db.escape(doc.shared_doctype)}
-                      AND `shared_name` = {frappe.db.escape(doc.shared_name)}
-                      AND `user` IN ({users_str})
-                """)
+            frappe.db.sql("""
+                UPDATE `tabVault Share`
+                SET `is_revoked` = 1, `revoked_by` = %s
+                WHERE `shared_doctype` = %s
+                  AND `shared_name` = %s
+                  AND `user` IN %s
+            """, (frappe.session.user, doc.shared_doctype, doc.shared_name, tuple(role_users)))
     elif doc.share_type == "User":
         frappe.db.sql("""
             UPDATE `tabVault Share`
@@ -198,7 +196,6 @@ def unshare(share_name: str) -> dict:
         document_name=doc.shared_name
     )
 
-    frappe.db.commit()
     return {"removed": share_name}
 
 
@@ -239,8 +236,6 @@ def update_share_permission(share_name: str, permission_level: str) -> dict:
         )
         for ov_name in overrides:
             frappe.db.set_value("Vault Share", ov_name, "permission_level", permission_level)
-
-    frappe.db.commit()
 
     # Send notifications for permission update
     item_title = frappe.db.get_value(doc.shared_doctype, doc.shared_name, "title" if doc.shared_doctype == "Vault Secret" else "folder_name") or doc.shared_name
@@ -475,7 +470,6 @@ def save_role_member_permission(
             })
             doc.insert(ignore_permissions=True)
 
-    frappe.db.commit()
     return {"status": "success", "user": user, "permission_level": permission_level, "is_revoked": is_revoked}
 
 
@@ -779,5 +773,4 @@ def bulk_delete_shares(share_names: list) -> dict:
                 frappe.delete_doc("Vault Share", name, ignore_permissions=True)
                 deleted.append(name)
             
-    frappe.db.commit()
     return {"deleted": deleted}

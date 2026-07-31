@@ -39,11 +39,7 @@ const routes = [
     component: () => import('./views/SharedLinkView.vue'),
     meta: { public: true },
   },
-  {
-    path: '/generator',
-    name: 'Generator',
-    component: () => import('./views/PasswordGeneratorView.vue'),
-  },
+
   {
     path: '/audit',
     name: 'AuditLog',

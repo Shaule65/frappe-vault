@@ -20,7 +20,7 @@ def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
         if val:
             return val
     except Exception:
-        pass
+        frappe.log_error(title=f"Vault Secret Decryption Warning ({name}.{fieldname})")
 
     # Direct Auth table fallback for unauthenticated guest link consumers
     try:
@@ -33,7 +33,7 @@ def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
             from frappe.utils.password import decrypt
             return decrypt(auth_val)
     except Exception:
-        pass
+        frappe.log_error(title=f"Vault Auth Fallback Decryption Warning ({name}.{fieldname})")
 
     return ""
 

@@ -51,6 +51,6 @@ class VaultSecret(Document):
                 },
                 update_modified=False,
             )
-        except Exception as e:
-            # Log the error but never let statistics tracking block secret retrieval
-            frappe.log_error(f"Failed to update access metadata for {self.name}: {e}", "Vault Access Metadata Error")
+        except Exception:
+            # Log the error with full traceback but never let statistics tracking block secret retrieval
+            frappe.log_error(title=f"Vault Access Metadata Error ({self.name})")
