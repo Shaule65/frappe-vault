@@ -38,7 +38,7 @@
         <FeatherIcon name="shield" class="w-4 h-4 text-ink-gray-5" />
       </div>
       <div class="flex items-center gap-4 flex-1">
-        <div class="relative w-16 h-16 shrink-0 flex items-center justify-center">
+        <div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
           <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="42" class="stroke-outline-gray-1" stroke-width="8" fill="none" />
             <circle
