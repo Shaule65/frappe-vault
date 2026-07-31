@@ -251,7 +251,7 @@ async function handleShare() {
           shared_name: props.sharedName,
           shared_doctype: props.sharedDoctype,
           share_type: 'Role',
-          role: role,
+          frappe_role: role,
           permission_level: newSharePermission.value,
           expires_on: newShareExpiresOn.value || undefined,
         })

@@ -5,9 +5,10 @@ from frappe import _
 
 
 @frappe.whitelist()
-def share(shared_name, shared_doctype="Vault Secret", share_type="User", user=None, frappe_role=None, permission_level="View Only", expires_on=None):
+def share(shared_name, shared_doctype="Vault Secret", share_type="User", user=None, frappe_role=None, role=None, permission_level="View Only", expires_on=None):
+    target_role = frappe_role or role
     from frappe_vault.services.sharing_service import share_secret
-    return share_secret(shared_name=shared_name, shared_doctype=shared_doctype, share_type=share_type, user=user, frappe_role=frappe_role, permission_level=permission_level, expires_on=expires_on)
+    return share_secret(shared_name=shared_name, shared_doctype=shared_doctype, share_type=share_type, user=user, frappe_role=target_role, permission_level=permission_level, expires_on=expires_on)
 
 
 @frappe.whitelist()
