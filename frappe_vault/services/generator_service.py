@@ -1,8 +1,8 @@
 """Generator service — password generation and strength analysis."""
 
+import math
 import secrets
 import string
-import math
 
 
 def generate_password(

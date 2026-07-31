@@ -22,11 +22,11 @@ def export_secrets(format: str = "json", category: str = None) -> dict:
         dict with file content
     """
     user = frappe.session.user
-    
+
     filters = {"owner": user}
     if category:
         filters["category"] = category
-    
+
     secrets = frappe.get_all(
         "Vault Secret",
         filters=filters,
@@ -35,7 +35,7 @@ def export_secrets(format: str = "json", category: str = None) -> dict:
             "api_key", "notes", "is_bookmark"
         ]
     )
-    
+
     if format == "csv":
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=[
@@ -51,7 +51,7 @@ def export_secrets(format: str = "json", category: str = None) -> dict:
         content = json.dumps(secrets, indent=2)
         filename = "vault_export.json"
         mimetype = "application/json"
-    
+
     return {
         "content": content,
         "filename": filename,
@@ -70,28 +70,26 @@ def import_secrets(data: str, format: str = "json") -> dict:
     Returns:
         dict with import results
     """
-    user = frappe.session.user
-    
     if not frappe.has_permission("Vault Secret", "create"):
         frappe.throw(_("You don't have permission to create secrets"))
-    
+
     imported = 0
     errors = []
-    
+
     try:
         if format == "csv":
             reader = csv.DictReader(io.StringIO(data))
             records = list(reader)
         else:
             records = json.loads(data)
-        
+
         for idx, record in enumerate(records, 1):
             try:
                 # Validate required fields
                 if not record.get("title"):
                     errors.append(f"Row {idx}: Missing title")
                     continue
-                
+
                 doc = frappe.get_doc({
                     "doctype": "Vault Secret",
                     "title": record.get("title"),
@@ -105,13 +103,13 @@ def import_secrets(data: str, format: str = "json") -> dict:
                 })
                 doc.insert()
                 imported += 1
-                
+
             except Exception as e:
                 errors.append(f"Row {idx}: {str(e)}")
-        
+
     except Exception as e:
         frappe.throw(_("Failed to parse import data: {0}").format(str(e)))
-    
+
     return {
         "imported": imported,
         "errors": errors,
@@ -132,7 +130,7 @@ def get_export_template() -> dict:
         "password", "api_key", "api_secret", "notes", "is_bookmark"
     ])
     writer.writeheader()
-    
+
     # Add example row
     writer.writerow({
         "title": "Example Website",
@@ -146,7 +144,7 @@ def get_export_template() -> dict:
         "notes": "Optional notes",
         "is_bookmark": "0"
     })
-    
+
     return {
         "content": output.getvalue(),
         "filename": "vault_import_template.csv",

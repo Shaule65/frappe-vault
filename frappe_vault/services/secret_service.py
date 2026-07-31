@@ -2,8 +2,9 @@
 
 import frappe
 from frappe import _
-from frappe_vault.utils.constants import LIST_VIEW_FIELDS, SENSITIVE_FIELDS
-from frappe_vault.services.audit_service import log_secret_viewed, log_secret_copied
+
+from frappe_vault.services.audit_service import log_secret_viewed
+from frappe_vault.utils.constants import LIST_VIEW_FIELDS
 
 
 def get_secrets(
@@ -143,18 +144,18 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         conditions.append("(" + " OR ".join(target_conds) + ")")
 
         share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
-        
+
         if roles:
             roles_str = ", ".join([frappe.db.escape(r) for r in roles])
             share_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
-            
+
         conditions.append("(" + " OR ".join(share_conds) + ")")
-        
+
         shares = frappe.db.sql(f"""
             SELECT permission_level, shared_by, share_type, shared_doctype, is_role_override FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}
         """, as_dict=True)
-        
+
         if shares:
             perm_map = {
                 "View Only": 1,

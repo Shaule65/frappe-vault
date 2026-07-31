@@ -1,7 +1,6 @@
 """Vault Notification API — Whitelisted endpoints for notification management."""
 
 import frappe
-from frappe import _
 
 
 @frappe.whitelist()
@@ -32,7 +31,7 @@ def get_notifications(limit=30):
     for log in logs:
         sender_id = log.get("from_user") or "System"
         sender_name = user_names.get(sender_id, sender_id)
-        
+
         # Route mapping
         doc_type = log.get("document_type")
         doc_name = log.get("document_name")

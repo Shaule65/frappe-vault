@@ -1,10 +1,11 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
+
 from frappe_vault.services.notification_service import (
-    send_vault_notification,
     get_user_notifications,
-    mark_notification_as_read,
     mark_all_notifications_as_read,
+    mark_notification_as_read,
+    send_vault_notification,
 )
 from frappe_vault.services.secret_service import create_secret
 from frappe_vault.services.sharing_service import share_secret, unshare
@@ -75,6 +76,6 @@ class TestNotifications(FrappeTestCase):
 
         unshare_res = unshare(share_res["name"])
         self.assertEqual(unshare_res.get("removed"), share_res["name"])
-        
+
         revocation_notifs = frappe.get_all("Notification Log", filters={"for_user": "test_user_vault@example.com", "type": "Alert"})
         self.assertTrue(len(revocation_notifs) > 0)

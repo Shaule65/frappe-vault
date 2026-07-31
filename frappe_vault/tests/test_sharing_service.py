@@ -1,7 +1,15 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
+
 from frappe_vault.services.secret_service import create_secret
-from frappe_vault.services.sharing_service import share_secret, get_shares_for_secret, unshare, update_share_permission, get_role_users
+from frappe_vault.services.sharing_service import (
+    get_role_users,
+    get_shares_for_secret,
+    share_secret,
+    unshare,
+    update_share_permission,
+)
+
 
 class TestSharingService(FrappeTestCase):
     def setUp(self):
@@ -20,7 +28,7 @@ class TestSharingService(FrappeTestCase):
             "secret_type": "Password",
             "password": "pass"
         })
-        
+
         # Share secret with Role
         share_res = share_secret(
             shared_name=secret.get("name"),
@@ -30,7 +38,7 @@ class TestSharingService(FrappeTestCase):
             permission_level="View Only"
         )
         self.assertTrue(share_res.get("name"))
-        
+
         # Get shares for secret
         shares = get_shares_for_secret(secret.get("name"))
         self.assertEqual(len(shares), 1)
@@ -41,7 +49,7 @@ class TestSharingService(FrappeTestCase):
         # Update permission level
         update_res = update_share_permission(shares[0].get("name"), "Edit")
         self.assertEqual(update_res.get("permission_level"), "Edit")
-        
+
         # Unshare/Revoke
         unshare_res = unshare(shares[0].get("name"))
         self.assertEqual(unshare_res.get("removed"), shares[0].get("name"))
@@ -49,7 +57,7 @@ class TestSharingService(FrappeTestCase):
     def test_get_role_users(self):
         users = get_role_users("System Manager")
         self.assertIsInstance(users, list)
-        
+
         # Test with shared_by and user_list parameters
         filtered_users = get_role_users("System Manager", shared_by=frappe.session.user, user_list=["Administrator"])
         self.assertIsInstance(filtered_users, list)

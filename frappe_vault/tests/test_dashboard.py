@@ -1,6 +1,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
+
 from frappe_vault.api.dashboard import get_vault_dashboard
 from frappe_vault.services.secret_service import create_secret
 

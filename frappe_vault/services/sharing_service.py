@@ -1,9 +1,9 @@
 """Sharing service — share/unshare secrets and folders with users, roles."""
 
+
 import frappe
 from frappe import _
-from frappe.utils import now_datetime, add_to_date
-import secrets as secrets_module
+from frappe.utils import add_to_date, now_datetime
 
 
 def share_secret(
@@ -86,7 +86,7 @@ def share_secret(
     doc.insert()
 
     # Send notifications
-    from frappe_vault.services.notification_service import send_vault_notification, notify_vault_admins
+    from frappe_vault.services.notification_service import notify_vault_admins, send_vault_notification
     item_title = frappe.db.get_value(shared_doctype, shared_name, "title" if shared_doctype == "Vault Secret" else "folder_name") or shared_name
     sharer_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
 
@@ -166,7 +166,7 @@ def unshare(share_name: str) -> dict:
             SET `is_revoked` = 1, `revoked_by` = %s
             WHERE `shared_doctype` = %s AND `shared_name` = %s AND `share_type` = 'User' AND `shared_by` = %s
         """, (frappe.session.user, doc.shared_doctype, doc.shared_name, doc.shared_by))
-    
+
     # Log the activity
     from frappe_vault.services.audit_service import log_share_removed
     log_share_removed(doc, None)
@@ -511,7 +511,7 @@ def get_shares_for_secret(secret_name: str) -> list:
             else:
                 user_groups[key]["active_shares"].append(s)
 
-    for key, g in user_groups.items():
+    for _key, g in user_groups.items():
         active = g["active_shares"]
         revoked = g["revoked_shares"]
 
@@ -726,19 +726,19 @@ def bulk_delete_shares(share_names: list) -> dict:
         if not frappe.db.exists("Vault Share", name):
             continue
         doc = frappe.get_doc("Vault Share", name)
-        
+
         # Check permissions:
         # Admin can delete anything.
         # Standard user can delete if they are the sharer (shared_by) OR the recipient (user/group member/role)
         can_delete = is_admin or doc.shared_by == user
-        
+
         if not can_delete:
             if doc.share_type == "User" and doc.user == user:
                 can_delete = True
             elif doc.share_type == "Role":
                 if doc.frappe_role in roles:
                     can_delete = True
-                    
+
         if can_delete:
             if doc.share_type == "Role" and doc.frappe_role:
                 matching_shares = frappe.get_all(
@@ -772,5 +772,5 @@ def bulk_delete_shares(share_names: list) -> dict:
             else:
                 frappe.delete_doc("Vault Share", name, ignore_permissions=True)
                 deleted.append(name)
-            
+
     return {"deleted": deleted}

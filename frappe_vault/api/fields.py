@@ -3,8 +3,8 @@
 import frappe
 from frappe import _
 from frappe.model import no_value_fields
-from frappe_vault.utils.constants import SENSITIVE_FIELDS
 
+from frappe_vault.utils.constants import SENSITIVE_FIELDS
 
 ALLOWED_FILTER_FIELDTYPES = [
     "Check",

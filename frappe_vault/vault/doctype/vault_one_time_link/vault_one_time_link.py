@@ -1,10 +1,10 @@
 """Vault One Time Link DocType controller."""
 
-import frappe
-from frappe import _
-from frappe.model.document import Document
-from frappe.utils import now_datetime, get_datetime, get_url
 import secrets
+
+import frappe
+from frappe.model.document import Document
+from frappe.utils import get_datetime, get_url, now_datetime
 
 
 def get_clean_url() -> str:

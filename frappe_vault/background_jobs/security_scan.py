@@ -1,6 +1,7 @@
 """Weekly security scan."""
 
 import frappe
+
 from frappe_vault.services.security_service import calculate_security_score
 
 
