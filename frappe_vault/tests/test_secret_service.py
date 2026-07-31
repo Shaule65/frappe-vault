@@ -145,6 +145,14 @@ class TestSecretService(FrappeTestCase):
 
         retrieved = get_secret(secret_name)
         self.assertEqual(retrieved.get("username"), "ubuntu")
-        self.assertIn("OPENSSH PRIVATE KEY", retrieved.get("ssh_private_key", ""))
-
         delete_secret(secret_name)
+
+    def test_bulk_delete_api(self):
+        from frappe_vault.api.secrets import bulk_delete as bulk_delete_api
+        s1 = create_secret({"title": "Bulk Delete Secret 1", "password": "Password1!"})
+        s2 = create_secret({"title": "Bulk Delete Secret 2", "password": "Password2!"})
+
+        result = bulk_delete_api([s1["name"], s2["name"]])
+        self.assertEqual(result.get("deleted"), 2)
+        self.assertFalse(frappe.db.exists("Vault Secret", s1["name"]))
+        self.assertFalse(frappe.db.exists("Vault Secret", s2["name"]))

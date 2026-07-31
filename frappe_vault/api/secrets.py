@@ -1,5 +1,4 @@
-"""Secrets API — CRUD and search endpoints for Vault Secrets."""
-
+import builtins
 import frappe
 from frappe import _
 
@@ -45,7 +44,7 @@ def bulk_delete(secret_names):
     from frappe_vault.services.secret_service import bulk_delete as _delete
     if isinstance(secret_names, str):
         secret_names = frappe.parse_json(secret_names)
-    if not isinstance(secret_names, list):
+    if not isinstance(secret_names, builtins.list):
         frappe.throw(_("Invalid secret names list"), frappe.ValidationError)
     return _delete([s for s in secret_names if isinstance(s, str)])
 
@@ -63,7 +62,7 @@ def bulk_move(secret_names, target_folder):
     from frappe_vault.services.secret_service import bulk_move as _move
     if isinstance(secret_names, str):
         secret_names = frappe.parse_json(secret_names)
-    if not isinstance(secret_names, list) or not isinstance(target_folder, str):
+    if not isinstance(secret_names, builtins.list) or not isinstance(target_folder, str):
         frappe.throw(_("Invalid input parameters"), frappe.ValidationError)
     return _move([s for s in secret_names if isinstance(s, str)], target_folder)
 
