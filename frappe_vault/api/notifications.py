@@ -1,7 +1,6 @@
 """Vault Notification API — Whitelisted endpoints for notification management."""
 
 import frappe
-from frappe import _
 
 
 @frappe.whitelist()
@@ -32,7 +31,7 @@ def get_notifications(limit=30):
     for log in logs:
         sender_id = log.get("from_user") or "System"
         sender_name = user_names.get(sender_id, sender_id)
-        
+
         # Route mapping
         doc_type = log.get("document_type")
         doc_name = log.get("document_name")
@@ -73,13 +72,11 @@ def mark_as_read(docname=None, mark_all=False):
         unread_docs = frappe.get_all("Notification Log", filters={"for_user": user, "read": 0}, pluck="name")
         if unread_docs:
             frappe.db.set_value("Notification Log", {"name": ["in", unread_docs]}, "read", 1, update_modified=False)
-            frappe.db.commit()
         return {"status": "success", "marked_count": len(unread_docs)}
 
-    if docname:
+    if docname and isinstance(docname, str):
         if frappe.db.exists("Notification Log", docname):
             frappe.db.set_value("Notification Log", docname, "read", 1)
-            frappe.db.commit()
             return {"status": "success", "name": docname}
 
     return {"status": "ignored"}
@@ -98,11 +95,10 @@ def mark_all_read():
 @frappe.whitelist()
 def delete_notification(docname=None):
     user = frappe.session.user
-    if docname and frappe.db.exists("Notification Log", docname):
+    if docname and isinstance(docname, str) and frappe.db.exists("Notification Log", docname):
         doc = frappe.get_doc("Notification Log", docname)
         if doc.for_user == user or "System Manager" in frappe.get_roles():
             frappe.delete_doc("Notification Log", docname, ignore_permissions=True)
-            frappe.db.commit()
             return {"status": "success", "deleted": docname}
     return {"status": "ignored"}
 
@@ -113,5 +109,5 @@ def clear_all_notifications():
     user_docs = frappe.get_all("Notification Log", filters={"for_user": user}, pluck="name")
     for dname in user_docs:
         frappe.delete_doc("Notification Log", dname, ignore_permissions=True)
-    frappe.db.commit()
     return {"status": "success", "cleared_count": len(user_docs)}
+

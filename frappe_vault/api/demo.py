@@ -1,6 +1,7 @@
 """Demo Data API Controller — whitelisted endpoints delegating to domain service."""
 
 import frappe
+
 from frappe_vault.services import demo_service
 
 

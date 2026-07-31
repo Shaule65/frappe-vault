@@ -1,9 +1,11 @@
 """Demo data service handling generation, verification, and cleanup domain logic."""
 
 import json
+
 import frappe
 from frappe import _
-from frappe_vault.services.demo_data_catalog import DEMO_FOLDERS, DEMO_FOLDER_SHARES, DEMO_SECRETS
+
+from frappe_vault.services.demo_data_catalog import DEMO_FOLDER_SHARES, DEMO_FOLDERS, DEMO_SECRETS
 
 
 def check_has_demo_data() -> bool:

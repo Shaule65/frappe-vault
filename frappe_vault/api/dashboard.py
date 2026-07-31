@@ -1,6 +1,7 @@
 """Vault Dashboard API — Whitelisted endpoints for dashboard layout and charts."""
 
 import json
+
 import frappe
 from frappe import _
 

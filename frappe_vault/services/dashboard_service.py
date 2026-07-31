@@ -1,9 +1,10 @@
 """Vault Dashboard Service — dashboard metrics and charts for Frappe Vault."""
 
 import json
+
 import frappe
 from frappe import _
-from frappe.utils import add_days, getdate, nowdate, date_diff
+from frappe.utils import add_days, date_diff, getdate, nowdate
 
 
 def get_default_layout():

@@ -1,7 +1,8 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
+
 from frappe_vault.services.secret_service import create_secret, delete_secret
-from frappe_vault.services.sharing_service import create_one_time_link, consume_one_time_link
+from frappe_vault.services.sharing_service import consume_one_time_link, create_one_time_link
 
 
 class TestOneTimeLink(FrappeTestCase):

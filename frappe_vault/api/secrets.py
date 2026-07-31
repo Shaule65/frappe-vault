@@ -12,6 +12,8 @@ def list(search=None, title=None, username=None, secret_type=None, folder=None, 
 
 @frappe.whitelist()
 def get(name, decrypt=False):
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import get_secret
     return get_secret(name, decrypt=frappe.utils.cint(decrypt))
 
@@ -24,12 +26,16 @@ def create(**kwargs):
 
 @frappe.whitelist()
 def update(name, **kwargs):
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import update_secret
     return update_secret(name, kwargs)
 
 
 @frappe.whitelist()
 def delete(name):
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import delete_secret
     return delete_secret(name)
 
@@ -39,11 +45,15 @@ def bulk_delete(secret_names):
     from frappe_vault.services.secret_service import bulk_delete as _delete
     if isinstance(secret_names, str):
         secret_names = frappe.parse_json(secret_names)
-    return _delete(secret_names)
+    if not isinstance(secret_names, list):
+        frappe.throw(_("Invalid secret names list"), frappe.ValidationError)
+    return _delete([s for s in secret_names if isinstance(s, str)])
 
 
 @frappe.whitelist()
 def toggle_bookmark(name):
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import toggle_bookmark as _toggle
     return _toggle(name)
 
@@ -53,7 +63,9 @@ def bulk_move(secret_names, target_folder):
     from frappe_vault.services.secret_service import bulk_move as _move
     if isinstance(secret_names, str):
         secret_names = frappe.parse_json(secret_names)
-    return _move(secret_names, target_folder)
+    if not isinstance(secret_names, list) or not isinstance(target_folder, str):
+        frappe.throw(_("Invalid input parameters"), frappe.ValidationError)
+    return _move([s for s in secret_names if isinstance(s, str)], target_folder)
 
 
 @frappe.whitelist()
@@ -65,5 +77,8 @@ def stats():
 @frappe.whitelist()
 def decrypt(name):
     """Decrypt a secret's sensitive fields."""
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import get_secret
     return get_secret(name, decrypt=True)
+

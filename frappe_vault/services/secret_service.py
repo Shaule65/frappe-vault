@@ -2,8 +2,9 @@
 
 import frappe
 from frappe import _
-from frappe_vault.utils.constants import LIST_VIEW_FIELDS, SENSITIVE_FIELDS
-from frappe_vault.services.audit_service import log_secret_viewed, log_secret_copied
+
+from frappe_vault.services.audit_service import log_secret_viewed
+from frappe_vault.utils.constants import LIST_VIEW_FIELDS
 
 
 def get_secrets(
@@ -143,18 +144,18 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         conditions.append("(" + " OR ".join(target_conds) + ")")
 
         share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
-        
+
         if roles:
             roles_str = ", ".join([frappe.db.escape(r) for r in roles])
             share_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
-            
+
         conditions.append("(" + " OR ".join(share_conds) + ")")
-        
+
         shares = frappe.db.sql(f"""
             SELECT permission_level, shared_by, share_type, shared_doctype, is_role_override FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}
         """, as_dict=True)
-        
+
         if shares:
             perm_map = {
                 "View Only": 1,
@@ -378,13 +379,16 @@ def toggle_bookmark(name: str) -> dict:
         frappe.delete_doc("Vault Bookmark", fav_exists, force=True, ignore_permissions=True)
         is_bookmark = 0
     else:
-        fav_doc = frappe.get_doc({
-            "doctype": "Vault Bookmark",
-            "user": user,
-            "secret": name
-        })
-        fav_doc.insert(ignore_permissions=True)
-        is_bookmark = 1
+        try:
+            fav_doc = frappe.get_doc({
+                "doctype": "Vault Bookmark",
+                "user": user,
+                "secret": name
+            })
+            fav_doc.insert(ignore_permissions=True)
+            is_bookmark = 1
+        except frappe.DuplicateEntryError:
+            is_bookmark = 1
 
     return {"name": name, "is_bookmark": is_bookmark}
 
@@ -396,7 +400,6 @@ def bulk_move(secret_names: list, target_folder: str) -> dict:
         if frappe.has_permission("Vault Secret", "write", name):
             frappe.db.set_value("Vault Secret", name, "folder", target_folder)
             moved += 1
-    frappe.db.commit()
     return {"moved": moved}
 
 
@@ -406,20 +409,16 @@ def get_vault_stats() -> dict:
     user_roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
 
-    secrets = frappe.get_list(
-        "Vault Secret",
-        fields=["name", "password_strength", "secret_type"]
-    )
+    total = frappe.db.count("Vault Secret")
+    bookmarks = frappe.db.count("Vault Bookmark", filters={"user": user})
+    weak = frappe.db.count("Vault Secret", filters={"password_strength": ["in", ["weak", "fair"]]})
 
-    total = len(secrets)
-    user_bookmarks = set(frappe.get_all("Vault Bookmark", filters={"user": user}, pluck="secret"))
-    bookmarks = sum(1 for s in secrets if s.get("name") in user_bookmarks)
-    weak = sum(1 for s in secrets if s.get("password_strength") in ["weak", "fair"])
-
-    secrets_by_type = {}
-    for s in secrets:
-        stype = s.get("secret_type") or "Other"
-        secrets_by_type[stype] = secrets_by_type.get(stype, 0) + 1
+    type_counts = frappe.db.sql("""
+        SELECT secret_type, COUNT(name) as count
+        FROM `tabVault Secret`
+        GROUP BY secret_type
+    """, as_dict=True)
+    secrets_by_type = {row["secret_type"] or "Other": row["count"] for row in type_counts}
 
     recent = frappe.get_list(
         "Vault Secret",
@@ -439,3 +438,4 @@ def get_vault_stats() -> dict:
         "is_admin": is_admin,
         "has_demo_data": check_has_demo_data(),
     }
+

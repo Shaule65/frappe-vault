@@ -1,7 +1,14 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
-from frappe_vault.services.secret_service import create_secret, get_secret, update_secret, delete_secret, toggle_bookmark
-from frappe_vault.services.generator_service import generate_password, calculate_password_strength
+
+from frappe_vault.services.generator_service import calculate_password_strength, generate_password
+from frappe_vault.services.secret_service import (
+    create_secret,
+    delete_secret,
+    get_secret,
+    toggle_bookmark,
+    update_secret,
+)
 
 
 class TestSecretService(FrappeTestCase):
@@ -22,16 +29,16 @@ class TestSecretService(FrappeTestCase):
             "password": "SuperSecretPassword123!",
             "url": "https://example.com"
         }
-        
+
         # Test creation
         new_secret = create_secret(secret_data)
         self.assertTrue(new_secret)
         self.assertEqual(new_secret.get("title"), "Test Service Secret")
-        
+
         # Test retrieval (without decrypting password)
         retrieved = get_secret(new_secret.get("name"))
         self.assertEqual(retrieved.get("title"), "Test Service Secret")
-        
+
         # Test decryption retrieval
         decrypted = get_secret(new_secret.get("name"), decrypt=True)
         self.assertEqual(decrypted.get("decrypted", {}).get("password"), "SuperSecretPassword123!")
@@ -62,13 +69,13 @@ class TestSecretService(FrappeTestCase):
             "secret_type": "Note",
             "notes": "Some test notes"
         }
-        
+
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
-        
+
         # Delete it
         delete_secret(secret_name)
-        
+
         # Ensure it's deleted or trashed
         exists = frappe.db.exists("Vault Secret", secret_name)
         self.assertFalse(exists)
@@ -81,21 +88,21 @@ class TestSecretService(FrappeTestCase):
         }
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
-        
+
         user = frappe.session.user
         fav_exists = frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name})
         self.assertFalse(fav_exists)
-        
+
         # Toggle on
         res = toggle_bookmark(secret_name)
         self.assertEqual(res.get("is_bookmark"), 1)
         self.assertTrue(frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name}))
-        
+
         # Toggle off
         res = toggle_bookmark(secret_name)
         self.assertEqual(res.get("is_bookmark"), 0)
         self.assertFalse(frappe.db.exists("Vault Bookmark", {"user": user, "secret": secret_name}))
-        
+
         delete_secret(secret_name)
 
     def test_generate_password_and_strength(self):

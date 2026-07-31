@@ -176,12 +176,7 @@ export function useConsumeOneTimeLink() {
   })
 }
 
-// --- Generator ---
-export function useGeneratePassword() {
-  return createResource({
-    url: 'frappe_vault.api.generator.generate',
-  })
-}
+
 
 export function useCheckStrength() {
   return createResource({

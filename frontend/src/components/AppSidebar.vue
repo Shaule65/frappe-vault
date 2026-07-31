@@ -35,25 +35,30 @@
             </SidebarItem>
           </nav>
 
-        <!-- Folders Section -->
-        <div class="mt-4 flex flex-col gap-0.5">
-          <div class="flex items-center justify-between px-2 pt-3 pb-1 mb-1 select-none">
-            <span
-              v-if="!isSidebarCollapsed"
-              class="text-xs font-semibold text-ink-gray-4 tracking-wider uppercase transition-opacity duration-200 truncate vault-sidebar-section-label"
+          <!-- Section Divider -->
+          <div class="my-2 mx-1 border-t border-outline-gray-1 opacity-60" />
+
+          <!-- Folders Section -->
+          <div class="flex flex-col gap-0.5">
+            <div
+              class="flex items-center select-none px-2 py-1 mb-0.5"
+              :class="isSidebarCollapsed ? 'justify-center' : 'justify-between'"
             >
-              Folders
-            </span>
-            <Tooltip text="Create Folder" placement="right">
-              <Button
-                variant="ghost"
-                icon="plus"
-                class="w-6 h-6 !p-1 text-ink-gray-6 hover:text-ink-gray-8 hover:bg-surface-gray-3 shrink-0"
-                :class="{ 'mx-auto': isSidebarCollapsed }"
-                @click.prevent.stop="openCreateFolderDialog"
-              />
-            </Tooltip>
-          </div>
+              <span
+                v-if="!isSidebarCollapsed"
+                class="text-xs font-semibold text-ink-gray-4 tracking-wider uppercase truncate vault-sidebar-section-label"
+              >
+                Folders
+              </span>
+              <Tooltip text="New Folder" placement="right">
+                <Button
+                  variant="ghost"
+                  icon="plus"
+                  class="size-7 !p-1 text-ink-gray-6 hover:text-ink-gray-9 hover:bg-surface-gray-3 shrink-0 rounded-lg transition-colors"
+                  @click.prevent.stop="openCreateFolderDialog"
+                />
+              </Tooltip>
+            </div>
 
           <SidebarItem
             v-for="folder in folders"
@@ -93,21 +98,23 @@
         <SidebarItem
           v-if="stats.data?.has_demo_data"
           label="Clear Demo Data"
+          :icon="{ render: () => h(BrushCleaningIcon, { class: 'size-4 text-ink-red-5 shrink-0' }) }"
           class="hover:bg-surface-red-2 text-ink-red-6 transition-colors cursor-pointer font-medium"
           @click="showClearDemoConfirm = true"
         >
           <template #icon>
-            <BrushCleaningIcon class="size-4 text-ink-red-3 shrink-0" />
+            <BrushCleaningIcon class="size-4 text-ink-red-5 shrink-0" />
           </template>
         </SidebarItem>
         <SidebarItem
           v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
           label="Load Demo Data"
+          :icon="{ render: () => h(SparklesIcon, { class: 'size-4 text-ink-blue-5 shrink-0' }) }"
           class="hover:bg-surface-blue-2 text-ink-blue-3 transition-colors cursor-pointer font-medium"
           @click="handleGenerateDemo"
         >
           <template #icon>
-            <SparklesIcon class="size-4 text-ink-blue-3 shrink-0" />
+            <SparklesIcon class="size-4 text-ink-blue-5 shrink-0" />
           </template>
         </SidebarItem>
         <SidebarCollapseToggle v-if="!isMobile" />
@@ -263,29 +270,27 @@
         :options="{ title: 'Delete Folder', size: 'sm' }"
       >
         <template #body-content>
-          <div class="space-y-2">
+          <div class="space-y-3">
             <p class="text-sm text-ink-gray-7" v-if="loadingCount">Analyzing folder secrets...</p>
             <template v-else>
               <div class="space-y-3" v-if="deleteSecretsCount > 0">
-                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-start gap-2.5">
-                  <FeatherIcon name="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
-                  <div class="text-sm">
-                    <p class="font-semibold text-red-800">Warning: Contains Secrets</p>
-                    <p class="mt-1 leading-relaxed text-red-700">
-                      This folder contains <span class="font-bold">{{ deleteSecretsCount }}</span> {{ deleteSecretsCount === 1 ? 'secret' : 'secrets' }}. Deleting this folder will <span class="font-bold">permanently delete the folder and all secrets stored inside it</span>!
-                    </p>
-                  </div>
-                </div>
-                <p class="text-sm text-ink-gray-7 pl-1">
-                  Are you sure you want to proceed with deleting the folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
+                <p class="text-sm text-ink-gray-7 leading-relaxed">
+                  Folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span> contains <span class="font-bold text-ink-gray-9">{{ deleteSecretsCount }}</span> {{ deleteSecretsCount === 1 ? 'secret' : 'secrets' }}.
                 </p>
+                <div class="pt-0.5">
+                  <Checkbox
+                    v-model="deleteSecretsCheck"
+                    label="Also delete secrets inside this folder"
+                    description="If unchecked, secrets will be moved to All Secrets."
+                  />
+                </div>
               </div>
               <div class="space-y-2" v-else>
-                <p class="text-sm text-ink-gray-7">
-                  Are you sure you want to delete the empty folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
+                <p class="text-sm text-ink-gray-7 leading-relaxed">
+                  Are you sure you want to delete folder <span class="font-semibold text-ink-gray-9">"{{ folderToDelete?.folder_name }}"</span>?
                 </p>
               </div>
-              <div v-if="deleteFolderError" class="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-200 mt-2 font-medium leading-relaxed">
+              <div v-if="deleteFolderError" class="text-sm text-red-700 dark:text-red-300 bg-surface-red-1/40 p-2.5 rounded-lg border border-outline-red-1 font-medium leading-relaxed">
                 {{ deleteFolderError }}
               </div>
             </template>
@@ -296,8 +301,8 @@
             <Button variant="ghost" label="Cancel" @click="showDeleteFolderDialog = false" />
             <Button
               variant="solid"
-              theme="red"
-              label="Delete"
+              :theme="deleteSecretsCount > 0 && deleteSecretsCheck ? 'red' : 'gray'"
+              :label="deleteSecretsCount > 0 && deleteSecretsCheck ? 'Delete Folder & Secrets' : 'Delete Folder'"
               :loading="deleteFolderResource.loading"
               :disabled="loadingCount"
               @click="handleDeleteFolder"
@@ -311,7 +316,7 @@
 <script setup>
 import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
+import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Checkbox, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
 import { IconPicker, Icon } from 'frappe-ui/icons'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData, mobileSidebarOpened, isSidebarCollapsed } from '../composables/vault'
 import {
@@ -385,6 +390,7 @@ const editFolderIcon = ref('')
 const showDeleteFolderDialog = ref(false)
 const folderToDelete = ref(null)
 const deleteSecretsCount = ref(0)
+const deleteSecretsCheck = ref(false)
 const loadingCount = ref(false)
 const deleteFolderError = ref('')
 
@@ -450,6 +456,7 @@ function getFolderOptions(folder) {
 function openDeleteFolderDialog(folder) {
   folderToDelete.value = folder
   deleteSecretsCount.value = 0
+  deleteSecretsCheck.value = false
   loadingCount.value = true
   deleteFolderError.value = ''
   showDeleteFolderDialog.value = true
@@ -483,6 +490,7 @@ async function handleDeleteFolder() {
   try {
     await deleteFolderResource.submit({
       name: folderToDelete.value.name,
+      delete_secrets: deleteSecretsCount.value > 0 && deleteSecretsCheck.value ? 1 : 0,
     })
 
     if (route.query.folder === folderToDelete.value.name || route.name === 'SecretDetail') {
