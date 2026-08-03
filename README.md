@@ -17,6 +17,15 @@ Secrets and password management application. Securely store, share, and manage s
 - **Dashboard**: Visual overview with statistics and charts
 - **REST API**: Full API access for browser extensions and integrations
 
+## Compatibility
+
+This app is compatible with Frappe Framework:
+
+| Vault Branch | Stability | Frappe Branch |
+|---|---|---|
+| `main` - `v1.x` | **Stable** | `v15.x` & `v16.x` |
+| `develop` - `future/v2.x` | **Unstable** | `develop` |
+
 ## Installation
 
 ### Prerequisites
