@@ -7,7 +7,7 @@ from frappe import _
 from frappe.utils import add_days, date_diff, getdate, nowdate
 
 
-def get_default_layout():
+def get_default_layout() -> list[dict]:
     """Return standard default layout for Vault Dashboard."""
     return [
         {
@@ -48,7 +48,9 @@ def get_default_layout():
     ]
 
 
-def get_dashboard_layout(from_date: str = None, to_date: str = None, user: str = None) -> list:
+def get_dashboard_layout(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> list:
     """Get dashboard layout populated with real-time chart & number metric data."""
     if not from_date or not to_date:
         today_str = nowdate()
@@ -87,7 +89,9 @@ def get_dashboard_layout(from_date: str = None, to_date: str = None, user: str =
     return layout
 
 
-def get_total_secrets(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_total_secrets(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """NumberChart config for Total Secrets created."""
     diff = max(1, date_diff(to_date, from_date) + 1)
     prev_from_date = str(add_days(from_date, -diff))
@@ -118,7 +122,7 @@ def get_total_secrets(from_date: str = None, to_date: str = None, user: str = No
     }
 
 
-def get_bookmarks(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_bookmarks(from_date: str | None = None, to_date: str | None = None, user: str | None = None) -> dict:
     """NumberChart config for User Bookmarks."""
     target_user = user or frappe.session.user
     count = frappe.db.count("Vault Bookmark", filters={"user": target_user})
@@ -130,7 +134,9 @@ def get_bookmarks(from_date: str = None, to_date: str = None, user: str = None) 
     }
 
 
-def get_active_shares(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_active_shares(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """NumberChart config for Active Shares."""
     diff = max(1, date_diff(to_date, from_date) + 1)
     prev_from_date = str(add_days(from_date, -diff))
@@ -160,7 +166,9 @@ def get_active_shares(from_date: str = None, to_date: str = None, user: str = No
     }
 
 
-def get_revoked_shares(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_revoked_shares(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """NumberChart config for Revoked Shares."""
     filters = {"is_revoked": 1}
     if user:
@@ -175,14 +183,18 @@ def get_revoked_shares(from_date: str = None, to_date: str = None, user: str = N
     }
 
 
-def get_security_score(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_security_score(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """Security Score and Health suggestions."""
     from frappe_vault.services.security_service import calculate_security_score
 
     return calculate_security_score(user=user)
 
 
-def get_recently_accessed(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_recently_accessed(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """Recently accessed secrets list."""
     recent_secrets = frappe.get_list(
         "Vault Secret",
@@ -193,7 +205,9 @@ def get_recently_accessed(from_date: str = None, to_date: str = None, user: str 
     return {"recent_secrets": recent_secrets}
 
 
-def get_vault_trend(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_vault_trend(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """AxisChart config for daily Secrets, Shares, and Revocations performance."""
     start_d = getdate(from_date)
     end_d = getdate(to_date)
@@ -281,7 +295,9 @@ def get_vault_trend(from_date: str = None, to_date: str = None, user: str = None
     }
 
 
-def get_secrets_by_folder(from_date: str = None, to_date: str = None, user: str = None) -> dict:
+def get_secrets_by_folder(
+    from_date: str | None = None, to_date: str | None = None, user: str | None = None
+) -> dict:
     """DonutChart config for Secrets by Folder breakdown."""
     user_clause = f"WHERE owner = {frappe.db.escape(user)}" if user else ""
 
