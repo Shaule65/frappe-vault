@@ -39,7 +39,7 @@
 
         <ScrollArea class="min-h-0 flex-1">
           <div class="space-y-6 px-5 py-6">
-            
+
             <article class="space-y-2">
               <div class="flex items-center justify-between cursor-pointer select-none group" @click="detailsOpen = !detailsOpen">
                 <h3 class="text-xs font-semibold text-ink-gray-5 uppercase tracking-wider group-hover:text-ink-gray-7 transition-colors">Secret Data</h3>
@@ -192,7 +192,7 @@
                         {{ parseAttachments(secretData[field.name]).length }} {{ parseAttachments(secretData[field.name]).length === 1 ? 'file' : 'files' }}
                       </span>
                     </div>
-                    
+
                     <div v-if="parseAttachments(secretData[field.name]).length > 0" class="space-y-2 max-h-96 overflow-y-auto pr-1">
                       <div
                         v-for="(fileUrl, aIdx) in parseAttachments(secretData[field.name])"
@@ -245,7 +245,7 @@
                   <div v-else-if="secretData[field.name] || field.type === 'password'" :class="field.type === 'textarea' ? 'pt-2' : 'flex items-center justify-between py-1 text-sm'">
                     <span v-if="field.type === 'textarea'" class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">{{ field.label }}</span>
                     <span v-else class="w-28 shrink-0 text-ink-gray-5 font-normal">{{ field.label }}</span>
-                    
+
                     <!-- Textarea Content -->
                     <div v-if="field.type === 'textarea'" class="relative bg-surface-gray-2 border border-outline-gray-1 rounded-xl p-3 group shadow-inner">
                       <pre class="text-xs font-mono text-ink-gray-8 overflow-x-auto max-h-36 whitespace-pre select-all leading-normal">{{ secretData[field.name] }}</pre>
@@ -325,12 +325,12 @@
                     <StrengthBadge :strength="secretData.password_strength" size="sm" />
                   </div>
                 </div>
-                
+
                 <div class="flex items-center justify-between py-1 text-sm">
                   <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Last Accessed</span>
                   <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ formatDateOnly(secretData.last_accessed) }}</span>
                 </div>
-                
+
                 <div class="flex items-center justify-between py-1 text-sm">
                   <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Access Count</span>
                   <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ secretData.access_count || 0 }} times</span>
@@ -369,7 +369,7 @@
                 <div v-if="activity.loading" class="space-y-4">
                   <div v-for="i in 3" :key="i" class="h-14 bg-surface-gray-2 border border-outline-gray-1 rounded-xl animate-pulse" />
                 </div>
-                
+
                 <div v-else-if="activityList.length" class="relative space-y-6 before:absolute before:top-2 before:bottom-2 before:left-2.5 before:w-px before:bg-outline-gray-2 py-1">
                   <div v-for="item in activityList" :key="item.name" class="relative flex items-start gap-3.5">
                     <!-- Clean icon without background/border/shadow -->
@@ -385,7 +385,7 @@
                         </div>
                         <span class="ml-auto text-xs text-ink-gray-4 shrink-0 whitespace-nowrap text-right pt-0.5">{{ formatRelativeTime(item.timestamp) }}</span>
                       </div>
-                      
+
                       <!-- Activity Details Card / Bubble -->
                       <div v-if="hasActivityDetails(item)" class="mt-1.5 p-3 rounded-lg bg-surface-gray-2 border border-outline-gray-1 text-sm text-ink-gray-8 leading-relaxed w-full font-normal shadow-2xs">
                         {{ getActivityDetailText(item) }}
@@ -393,7 +393,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <EmptyState v-else icon="activity" title="No activity recorded" />
               </div>
             </div>
@@ -403,7 +403,7 @@
               <div class="space-y-5 w-full">
                 <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3 shrink-0">
                   <h3 class="text-base font-semibold text-ink-gray-9">Sharing Settings</h3>
-                  
+
                   <!-- Share Secret Button (Visible if Owner or Admin) -->
                   <Button
                     v-if="isOwnerOrAdmin"
@@ -942,14 +942,14 @@ const shareOptions = computed(() => shareOptionsResource.data || { users: [], ro
 
 const recipientOptions = computed(() => {
   const owner = secretData.value?.owner
-  let list = newShareType.value === 'User' 
-    ? shareOptions.value.users 
+  let list = newShareType.value === 'User'
+    ? shareOptions.value.users
     : shareOptions.value.roles
-      
+
   if (newShareType.value === 'User' && owner) {
     list = list.filter(item => item.value !== owner)
   }
-  
+
   return [{ label: 'Choose recipient...', value: '' }, ...list]
 })
 
@@ -1293,12 +1293,12 @@ async function toggleField(fieldName, isEdit = false) {
     editRevealedFields.value[fieldName] = !editRevealedFields.value[fieldName]
     return
   }
-  
+
   if (revealedFields.value[fieldName]) {
     revealedFields.value[fieldName] = false
     return
   }
-  
+
   await ensureDecrypted(() => {
     revealedFields.value[fieldName] = true
   })

@@ -38,7 +38,7 @@
         <template v-if="form.secret_type === 'Media'">
           <div class="space-y-2 pt-1">
             <label class="block text-sm font-medium text-ink-gray-7">Document / Media Attachments</label>
-            
+
             <!-- List of Uploaded Files -->
             <div v-if="attachmentList.length > 0" class="space-y-2">
               <div
@@ -189,12 +189,12 @@ const attachmentList = ref([])
 const showSecrets = ref(false)
 const uploadingFiles = ref(false)
 
-watch(show, (v) => { 
+watch(show, (v) => {
   if (v) {
     form.value = defaultForm()
     attachmentList.value = []
     showSecrets.value = false
-  } 
+  }
 })
 
 function removeAttachment(index) {

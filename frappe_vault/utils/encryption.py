@@ -25,12 +25,11 @@ def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
     # Direct Auth table fallback for unauthenticated guest link consumers
     try:
         auth_val = frappe.db.get_value(
-            "__Auth",
-            {"doctype": doctype, "docname": name, "fieldname": fieldname},
-            "password"
+            "__Auth", {"doctype": doctype, "docname": name, "fieldname": fieldname}, "password"
         )
         if auth_val:
             from frappe.utils.password import decrypt
+
             return decrypt(auth_val)
     except Exception:
         frappe.log_error(title=f"Vault Auth Fallback Decryption Warning ({name}.{fieldname})")

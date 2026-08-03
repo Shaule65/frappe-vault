@@ -11,11 +11,7 @@ def cleanup_old_logs() -> dict:
     retention_days = frappe.db.get_single_value("Vault Settings", "log_retention_days") or 365
     threshold = add_days(today(), -int(retention_days))
 
-    logs_to_delete = frappe.get_all(
-        "Vault Audit Log",
-        filters={"timestamp": ("<", threshold)},
-        pluck="name"
-    )
+    logs_to_delete = frappe.get_all("Vault Audit Log", filters={"timestamp": ("<", threshold)}, pluck="name")
 
     count = len(logs_to_delete)
     if count > 0:
@@ -26,5 +22,5 @@ def cleanup_old_logs() -> dict:
         "deleted_count": count,
         "retention_days": retention_days,
         "threshold": str(threshold),
-        "message": _("Purged {0} audit logs older than {1} days.").format(count, retention_days)
+        "message": _("Purged {0} audit logs older than {1} days.").format(count, retention_days),
     }

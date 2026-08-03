@@ -582,7 +582,7 @@ function checkActive(to) {
   if (pathStr.includes('?')) {
     const [path, queryString] = pathStr.split('?')
     if (route.path !== path) return false
-    
+
     const urlParams = new URLSearchParams(queryString)
     for (const [key, value] of urlParams.entries()) {
       if (route.query[key] !== value) return false

@@ -36,10 +36,7 @@ def generate_demo_data() -> dict:
     # 1. Create Demo Folders
     for f in DEMO_FOLDERS:
         if not frappe.db.exists("Vault Folder", f["folder_name"]):
-            doc = frappe.get_doc({
-                "doctype": "Vault Folder",
-                **f
-            }).insert(ignore_permissions=True)
+            doc = frappe.get_doc({"doctype": "Vault Folder", **f}).insert(ignore_permissions=True)
             created_folders.append(doc.name)
         else:
             created_folders.append(f["folder_name"])
@@ -47,16 +44,26 @@ def generate_demo_data() -> dict:
     # Add folder share access
     for fs in DEMO_FOLDER_SHARES:
         f_name = fs["folder_name"]
-        if f_name in created_folders and not frappe.db.exists("Vault Share", {"shared_doctype": "Vault Folder", "shared_name": f_name, "share_type": "Role", "frappe_role": fs["frappe_role"]}):
-            frappe.get_doc({
-                "doctype": "Vault Share",
-                "share_type": "Role",
-                "frappe_role": fs["frappe_role"],
-                "permission_level": fs.get("permission_level", "View Only"),
+        if f_name in created_folders and not frappe.db.exists(
+            "Vault Share",
+            {
                 "shared_doctype": "Vault Folder",
                 "shared_name": f_name,
-                "shared_by": frappe.session.user,
-            }).insert(ignore_permissions=True)
+                "share_type": "Role",
+                "frappe_role": fs["frappe_role"],
+            },
+        ):
+            frappe.get_doc(
+                {
+                    "doctype": "Vault Share",
+                    "share_type": "Role",
+                    "frappe_role": fs["frappe_role"],
+                    "permission_level": fs.get("permission_level", "View Only"),
+                    "shared_doctype": "Vault Folder",
+                    "shared_name": f_name,
+                    "shared_by": frappe.session.user,
+                }
+            ).insert(ignore_permissions=True)
 
     # 2. Create Demo Secrets
     for s_raw in DEMO_SECRETS:
@@ -65,36 +72,40 @@ def generate_demo_data() -> dict:
         share_role = s.pop("share_role", None)
         share_perm = s.pop("share_perm", "View Only")
 
-        doc = frappe.get_doc({
-            "doctype": "Vault Secret",
-            **s
-        }).insert(ignore_permissions=True)
+        doc = frappe.get_doc({"doctype": "Vault Secret", **s}).insert(ignore_permissions=True)
         created_secrets.append(doc.name)
 
         if is_bookmark:
             if not frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name}):
-                frappe.get_doc({
-                    "doctype": "Vault Bookmark",
-                    "user": frappe.session.user,
-                    "secret": doc.name
-                }).insert(ignore_permissions=True)
+                frappe.get_doc(
+                    {"doctype": "Vault Bookmark", "user": frappe.session.user, "secret": doc.name}
+                ).insert(ignore_permissions=True)
 
         if share_role:
-            if not frappe.db.exists("Vault Share", {"shared_doctype": "Vault Secret", "shared_name": doc.name, "share_type": "Role", "frappe_role": share_role}):
-                frappe.get_doc({
-                    "doctype": "Vault Share",
-                    "share_type": "Role",
-                    "frappe_role": share_role,
-                    "permission_level": share_perm,
+            if not frappe.db.exists(
+                "Vault Share",
+                {
                     "shared_doctype": "Vault Secret",
                     "shared_name": doc.name,
-                    "shared_by": frappe.session.user,
-                }).insert(ignore_permissions=True)
+                    "share_type": "Role",
+                    "frappe_role": share_role,
+                },
+            ):
+                frappe.get_doc(
+                    {
+                        "doctype": "Vault Share",
+                        "share_type": "Role",
+                        "frappe_role": share_role,
+                        "permission_level": share_perm,
+                        "shared_doctype": "Vault Secret",
+                        "shared_name": doc.name,
+                        "shared_by": frappe.session.user,
+                    }
+                ).insert(ignore_permissions=True)
 
-    frappe.db.set_default("frappe_vault_demo_records", json.dumps({
-        "secrets": created_secrets,
-        "folders": created_folders
-    }))
+    frappe.db.set_default(
+        "frappe_vault_demo_records", json.dumps({"secrets": created_secrets, "folders": created_folders})
+    )
     frappe.db.set_default("frappe_vault_has_demo_data", "1")
     frappe.db.commit()
 
@@ -124,7 +135,9 @@ def clear_demo_data() -> dict:
                 frappe.delete_doc("Vault Bookmark", fav, ignore_permissions=True, force=True)
             for link in frappe.get_all("Vault One Time Link", filters={"secret": s_name}, pluck="name"):
                 frappe.delete_doc("Vault One Time Link", link, ignore_permissions=True, force=True)
-            for sh in frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": s_name}, pluck="name"):
+            for sh in frappe.get_all(
+                "Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": s_name}, pluck="name"
+            ):
                 frappe.delete_doc("Vault Share", sh, ignore_permissions=True, force=True)
             frappe.delete_doc("Vault Secret", s_name, ignore_permissions=True, force=True)
 
@@ -136,7 +149,9 @@ def clear_demo_data() -> dict:
     # Delete demo folders if empty along with their shares
     for f_name in folder_names:
         if frappe.db.exists("Vault Folder", f_name):
-            for sh in frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Folder", "shared_name": f_name}, pluck="name"):
+            for sh in frappe.get_all(
+                "Vault Share", filters={"shared_doctype": "Vault Folder", "shared_name": f_name}, pluck="name"
+            ):
                 frappe.delete_doc("Vault Share", sh, ignore_permissions=True, force=True)
             remaining = frappe.get_all("Vault Secret", filters={"folder": f_name})
             if not remaining:

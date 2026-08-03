@@ -15,7 +15,7 @@
       </div>
     </header>
 
-    
+
     <ViewControlsBar class="z-10">
       <template #left>
         <TextInput

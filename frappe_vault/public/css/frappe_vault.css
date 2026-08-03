@@ -223,7 +223,7 @@
     .vault-number-card {
         padding: var(--padding-sm);
     }
-    
+
     .vault-number-card .number {
         font-size: var(--text-xl);
     }
@@ -239,7 +239,7 @@
     [data-fieldtype="Password"] input {
         display: none !important;
     }
-    
+
     .vault-secret-value::before,
     .password-field::before {
         content: "[Hidden for security]";

@@ -66,14 +66,16 @@ def get_filterable_fields(doctype="Vault Secret"):
         if fieldname in SENSITIVE_FIELDS:
             continue
 
-        fields.append({
-            "fieldname": fieldname,
-            "fieldtype": fieldtype,
-            "label": _(label),
-            "value": fieldname,
-            "name": fieldname,
-            "options": fd.get("options", ""),
-        })
+        fields.append(
+            {
+                "fieldname": fieldname,
+                "fieldtype": fieldtype,
+                "label": _(label),
+                "value": fieldname,
+                "name": fieldname,
+                "options": fd.get("options", ""),
+            }
+        )
 
     return fields
 
@@ -101,17 +103,21 @@ def get_sort_options(doctype="Vault Secret"):
         if fieldname in SENSITIVE_FIELDS:
             continue
 
-        fields.append({
-            "label": _(label),
-            "value": fieldname,
-            "fieldname": fieldname,
-        })
+        fields.append(
+            {
+                "label": _(label),
+                "value": fieldname,
+                "fieldname": fieldname,
+            }
+        )
 
     for sf in STANDARD_SORT_FIELDS:
-        fields.append({
-            "label": _(sf["label"]),
-            "value": sf["fieldname"],
-            "fieldname": sf["fieldname"],
-        })
+        fields.append(
+            {
+                "label": _(sf["label"]),
+                "value": sf["fieldname"],
+                "fieldname": sf["fieldname"],
+            }
+        )
 
     return fields

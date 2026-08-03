@@ -30,7 +30,7 @@
       v-if="multiline || String(value).includes('\n')"
       class="custom-scrollbar max-h-60 overflow-auto whitespace-pre-wrap break-all font-mono text-sm leading-relaxed text-ink-gray-9 font-normal"
     >{{ displayValue }}</pre>
-    
+
     <p
       v-else
       class="break-all font-mono text-sm select-all"

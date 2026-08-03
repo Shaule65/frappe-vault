@@ -15,7 +15,7 @@
       </div>
     </header>
 
-    
+
     <ViewControlsBar>
       <template #left>
         <!-- Title Quick Filter -->
@@ -209,8 +209,8 @@ const filteredList = computed(() => {
   let result = list.value
   if (titleQuery.value.trim()) {
     const q = titleQuery.value.toLowerCase().trim()
-    result = result.filter(item => 
-      (item.title && item.title.toLowerCase().includes(q)) || 
+    result = result.filter(item =>
+      (item.title && item.title.toLowerCase().includes(q)) ||
       (item.shared_by && item.shared_by.toLowerCase().includes(q))
     )
   }

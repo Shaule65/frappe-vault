@@ -56,7 +56,11 @@ def get_dashboard_layout(from_date: str = None, to_date: str = None, user: str =
         to_date = today_str
 
     user_roles = frappe.get_roles(frappe.session.user)
-    is_admin = frappe.session.user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
+    is_admin = (
+        frappe.session.user == "Administrator"
+        or "Vault Admin" in user_roles
+        or "System Manager" in user_roles
+    )
     if not is_admin:
         user = frappe.session.user
 
@@ -92,15 +96,15 @@ def get_total_secrets(from_date: str = None, to_date: str = None, user: str = No
     if user:
         filters["owner"] = user
 
-    curr_count = frappe.db.count("Vault Secret", filters={
-        **filters,
-        "creation": ["between", [f"{from_date} 00:00:00", f"{to_date} 23:59:59"]]
-    })
+    curr_count = frappe.db.count(
+        "Vault Secret",
+        filters={**filters, "creation": ["between", [f"{from_date} 00:00:00", f"{to_date} 23:59:59"]]},
+    )
 
-    prev_count = frappe.db.count("Vault Secret", filters={
-        **filters,
-        "creation": ["between", [f"{prev_from_date} 00:00:00", f"{from_date} 00:00:00"]]
-    })
+    prev_count = frappe.db.count(
+        "Vault Secret",
+        filters={**filters, "creation": ["between", [f"{prev_from_date} 00:00:00", f"{from_date} 00:00:00"]]},
+    )
 
     total_all = frappe.db.count("Vault Secret", filters=filters)
     delta = round(((curr_count - prev_count) / prev_count * 100.0), 1) if prev_count else 0.0
@@ -135,14 +139,14 @@ def get_active_shares(from_date: str = None, to_date: str = None, user: str = No
     if user:
         filters["shared_by"] = user
 
-    curr_count = frappe.db.count("Vault Share", filters={
-        **filters,
-        "creation": ["between", [f"{from_date} 00:00:00", f"{to_date} 23:59:59"]]
-    })
-    prev_count = frappe.db.count("Vault Share", filters={
-        **filters,
-        "creation": ["between", [f"{prev_from_date} 00:00:00", f"{from_date} 00:00:00"]]
-    })
+    curr_count = frappe.db.count(
+        "Vault Share",
+        filters={**filters, "creation": ["between", [f"{from_date} 00:00:00", f"{to_date} 23:59:59"]]},
+    )
+    prev_count = frappe.db.count(
+        "Vault Share",
+        filters={**filters, "creation": ["between", [f"{prev_from_date} 00:00:00", f"{from_date} 00:00:00"]]},
+    )
 
     total_active = frappe.db.count("Vault Share", filters=filters)
     delta = round(((curr_count - prev_count) / prev_count * 100.0), 1) if prev_count else 0.0
@@ -174,8 +178,8 @@ def get_revoked_shares(from_date: str = None, to_date: str = None, user: str = N
 def get_security_score(from_date: str = None, to_date: str = None, user: str = None) -> dict:
     """Security Score and Health suggestions."""
     from frappe_vault.services.security_service import calculate_security_score
-    return calculate_security_score(user=user)
 
+    return calculate_security_score(user=user)
 
 
 def get_recently_accessed(from_date: str = None, to_date: str = None, user: str = None) -> dict:
@@ -184,7 +188,7 @@ def get_recently_accessed(from_date: str = None, to_date: str = None, user: str 
         "Vault Secret",
         fields=["name", "title", "secret_type", "folder", "last_accessed", "owner"],
         order_by="last_accessed desc",
-        limit=5
+        limit=5,
     )
     return {"recent_secrets": recent_secrets}
 
@@ -203,12 +207,16 @@ def get_vault_trend(from_date: str = None, to_date: str = None, user: str = None
 
     # Secrets query
     sec_user_clause = f"AND owner = {frappe.db.escape(user)}" if user else ""
-    secrets_data = frappe.db.sql(f"""
+    secrets_data = frappe.db.sql(
+        f"""
         SELECT DATE(creation) as date_val, COUNT(*) as count
         FROM `tabVault Secret`
         WHERE DATE(creation) BETWEEN %s AND %s {sec_user_clause}
         GROUP BY DATE(creation)
-    """, (from_date, to_date), as_dict=True)
+    """,
+        (from_date, to_date),
+        as_dict=True,
+    )
 
     for row in secrets_data:
         d_str = str(row["date_val"])
@@ -217,12 +225,16 @@ def get_vault_trend(from_date: str = None, to_date: str = None, user: str = None
 
     # Active Shares query
     share_user_clause = f"AND shared_by = {frappe.db.escape(user)}" if user else ""
-    shares_data = frappe.db.sql(f"""
+    shares_data = frappe.db.sql(
+        f"""
         SELECT DATE(creation) as date_val, COUNT(*) as count
         FROM `tabVault Share`
         WHERE is_revoked = 0 AND DATE(creation) BETWEEN %s AND %s {share_user_clause}
         GROUP BY DATE(creation)
-    """, (from_date, to_date), as_dict=True)
+    """,
+        (from_date, to_date),
+        as_dict=True,
+    )
 
     for row in shares_data:
         d_str = str(row["date_val"])
@@ -230,12 +242,16 @@ def get_vault_trend(from_date: str = None, to_date: str = None, user: str = None
             daily_map[d_str]["shares"] = row["count"]
 
     # Revocations query
-    rev_data = frappe.db.sql(f"""
+    rev_data = frappe.db.sql(
+        f"""
         SELECT DATE(modified) as date_val, COUNT(*) as count
         FROM `tabVault Share`
         WHERE is_revoked = 1 AND DATE(modified) BETWEEN %s AND %s {share_user_clause}
         GROUP BY DATE(modified)
-    """, (from_date, to_date), as_dict=True)
+    """,
+        (from_date, to_date),
+        as_dict=True,
+    )
 
     for row in rev_data:
         d_str = str(row["date_val"])
@@ -269,13 +285,16 @@ def get_secrets_by_folder(from_date: str = None, to_date: str = None, user: str 
     """DonutChart config for Secrets by Folder breakdown."""
     user_clause = f"WHERE owner = {frappe.db.escape(user)}" if user else ""
 
-    folder_counts = frappe.db.sql(f"""
+    folder_counts = frappe.db.sql(
+        f"""
         SELECT COALESCE(folder, 'Unfiled') as folder_name, COUNT(*) as count
         FROM `tabVault Secret`
         {user_clause}
         GROUP BY folder
         ORDER BY count DESC
-    """, as_dict=True)
+    """,
+        as_dict=True,
+    )
 
     return {
         "title": _("Secrets by Folder"),

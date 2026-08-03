@@ -134,13 +134,12 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
     if is_admin or doc.owner == user or is_folder_owner:
         user_permission = "Full Control"
     else:
-        conditions = [
-            "(expires_on IS NULL OR expires_on > NOW())",
-            "is_revoked = 0"
-        ]
+        conditions = ["(expires_on IS NULL OR expires_on > NOW())", "is_revoked = 0"]
         target_conds = [f"(shared_doctype = 'Vault Secret' AND shared_name = {frappe.db.escape(doc.name)})"]
         if doc.folder:
-            target_conds.append(f"(shared_doctype = 'Vault Folder' AND shared_name = {frappe.db.escape(doc.folder)})")
+            target_conds.append(
+                f"(shared_doctype = 'Vault Folder' AND shared_name = {frappe.db.escape(doc.folder)})"
+            )
         conditions.append("(" + " OR ".join(target_conds) + ")")
 
         share_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
@@ -151,18 +150,17 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
 
         conditions.append("(" + " OR ".join(share_conds) + ")")
 
-        shares = frappe.db.sql(f"""
+        shares = frappe.db.sql(
+            f"""
             SELECT permission_level, shared_by, share_type, shared_doctype, is_role_override FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}
-        """, as_dict=True)
+        """,
+            as_dict=True,
+        )
 
         if shares:
-            perm_map = {
-                "View Only": 1,
-                "View & Copy": 2,
-                "Edit": 3,
-                "Full Control": 4
-            }
+            perm_map = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
+
             def share_priority_key(s):
                 direct_priority = 2 if not getattr(s, "is_role_override", 0) else 1
                 type_priority = 2 if s.share_type == "User" else 1
@@ -187,7 +185,9 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "email": doc.email,
         "attachment": doc.attachment,
         "notes": doc.notes,
-        "is_bookmark": 1 if frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name}) else 0,
+        "is_bookmark": 1
+        if frappe.db.exists("Vault Bookmark", {"user": frappe.session.user, "secret": doc.name})
+        else 0,
         "password_strength": doc.password_strength,
         "password_last_changed": doc.password_last_changed,
         "last_accessed": str(doc.last_accessed) if doc.last_accessed else None,
@@ -215,6 +215,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
 
     if decrypt:
         from frappe_vault.utils.encryption import get_decrypted_secret_data
+
         result["decrypted"] = get_decrypted_secret_data(name)
 
     # Log access and update metadata
@@ -250,26 +251,30 @@ def create_secret(data: dict) -> dict:
     folder = data.get("folder")
     if folder:
         from frappe_vault.utils.permissions import has_folder_permission
+
         if not has_folder_permission(folder, ptype="write"):
             frappe.throw(_("You don't have permission to add secrets to this folder"), frappe.PermissionError)
 
     if "url" in data:
         data["url"] = sanitize_url(data["url"])
 
-    doc = frappe.get_doc({
-        "doctype": "Vault Secret",
-        **{k: v for k, v in data.items() if k not in ("doctype", "name")},
-    })
+    doc = frappe.get_doc(
+        {
+            "doctype": "Vault Secret",
+            **{k: v for k, v in data.items() if k not in ("doctype", "name")},
+        }
+    )
     doc.insert()
 
     # Notify Vault Admins of new secret creation
     from frappe_vault.services.notification_service import notify_vault_admins
+
     creator_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
     notify_vault_admins(
         subject=f"New Secret Created: '{doc.title}'",
         email_content=f"{creator_name} created secret '{doc.title}'.",
         document_type="Vault Secret",
-        document_name=doc.name
+        document_name=doc.name,
     )
 
     return {"name": doc.name, "title": doc.title}
@@ -293,18 +298,39 @@ def update_secret(name: str, data: dict) -> dict:
     new_folder = data.get("folder")
     if new_folder and new_folder != doc.folder:
         from frappe_vault.utils.permissions import has_folder_permission
+
         if not has_folder_permission(new_folder, ptype="write"):
-            frappe.throw(_("You don't have permission to move secrets to this folder"), frappe.PermissionError)
+            frappe.throw(
+                _("You don't have permission to move secrets to this folder"), frappe.PermissionError
+            )
 
     if "url" in data:
         data["url"] = sanitize_url(data["url"])
 
     allowed_fields = [
-        "title", "secret_type", "folder", "url", "username", "email",
-        "password", "api_key", "api_secret", "notes", "is_bookmark",
-        "ssh_private_key", "attachment", "card_holder", "card_number",
-        "card_expiry", "card_cvv", "db_host", "db_port", "db_name",
-        "db_password", "expires_on", "custom_fields_json",
+        "title",
+        "secret_type",
+        "folder",
+        "url",
+        "username",
+        "email",
+        "password",
+        "api_key",
+        "api_secret",
+        "notes",
+        "is_bookmark",
+        "ssh_private_key",
+        "attachment",
+        "card_holder",
+        "card_number",
+        "card_expiry",
+        "card_cvv",
+        "db_host",
+        "db_port",
+        "db_name",
+        "db_password",
+        "expires_on",
+        "custom_fields_json",
     ]
 
     for field, value in data.items():
@@ -318,6 +344,7 @@ def update_secret(name: str, data: dict) -> dict:
 def delete_secret(name: str) -> dict:
     """Delete a vault secret."""
     from frappe_vault.utils.permissions import has_secret_permission
+
     if not has_secret_permission(name, ptype="delete"):
         frappe.throw(_("You don't have permission to delete this secret"), frappe.PermissionError)
 
@@ -329,7 +356,9 @@ def delete_secret(name: str) -> dict:
         frappe.delete_doc("Vault One Time Link", link_name, force=True, ignore_permissions=True)
 
     # 2. Delete associated share settings
-    shares = frappe.get_all("Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name")
+    shares = frappe.get_all(
+        "Vault Share", filters={"shared_doctype": "Vault Secret", "shared_name": name}, pluck="name"
+    )
     for share_name in shares:
         frappe.delete_doc("Vault Share", share_name, force=True, ignore_permissions=True)
 
@@ -341,7 +370,9 @@ def delete_secret(name: str) -> dict:
     # 4. Finally delete the Vault Secret document itself.
     # We bypass link verification for Vault Audit Log so we can keep the historical
     # Vault Audit Logs intact and displaying the raw secret ID in list views!
-    frappe.delete_doc("Vault Secret", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True)
+    frappe.delete_doc(
+        "Vault Secret", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True
+    )
 
     return {"name": name, "title": title}
 
@@ -380,11 +411,7 @@ def toggle_bookmark(name: str) -> dict:
         is_bookmark = 0
     else:
         try:
-            fav_doc = frappe.get_doc({
-                "doctype": "Vault Bookmark",
-                "user": user,
-                "secret": name
-            })
+            fav_doc = frappe.get_doc({"doctype": "Vault Bookmark", "user": user, "secret": name})
             fav_doc.insert(ignore_permissions=True)
             is_bookmark = 1
         except frappe.DuplicateEntryError:
@@ -413,11 +440,14 @@ def get_vault_stats() -> dict:
     bookmarks = frappe.db.count("Vault Bookmark", filters={"user": user})
     weak = frappe.db.count("Vault Secret", filters={"password_strength": ["in", ["weak", "fair"]]})
 
-    type_counts = frappe.db.sql("""
+    type_counts = frappe.db.sql(
+        """
         SELECT secret_type, COUNT(name) as count
         FROM `tabVault Secret`
         GROUP BY secret_type
-    """, as_dict=True)
+    """,
+        as_dict=True,
+    )
     secrets_by_type = {row["secret_type"] or "Other": row["count"] for row in type_counts}
 
     recent = frappe.get_list(
@@ -438,4 +468,3 @@ def get_vault_stats() -> dict:
         "is_admin": is_admin,
         "has_demo_data": check_has_demo_data(),
     }
-

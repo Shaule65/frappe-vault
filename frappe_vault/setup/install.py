@@ -23,30 +23,24 @@ def after_install():
 def ensure_module():
     """Create Vault module if missing."""
     if not frappe.db.exists("Module Def", "Vault"):
-        frappe.get_doc({
-            "doctype": "Module Def",
-            "module_name": "Vault",
-            "app_name": "frappe_vault"
-        }).insert(ignore_permissions=True)
+        frappe.get_doc({"doctype": "Module Def", "module_name": "Vault", "app_name": "frappe_vault"}).insert(
+            ignore_permissions=True
+        )
 
 
 def create_roles():
     """Create vault-specific roles with native Desk access settings."""
     if not frappe.db.exists("Role", "Vault User"):
-        frappe.get_doc({
-            "doctype": "Role",
-            "role_name": "Vault User",
-            "desk_access": 0
-        }).insert(ignore_permissions=True)
+        frappe.get_doc({"doctype": "Role", "role_name": "Vault User", "desk_access": 0}).insert(
+            ignore_permissions=True
+        )
     else:
         frappe.db.set_value("Role", "Vault User", "desk_access", 0)
 
     if not frappe.db.exists("Role", "Vault Admin"):
-        frappe.get_doc({
-            "doctype": "Role",
-            "role_name": "Vault Admin",
-            "desk_access": 1
-        }).insert(ignore_permissions=True)
+        frappe.get_doc({"doctype": "Role", "role_name": "Vault Admin", "desk_access": 1}).insert(
+            ignore_permissions=True
+        )
 
 
 def grant_roles_to_admin():
@@ -67,9 +61,7 @@ def grant_roles_to_admin():
 
     # 2. Assign to active System Manager users
     sys_managers = frappe.get_all(
-        "Has Role",
-        filters={"role": "System Manager", "parenttype": "User"},
-        pluck="parent"
+        "Has Role", filters={"role": "System Manager", "parenttype": "User"}, pluck="parent"
     )
     for u_name in sys_managers:
         if u_name in ["Administrator", "Guest"]:
@@ -106,14 +98,8 @@ def create_default_folders():
 
     if frappe.db.exists("DocType", "Vault Folder"):
         for folder in folders:
-            if not frappe.db.exists(
-                "Vault Folder",
-                folder["folder_name"]
-            ):
-                frappe.get_doc({
-                    "doctype": "Vault Folder",
-                    **folder
-                }).insert(ignore_permissions=True)
+            if not frappe.db.exists("Vault Folder", folder["folder_name"]):
+                frappe.get_doc({"doctype": "Vault Folder", **folder}).insert(ignore_permissions=True)
 
 
 def create_desktop_icon():

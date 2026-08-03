@@ -30,6 +30,7 @@ class VaultOneTimeLink(Document):
     def after_insert(self):
         """Log audit entry when one time link is created."""
         from frappe_vault.services.audit_service import log_one_time_link_created
+
         log_one_time_link_created(self)
 
     def before_save(self):

@@ -13,17 +13,26 @@ def get_notifications(limit=30):
         "Notification Log",
         filters={"for_user": user},
         fields=[
-            "name", "subject", "email_content", "type", "document_type",
-            "document_name", "read", "from_user", "creation"
+            "name",
+            "subject",
+            "email_content",
+            "type",
+            "document_type",
+            "document_name",
+            "read",
+            "from_user",
+            "creation",
         ],
         order_by="creation desc",
-        limit=int(limit)
+        limit=int(limit),
     )
 
     user_names = {}
     from_users = {log["from_user"] for log in logs if log.get("from_user")}
     if from_users:
-        user_docs = frappe.get_all("User", filters={"name": ["in", list(from_users)]}, fields=["name", "full_name"])
+        user_docs = frappe.get_all(
+            "User", filters={"name": ["in", list(from_users)]}, fields=["name", "full_name"]
+        )
         for u in user_docs:
             user_names[u["name"]] = u.get("full_name") or u["name"]
 
@@ -44,22 +53,24 @@ def get_notifications(limit=30):
         # Format HTML notification text if needed
         notification_text = log.get("email_content") or log.get("subject")
 
-        notifications_list.append({
-            "name": log["name"],
-            "creation": str(log["creation"]),
-            "from_user": {
-                "name": sender_id,
-                "full_name": sender_name,
-            },
-            "type": log.get("type") or "Share",
-            "to_user": user,
-            "read": bool(log.get("read")),
-            "subject": log.get("subject"),
-            "notification_text": notification_text,
-            "document_type": doc_type,
-            "document_name": doc_name,
-            "route_path": route_path,
-        })
+        notifications_list.append(
+            {
+                "name": log["name"],
+                "creation": str(log["creation"]),
+                "from_user": {
+                    "name": sender_id,
+                    "full_name": sender_name,
+                },
+                "type": log.get("type") or "Share",
+                "to_user": user,
+                "read": bool(log.get("read")),
+                "subject": log.get("subject"),
+                "notification_text": notification_text,
+                "document_type": doc_type,
+                "document_name": doc_name,
+                "route_path": route_path,
+            }
+        )
 
     return notifications_list
 
@@ -71,7 +82,9 @@ def mark_as_read(docname=None, mark_all=False):
     if is_mark_all:
         unread_docs = frappe.get_all("Notification Log", filters={"for_user": user, "read": 0}, pluck="name")
         if unread_docs:
-            frappe.db.set_value("Notification Log", {"name": ["in", unread_docs]}, "read", 1, update_modified=False)
+            frappe.db.set_value(
+                "Notification Log", {"name": ["in", unread_docs]}, "read", 1, update_modified=False
+            )
         return {"status": "success", "marked_count": len(unread_docs)}
 
     if docname and isinstance(docname, str):
@@ -110,4 +123,3 @@ def clear_all_notifications():
     for dname in user_docs:
         frappe.delete_doc("Notification Log", dname, ignore_permissions=True)
     return {"status": "success", "cleared_count": len(user_docs)}
-

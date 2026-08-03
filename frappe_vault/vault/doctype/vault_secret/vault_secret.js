@@ -12,7 +12,7 @@ frappe.ui.form.on("Vault Secret", {
     refresh(frm) {
         // Clear any existing custom buttons
         frm.clear_custom_buttons();
-        
+
         // Set up the form based on document state
         frappe_vault.setup_vault_secret_form(frm);
     },
@@ -81,16 +81,16 @@ frappe_vault.setup_vault_secret_form = function(frm) {
 frappe_vault.toggle_secret_fields = function(frm) {
     // Show/hide fields based on secret type
     const type = frm.doc.secret_type;
-    
+
     // Password fields
     frm.toggle_display("password", type === "Password");
     frm.toggle_display("username", ["Password", "API Key"].includes(type));
     frm.toggle_display("url", ["Password", "API Key"].includes(type));
-    
+
     // API Key fields
     frm.toggle_display("api_key", type === "API Key");
     frm.toggle_display("api_secret", type === "API Key");
-    
+
     // Notes always visible but more prominent for Note type
     frm.toggle_display("notes", true);
     frm.set_df_property("notes", "reqd", type === "Note");
@@ -174,7 +174,7 @@ frappe_vault.add_strength_indicator = function(frm) {
         strong: { color: "green", label: __("Strong Password") },
         excellent: { color: "blue", label: __("Excellent Password") }
     };
-    
+
     const indicator = indicator_map[frm.doc.password_strength];
     if (indicator) {
         frm.dashboard.add_indicator(indicator.label, indicator.color);
@@ -184,15 +184,15 @@ frappe_vault.add_strength_indicator = function(frm) {
 frappe_vault.add_bookmark_toggle = function(frm) {
     // Use Frappe's standard action icon pattern
     const is_bookmark = frm.doc.is_bookmark;
-    
+
     frm.page.add_action_icon(
         is_bookmark ? "es-solid-bookmark" : "es-line-bookmark",
         async () => {
             await frm.set_value("is_bookmark", !is_bookmark);
             await frm.save();
             frappe.show_alert({
-                message: is_bookmark 
-                    ? __("Removed from bookmarks") 
+                message: is_bookmark
+                    ? __("Removed from bookmarks")
                     : __("Added to bookmarks"),
                 indicator: is_bookmark ? "grey" : "yellow"
             });

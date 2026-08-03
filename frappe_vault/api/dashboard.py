@@ -9,12 +9,14 @@ from frappe import _
 @frappe.whitelist()
 def get_vault_dashboard(from_date=None, to_date=None, user=None):
     from frappe_vault.services.dashboard_service import get_dashboard_layout
+
     return get_dashboard_layout(from_date=from_date, to_date=to_date, user=user)
 
 
 @frappe.whitelist()
 def get_chart(name, type, from_date=None, to_date=None, user=None):
     from frappe_vault.services import dashboard_service
+
     method_name = f"get_{name}"
     if hasattr(dashboard_service, method_name):
         func = getattr(dashboard_service, method_name)
@@ -25,7 +27,11 @@ def get_chart(name, type, from_date=None, to_date=None, user=None):
 @frappe.whitelist()
 def save_dashboard_layout(layout):
     user_roles = frappe.get_roles()
-    is_admin = frappe.session.user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
+    is_admin = (
+        frappe.session.user == "Administrator"
+        or "Vault Admin" in user_roles
+        or "System Manager" in user_roles
+    )
     if not is_admin:
         frappe.throw(_("Only Vault Admins can modify the dashboard layout."), frappe.PermissionError)
 
@@ -39,7 +45,11 @@ def save_dashboard_layout(layout):
 @frappe.whitelist()
 def reset_dashboard_layout():
     user_roles = frappe.get_roles()
-    is_admin = frappe.session.user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
+    is_admin = (
+        frappe.session.user == "Administrator"
+        or "Vault Admin" in user_roles
+        or "System Manager" in user_roles
+    )
     if not is_admin:
         frappe.throw(_("Only Vault Admins can reset the dashboard layout."), frappe.PermissionError)
 

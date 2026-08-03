@@ -31,17 +31,19 @@ def send_vault_notification(
         from_user = frappe.session.user if frappe.session and frappe.session.user else "Administrator"
 
     try:
-        notification = frappe.get_doc({
-            "doctype": "Notification Log",
-            "subject": subject,
-            "email_content": email_content or subject,
-            "for_user": for_user,
-            "from_user": from_user,
-            "type": notification_type,
-            "document_type": document_type,
-            "document_name": document_name,
-            "read": 0,
-        })
+        notification = frappe.get_doc(
+            {
+                "doctype": "Notification Log",
+                "subject": subject,
+                "email_content": email_content or subject,
+                "for_user": for_user,
+                "from_user": from_user,
+                "type": notification_type,
+                "document_type": document_type,
+                "document_name": document_name,
+                "read": 0,
+            }
+        )
         notification.insert(ignore_permissions=True)
 
         # Real-time push notification
@@ -49,20 +51,26 @@ def send_vault_notification(
 
         return notification.name
     except Exception as e:
-        frappe.log_error(f"Failed to create Vault notification for {for_user}: {str(e)}", "Vault Notification")
+        frappe.log_error(
+            f"Failed to create Vault notification for {for_user}: {str(e)}", "Vault Notification"
+        )
         return None
 
 
 def get_vault_admins() -> list:
     """Return list of user IDs who have Vault Admin or System Manager role."""
     roles = ["Vault Admin", "System Manager"]
-    user_roles = frappe.get_all("Has Role", filters={"role": ["in", roles], "parenttype": "User"}, pluck="parent")
+    user_roles = frappe.get_all(
+        "Has Role", filters={"role": ["in", roles], "parenttype": "User"}, pluck="parent"
+    )
     # Exclude current session user and system users
     admins = set(user_roles) - {frappe.session.user, "Guest", "Administrator"}
     return list(admins)
 
 
-def notify_vault_admins(subject: str, email_content: str, document_type: str = "Vault Secret", document_name: str = None):
+def notify_vault_admins(
+    subject: str, email_content: str, document_type: str = "Vault Secret", document_name: str = None
+):
     """Send notification to all Vault Admins except current actor."""
     admins = get_vault_admins()
     for admin_user in admins:
@@ -73,9 +81,8 @@ def notify_vault_admins(subject: str, email_content: str, document_type: str = "
             notification_type="Alert",
             document_type=document_type,
             document_name=document_name,
-            from_user=frappe.session.user
+            from_user=frappe.session.user,
         )
-
 
 
 def get_user_notifications(limit: int = 20) -> dict:
@@ -88,17 +95,26 @@ def get_user_notifications(limit: int = 20) -> dict:
         "Notification Log",
         filters={"for_user": user},
         fields=[
-            "name", "subject", "email_content", "type", "document_type",
-            "document_name", "read", "from_user", "creation"
+            "name",
+            "subject",
+            "email_content",
+            "type",
+            "document_type",
+            "document_name",
+            "read",
+            "from_user",
+            "creation",
         ],
         order_by="creation desc",
-        limit=int(limit)
+        limit=int(limit),
     )
 
     user_names = {}
     from_users = {log["from_user"] for log in logs if log.get("from_user")}
     if from_users:
-        user_docs = frappe.get_all("User", filters={"name": ["in", list(from_users)]}, fields=["name", "full_name"])
+        user_docs = frappe.get_all(
+            "User", filters={"name": ["in", list(from_users)]}, fields=["name", "full_name"]
+        )
         for u in user_docs:
             user_names[u["name"]] = u.get("full_name") or u["name"]
 
@@ -108,10 +124,7 @@ def get_user_notifications(limit: int = 20) -> dict:
 
     unread_count = frappe.db.count("Notification Log", filters={"for_user": user, "read": 0})
 
-    return {
-        "notifications": logs,
-        "unread_count": unread_count
-    }
+    return {"notifications": logs, "unread_count": unread_count}
 
 
 def mark_notification_as_read(docname: str) -> dict:
@@ -133,6 +146,8 @@ def mark_all_notifications_as_read() -> dict:
     user = frappe.session.user
     unread_docs = frappe.get_all("Notification Log", filters={"for_user": user, "read": 0}, pluck="name")
     if unread_docs:
-        frappe.db.set_value("Notification Log", {"name": ["in", unread_docs]}, "read", 1, update_modified=False)
+        frappe.db.set_value(
+            "Notification Log", {"name": ["in", unread_docs]}, "read", 1, update_modified=False
+        )
         frappe.db.commit()
     return {"success": True, "marked_count": len(unread_docs)}

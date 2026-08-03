@@ -35,7 +35,7 @@
         />
       </template>
       <template #right>
-        <Button 
+        <Button
           v-if="selectedShares.size === 1 && canRevokeSelected"
           iconLeft="lucide-user-minus"
           label="Revoke Access"
@@ -725,8 +725,8 @@ const shareItemOptions = computed(() => {
 })
 
 const recipientOptions = computed(() => {
-  const list = newShareType.value === 'User' 
-    ? shareOptions.value.users 
+  const list = newShareType.value === 'User'
+    ? shareOptions.value.users
     : shareOptions.value.roles
   return [{ label: 'Choose recipient...', value: '' }, ...list]
 })
@@ -735,8 +735,8 @@ const filteredList = computed(() => {
   let result = list.value
   if (titleQuery.value.trim()) {
     const q = titleQuery.value.toLowerCase().trim()
-    result = result.filter(item => 
-      (item.title && item.title.toLowerCase().includes(q)) || 
+    result = result.filter(item =>
+      (item.title && item.title.toLowerCase().includes(q)) ||
       (item.shared_by && item.shared_by.toLowerCase().includes(q)) ||
       (item.user && item.user.toLowerCase().includes(q)) ||
       (item.frappe_role && item.frappe_role.toLowerCase().includes(q))
@@ -893,7 +893,7 @@ function openShareDialog() {
   newSharePermission.value = 'View Only'
   newShareExpiresOn.value = ''
   showShareDialog.value = true
-  
+
   secretsResource.fetch()
   foldersResource.fetch()
   shareOptionsResource.fetch()
@@ -967,7 +967,7 @@ function confirmRevokeShare(row) {
 
 async function handleRevokeShare() {
   if (!shareToRevoke.value) return
-  
+
   try {
     await unshareResource.submit({ share_name: shareToRevoke.value.name })
     toast.success(`Revoked access for ${shareToRevoke.value.shared_with}`)
@@ -1009,7 +1009,7 @@ async function handleBulkRevoke() {
       return Promise.resolve()
     })
     await Promise.all(promises)
-    
+
     toast.success('Selected shares revoked successfully')
     selectedShares.value.clear()
     shared.reload()

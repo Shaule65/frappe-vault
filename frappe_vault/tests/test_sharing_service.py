@@ -23,11 +23,7 @@ class TestSharingService(FrappeTestCase):
 
     def test_share_secret_with_role(self):
         # Create a secret
-        secret = create_secret({
-            "title": "Test Shared Secret",
-            "secret_type": "Password",
-            "password": "pass"
-        })
+        secret = create_secret({"title": "Test Shared Secret", "secret_type": "Password", "password": "pass"})
 
         # Share secret with Role
         share_res = share_secret(
@@ -35,7 +31,7 @@ class TestSharingService(FrappeTestCase):
             shared_doctype="Vault Secret",
             share_type="Role",
             frappe_role="Vault User",
-            permission_level="View Only"
+            permission_level="View Only",
         )
         self.assertTrue(share_res.get("name"))
 
@@ -59,22 +55,21 @@ class TestSharingService(FrappeTestCase):
         self.assertIsInstance(users, list)
 
         # Test with shared_by and user_list parameters
-        filtered_users = get_role_users("System Manager", shared_by=frappe.session.user, user_list=["Administrator"])
+        filtered_users = get_role_users(
+            "System Manager", shared_by=frappe.session.user, user_list=["Administrator"]
+        )
         self.assertIsInstance(filtered_users, list)
 
     def test_save_role_member_permission(self):
         from frappe_vault.services.sharing_service import save_role_member_permission
-        secret = create_secret({
-            "title": "Test Shared Secret",
-            "secret_type": "Password",
-            "password": "pass"
-        })
+
+        secret = create_secret({"title": "Test Shared Secret", "secret_type": "Password", "password": "pass"})
         res = save_role_member_permission(
             shared_name=secret.get("name"),
             shared_doctype="Vault Secret",
             user="Administrator",
             permission_level="Full Control",
-            is_revoked=False
+            is_revoked=False,
         )
         self.assertEqual(res.get("status"), "success")
         self.assertEqual(res.get("permission_level"), "Full Control")
