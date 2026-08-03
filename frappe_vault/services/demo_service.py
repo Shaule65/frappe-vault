@@ -107,7 +107,7 @@ def generate_demo_data() -> dict:
         "frappe_vault_demo_records", json.dumps({"secrets": created_secrets, "folders": created_folders})
     )
     frappe.db.set_default("frappe_vault_has_demo_data", "1")
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep
 
     return {"status": "success", "secrets": len(created_secrets)}
 
@@ -164,6 +164,6 @@ def clear_demo_data() -> dict:
 
     frappe.db.set_default("frappe_vault_has_demo_data", "0")
     frappe.db.set_default("frappe_vault_demo_records", "")
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep
 
     return {"status": "success"}

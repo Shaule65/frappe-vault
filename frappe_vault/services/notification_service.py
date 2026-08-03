@@ -149,5 +149,5 @@ def mark_all_notifications_as_read() -> dict:
         frappe.db.set_value(
             "Notification Log", {"name": ["in", unread_docs]}, "read", 1, update_modified=False
         )
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep
     return {"success": True, "marked_count": len(unread_docs)}

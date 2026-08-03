@@ -4,7 +4,7 @@ import frappe
 
 
 @frappe.whitelist()
-def get_notifications(limit=30):
+def get_notifications(limit: int = 30) -> list[dict]:
     user = frappe.session.user
     if not user or user == "Guest":
         return []
@@ -76,7 +76,7 @@ def get_notifications(limit=30):
 
 
 @frappe.whitelist()
-def mark_as_read(docname=None, mark_all=False):
+def mark_as_read(docname: str | None = None, mark_all: bool = False) -> dict:
     user = frappe.session.user
     is_mark_all = str(mark_all).lower() in ("true", "1") if mark_all is not True else True
     if is_mark_all:
@@ -96,17 +96,17 @@ def mark_as_read(docname=None, mark_all=False):
 
 
 @frappe.whitelist()
-def mark_read(docname=None):
+def mark_read(docname: str | None = None) -> dict:
     return mark_as_read(docname=docname)
 
 
 @frappe.whitelist()
-def mark_all_read():
+def mark_all_read() -> dict:
     return mark_as_read(mark_all=True)
 
 
 @frappe.whitelist()
-def delete_notification(docname=None):
+def delete_notification(docname: str | None = None) -> dict:
     user = frappe.session.user
     if docname and isinstance(docname, str) and frappe.db.exists("Notification Log", docname):
         doc = frappe.get_doc("Notification Log", docname)
@@ -117,7 +117,7 @@ def delete_notification(docname=None):
 
 
 @frappe.whitelist()
-def clear_all_notifications():
+def clear_all_notifications() -> dict:
     user = frappe.session.user
     user_docs = frappe.get_all("Notification Log", filters={"for_user": user}, pluck="name")
     for dname in user_docs:

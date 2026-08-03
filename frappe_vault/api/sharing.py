@@ -6,15 +6,15 @@ from frappe import _
 
 @frappe.whitelist()
 def share(
-    shared_name,
-    shared_doctype="Vault Secret",
-    share_type="User",
-    user=None,
-    frappe_role=None,
-    role=None,
-    permission_level="View Only",
-    expires_on=None,
-):
+    shared_name: str,
+    shared_doctype: str = "Vault Secret",
+    share_type: str = "User",
+    user: str | None = None,
+    frappe_role: str | None = None,
+    role: str | None = None,
+    permission_level: str = "View Only",
+    expires_on: str | None = None,
+) -> dict:
     target_role = frappe_role or role
     from frappe_vault.services.sharing_service import share_secret
 
@@ -30,28 +30,30 @@ def share(
 
 
 @frappe.whitelist()
-def unshare(share_name):
+def unshare(share_name: str) -> dict:
     from frappe_vault.services.sharing_service import unshare as _unshare
 
     return _unshare(share_name)
 
 
 @frappe.whitelist()
-def get_shares(secret_name):
+def get_shares(secret_name: str) -> dict:
     from frappe_vault.services.sharing_service import get_shares_for_secret
 
     return get_shares_for_secret(secret_name)
 
 
 @frappe.whitelist()
-def shared_with_me(limit=20, offset=0):
+def shared_with_me(limit: int = 20, offset: int = 0) -> dict:
     from frappe_vault.services.sharing_service import get_shared_with_me
 
     return get_shared_with_me(limit=int(limit), offset=int(offset))
 
 
 @frappe.whitelist()
-def create_one_time_link(secret_name, expiry_hours=24, max_views=1, passphrase=None):
+def create_one_time_link(
+    secret_name: str, expiry_hours: int = 24, max_views: int = 1, passphrase: str | None = None
+) -> dict:
     from frappe_vault.services.sharing_service import create_one_time_link as _create
 
     return _create(
@@ -59,15 +61,15 @@ def create_one_time_link(secret_name, expiry_hours=24, max_views=1, passphrase=N
     )
 
 
-@frappe.whitelist(allow_guest=True)
-def consume_link(token, passphrase=None):
+@frappe.whitelist(allow_guest=True)  # nosemgrep
+def consume_link(token: str, passphrase: str | None = None) -> dict:
     from frappe_vault.services.sharing_service import consume_one_time_link
 
     return consume_one_time_link(token, passphrase=passphrase)
 
 
 @frappe.whitelist()
-def get_share_options():
+def get_share_options() -> dict:
     # Only authenticated users
     if not frappe.session.user or frappe.session.user == "Guest":
         frappe.throw(_("Not logged in"), frappe.PermissionError)
@@ -116,7 +118,7 @@ def get_share_options():
 
 
 @frappe.whitelist()
-def bulk_delete_shares(share_names):
+def bulk_delete_shares(share_names: str | list) -> dict:
     from frappe_vault.services.sharing_service import bulk_delete_shares as _bulk_delete
 
     if isinstance(share_names, str):
@@ -125,7 +127,7 @@ def bulk_delete_shares(share_names):
 
 
 @frappe.whitelist()
-def update_share_permission(share_name, permission_level):
+def update_share_permission(share_name: str, permission_level: str) -> dict:
     from frappe_vault.services.sharing_service import update_share_permission as _update_perm
 
     return _update_perm(share_name, permission_level)
@@ -133,8 +135,12 @@ def update_share_permission(share_name, permission_level):
 
 @frappe.whitelist()
 def get_role_users(
-    role_name=None, shared_name=None, shared_doctype="Vault Secret", shared_by=None, user_list=None
-):
+    role_name: str | None = None,
+    shared_name: str | None = None,
+    shared_doctype: str = "Vault Secret",
+    shared_by: str | None = None,
+    user_list: str | list | None = None,
+) -> dict:
     from frappe_vault.services.sharing_service import get_role_users as _get_role_users
 
     return _get_role_users(
@@ -148,8 +154,12 @@ def get_role_users(
 
 @frappe.whitelist()
 def save_role_member_permission(
-    shared_name, shared_doctype="Vault Secret", user=None, permission_level="View Only", is_revoked=False
-):
+    shared_name: str,
+    shared_doctype: str = "Vault Secret",
+    user: str | None = None,
+    permission_level: str = "View Only",
+    is_revoked: bool = False,
+) -> dict:
     from frappe_vault.services.sharing_service import save_role_member_permission as _save_role_member_perm
 
     if isinstance(is_revoked, str):

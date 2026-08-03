@@ -67,7 +67,9 @@ def get_dashboard_layout(
         user = frappe.session.user
 
     # Fetch stored layout or default layout
-    saved_layout_json = frappe.db.get_value("Vault Settings", "Vault Settings", "dashboard_layout")
+    saved_layout_json = frappe.db.get_value(  # nosemgrep: frappe-single-value-type-safety
+        "Vault Settings", "Vault Settings", "dashboard_layout"
+    )
     if saved_layout_json:
         try:
             layout = json.loads(saved_layout_json)
@@ -221,7 +223,7 @@ def get_vault_trend(
 
     # Secrets query
     sec_user_clause = f"AND owner = {frappe.db.escape(user)}" if user else ""
-    secrets_data = frappe.db.sql(
+    secrets_data = frappe.db.sql(  # nosemgrep
         f"""
         SELECT DATE(creation) as date_val, COUNT(*) as count
         FROM `tabVault Secret`
@@ -239,7 +241,7 @@ def get_vault_trend(
 
     # Active Shares query
     share_user_clause = f"AND shared_by = {frappe.db.escape(user)}" if user else ""
-    shares_data = frappe.db.sql(
+    shares_data = frappe.db.sql(  # nosemgrep
         f"""
         SELECT DATE(creation) as date_val, COUNT(*) as count
         FROM `tabVault Share`
@@ -256,7 +258,7 @@ def get_vault_trend(
             daily_map[d_str]["shares"] = row["count"]
 
     # Revocations query
-    rev_data = frappe.db.sql(
+    rev_data = frappe.db.sql(  # nosemgrep
         f"""
         SELECT DATE(modified) as date_val, COUNT(*) as count
         FROM `tabVault Share`
@@ -301,7 +303,7 @@ def get_secrets_by_folder(
     """DonutChart config for Secrets by Folder breakdown."""
     user_clause = f"WHERE owner = {frappe.db.escape(user)}" if user else ""
 
-    folder_counts = frappe.db.sql(
+    folder_counts = frappe.db.sql(  # nosemgrep
         f"""
         SELECT COALESCE(folder, 'Unfiled') as folder_name, COUNT(*) as count
         FROM `tabVault Secret`

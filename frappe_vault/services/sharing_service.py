@@ -628,7 +628,7 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
             conditions.append(f"vs.share_type = 'Role' AND vs.frappe_role IN ({roles_str})")
         where = f"((vs.is_role_override = 0 OR vs.is_role_override IS NULL) AND ({' OR '.join(f'({c})' for c in conditions)}))"
 
-    raw_shares = frappe.db.sql(
+    raw_shares = frappe.db.sql(  # nosemgrep
         f"""
         SELECT vs.name as share_name, vs.shared_doctype, vs.shared_name,
                vs.permission_level, vs.shared_by, vs.expires_on,

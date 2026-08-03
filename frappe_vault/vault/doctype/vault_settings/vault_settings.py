@@ -11,7 +11,7 @@ class VaultSettings(Document):
         """Ensure settings is not submittable and docstatus is 0 (Editable/Saveable)."""
         frappe.db.sql("UPDATE `tabDocType` SET is_submittable = 0 WHERE name = 'Vault Settings'")
         if self.docstatus != 0:
-            frappe.db.set_value("Vault Settings", "Vault Settings", "docstatus", 0)
+            frappe.db.set_single_value("Vault Settings", "docstatus", 0)
             self.docstatus = 0
 
 

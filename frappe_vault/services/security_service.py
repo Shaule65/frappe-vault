@@ -6,7 +6,7 @@ from frappe.utils import add_days, today
 
 
 @frappe.whitelist()
-def calculate_security_score(user=None):
+def calculate_security_score(user: str | None = None) -> dict:
     total = frappe.db.count("Vault Secret", filters={"secret_type": "Password"})
     if not total:
         return {"score": 100, "breakdown": {"total": 0, "weak": 0, "old": 0, "strong": 0}, "suggestions": []}
@@ -39,12 +39,12 @@ def calculate_security_score(user=None):
     }
 
 
-def check_password_breach(password):
+def check_password_breach(password: str) -> dict:
     """Breach check placeholder."""
     return {"is_breached": False, "count": 0}
 
 
-def get_weak_passwords(user=None):
+def get_weak_passwords(user: str | None = None) -> list[dict]:
     return frappe.get_list(
         "Vault Secret",
         filters={"password_strength": ("in", ["weak", "fair"])},

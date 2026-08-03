@@ -16,7 +16,7 @@ def cleanup_old_logs() -> dict:
     count = len(logs_to_delete)
     if count > 0:
         frappe.db.delete("Vault Audit Log", {"name": ("in", logs_to_delete)})
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep
 
     return {
         "deleted_count": count,

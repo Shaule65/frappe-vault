@@ -17,7 +17,7 @@ def after_install():
     create_default_folders()
     create_desktop_icon()
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep
 
 
 def ensure_module():

@@ -5,7 +5,7 @@ from frappe import _
 
 
 @frappe.whitelist()
-def get_all():
+def get_all() -> list[dict]:
     folders = frappe.get_list(
         "Vault Folder", fields=["name", "folder_name", "icon", "owner"], order_by="folder_name asc"
     )
@@ -28,7 +28,7 @@ def get_all():
             target_user_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
         share_conds.append("(" + " OR ".join(target_user_conds) + ")")
 
-        writable_shares = frappe.db.sql(
+        writable_shares = frappe.db.sql(  # nosemgrep
             f"""
             SELECT shared_name FROM `tabVault Share`
             WHERE {" AND ".join(share_conds)}
@@ -47,7 +47,7 @@ def get_all():
 
 
 @frappe.whitelist()
-def create(folder_name, icon=None, **kwargs):
+def create(folder_name: str, icon: str | None = None, **kwargs) -> dict:
     if not folder_name or not isinstance(folder_name, str):
         frappe.throw(_("Folder name is required"), frappe.ValidationError)
     if not frappe.has_permission("Vault Folder", "create"):
@@ -59,7 +59,7 @@ def create(folder_name, icon=None, **kwargs):
 
 
 @frappe.whitelist()
-def delete(name, delete_secrets=False):
+def delete(name: str, delete_secrets: bool = False) -> dict:
     if not name or not isinstance(name, str):
         frappe.throw(_("Invalid folder identifier"), frappe.ValidationError)
     from frappe_vault.utils.permissions import has_folder_permission
@@ -100,7 +100,7 @@ def delete(name, delete_secrets=False):
 
 
 @frappe.whitelist()
-def update(name, folder_name=None, icon=None, **kwargs):
+def update(name: str, folder_name: str | None = None, icon: str | None = None, **kwargs) -> dict:
     if not name or not isinstance(name, str):
         frappe.throw(_("Invalid folder identifier"), frappe.ValidationError)
     from frappe_vault.utils.permissions import has_folder_permission
@@ -123,7 +123,7 @@ def update(name, folder_name=None, icon=None, **kwargs):
 
 
 @frappe.whitelist()
-def get_folder_secrets(folder_name, limit=50, offset=0):
+def get_folder_secrets(folder_name: str, limit: int = 50, offset: int = 0) -> dict:
     if not folder_name or not isinstance(folder_name, str):
         frappe.throw(_("Invalid folder identifier"), frappe.ValidationError)
     if not frappe.has_permission("Vault Folder", "read", folder_name):

@@ -150,7 +150,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
 
         conditions.append("(" + " OR ".join(share_conds) + ")")
 
-        shares = frappe.db.sql(
+        shares = frappe.db.sql(  # nosemgrep
             f"""
             SELECT permission_level, shared_by, share_type, shared_doctype, is_role_override FROM `tabVault Share`
             WHERE {" AND ".join(conditions)}

@@ -5,13 +5,13 @@ import frappe
 
 @frappe.whitelist()
 def generate(
-    length=16,
-    use_uppercase=True,
-    use_lowercase=True,
-    use_digits=True,
-    use_special=True,
-    exclude_ambiguous=False,
-):
+    length: int = 16,
+    use_uppercase: bool = True,
+    use_lowercase: bool = True,
+    use_digits: bool = True,
+    use_special: bool = True,
+    exclude_ambiguous: bool = False,
+) -> dict:
     from frappe_vault.services.audit_service import log_password_generated
     from frappe_vault.services.generator_service import calculate_password_strength, generate_password
 
@@ -29,14 +29,14 @@ def generate(
 
 
 @frappe.whitelist()
-def check_strength(password):
+def check_strength(password: str) -> dict:
     from frappe_vault.services.generator_service import calculate_password_strength
 
     return calculate_password_strength(password)
 
 
 @frappe.whitelist()
-def check_breach(password):
+def check_breach(password: str) -> dict:
     from frappe_vault.services.security_service import check_password_breach
 
     return check_password_breach(password)

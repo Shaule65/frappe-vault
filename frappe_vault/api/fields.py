@@ -44,7 +44,7 @@ STANDARD_SORT_FIELDS = [
 
 
 @frappe.whitelist()
-def get_filterable_fields(doctype="Vault Secret"):
+def get_filterable_fields(doctype: str = "Vault Secret") -> list[dict]:
     """Return fields that can be used as list filters, read from DocType meta.
 
     Excludes sensitive fields (passwords, keys) and layout-only fields.
@@ -81,7 +81,7 @@ def get_filterable_fields(doctype="Vault Secret"):
 
 
 @frappe.whitelist()
-def get_sort_options(doctype="Vault Secret"):
+def get_sort_options(doctype: str = "Vault Secret") -> list[dict]:
     """Return fields available for sorting, read from DocType meta.
 
     Excludes layout-only fields (Section Break, Column Break, etc.)

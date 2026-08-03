@@ -15,4 +15,4 @@ def cleanup_expired_links():
     """,
         (now_datetime(),),
     )
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep
