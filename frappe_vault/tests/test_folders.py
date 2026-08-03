@@ -55,4 +55,3 @@ class TestFolders(FrappeTestCase):
         self.assertEqual(result["deleted"], folder_name)
         self.assertFalse(frappe.db.exists("Vault Folder", folder_name))
         self.assertFalse(frappe.db.exists("Vault Secret", secret_name))
-

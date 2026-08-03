@@ -52,13 +52,30 @@ ENCRYPTED_FIELDS = {
 
 # Fields that should never be returned in list APIs
 SENSITIVE_FIELDS = [
-    "password", "api_secret", "card_number", "card_cvv",
-    "db_password", "ssh_private_key",
+    "password",
+    "api_secret",
+    "card_number",
+    "card_cvv",
+    "db_password",
+    "ssh_private_key",
 ]
 
 # Safe fields for list view
 LIST_VIEW_FIELDS = [
-    "name", "title", "secret_type", "folder", "url", "username",
-    "email", "attachment", "is_bookmark", "password_strength", "password_last_changed",
-    "last_accessed", "access_count", "expires_on", "modified", "owner",
+    "name",
+    "title",
+    "secret_type",
+    "folder",
+    "url",
+    "username",
+    "email",
+    "attachment",
+    "is_bookmark",
+    "password_strength",
+    "password_last_changed",
+    "last_accessed",
+    "access_count",
+    "expires_on",
+    "modified",
+    "owner",
 ]

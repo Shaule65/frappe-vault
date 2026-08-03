@@ -4,7 +4,7 @@
 frappe.listview_settings["Vault Secret"] = {
     // Additional fields to fetch for list view
     add_fields: ["secret_type", "category", "is_bookmark", "password_strength", "last_accessed", "owner"],
-    
+
     // Default filters - show user's own secrets
     filters: [
         ["owner", "=", frappe.session.user]
@@ -15,7 +15,7 @@ frappe.listview_settings["Vault Secret"] = {
         if (!doc.password_strength) {
             return ["", "grey", ""];
         }
-        
+
         const indicator_map = {
             weak: [__("Weak"), "red", "password_strength,=,weak"],
             fair: [__("Fair"), "orange", "password_strength,=,fair"],
@@ -23,7 +23,7 @@ frappe.listview_settings["Vault Secret"] = {
             strong: [__("Strong"), "green", "password_strength,=,strong"],
             excellent: [__("Excellent"), "blue", "password_strength,=,excellent"]
         };
-        
+
         return indicator_map[doc.password_strength] || ["", "grey", ""];
     },
 
@@ -36,7 +36,7 @@ frappe.listview_settings["Vault Secret"] = {
             }
             return frappe.utils.escape_html(value);
         },
-        
+
         secret_type(value) {
             // Use Frappe icons instead of emojis
             const icon_map = {
@@ -84,7 +84,7 @@ frappe.listview_settings["Vault Secret"] = {
         // Add "Bookmarks Only" filter toggle
         listview.page.add_inner_button(__("Bookmarks"), () => {
             const has_filter = listview.filter_area.get().some(f => f[1] === "is_bookmark");
-            
+
             if (has_filter) {
                 listview.filter_area.remove("is_bookmark");
             } else {
@@ -95,10 +95,10 @@ frappe.listview_settings["Vault Secret"] = {
         // Add type filters
         ["Password", "API Key", "Note"].forEach(type => {
             listview.page.add_inner_button(__(type), () => {
-                const has_filter = listview.filter_area.get().some(f => 
+                const has_filter = listview.filter_area.get().some(f =>
                     f[1] === "secret_type" && f[3] === type
                 );
-                
+
                 if (has_filter) {
                     listview.filter_area.remove("secret_type");
                 } else {
@@ -111,7 +111,7 @@ frappe.listview_settings["Vault Secret"] = {
         // Add bulk actions
         listview.page.add_action_item(__("Add to Bookmarks"), () => {
             const names = listview.get_checked_items().map(i => i.name);
-            
+
             frappe.call({
                 method: "frappe.client.set_value",
                 args: {
@@ -138,7 +138,7 @@ frappe.listview_settings["Vault Secret"] = {
                 frappe.toast(__("Please select secrets first"));
                 return;
             }
-            
+
             frappe.xcall("frappe.client.set_value", {
                 doctype: "Vault Secret",
                 name: names,

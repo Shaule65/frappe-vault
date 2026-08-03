@@ -54,7 +54,7 @@ frappe_vault.fallback_copy = function(text, field_label) {
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
+
     try {
         document.execCommand("copy");
         frappe.show_alert({
@@ -67,7 +67,7 @@ frappe_vault.fallback_copy = function(text, field_label) {
             indicator: "red"
         });
     }
-    
+
     document.body.removeChild(textArea);
 };
 
@@ -160,7 +160,7 @@ frappe_vault.show_password_generator = function(callback) {
             ${frappe.utils.icon("copy", "sm")} ${__("Copy")}
         </button>
     `);
-    
+
     d.$wrapper.find(".btn-copy-pwd").on("click", () => {
         const password = d.get_value("generated_password");
         if (password) {
@@ -169,7 +169,7 @@ frappe_vault.show_password_generator = function(callback) {
     });
 
     d.show();
-    
+
     // Generate initial password
     frappe_vault.generate_in_dialog(d);
 };
@@ -195,7 +195,7 @@ frappe_vault.render_strength_indicator = function(dialog, strength) {
     const color = frappe_vault.STRENGTH_COLORS[strength.level] || "var(--gray-500)";
     const percentage = strength.score;
     const label = __(strength.level.charAt(0).toUpperCase() + strength.level.slice(1));
-    
+
     let html = `
         <div class="password-strength-container mt-3">
             <div class="d-flex justify-content-between align-items-center mb-1">
@@ -203,13 +203,13 @@ frappe_vault.render_strength_indicator = function(dialog, strength) {
                 <span style="color: ${color}; font-weight: 500;">${label}</span>
             </div>
             <div class="progress" style="height: 6px;">
-                <div class="progress-bar" role="progressbar" 
+                <div class="progress-bar" role="progressbar"
                     style="width: ${percentage}%; background-color: ${color};"
                     aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
                 </div>
             </div>
     `;
-    
+
     if (strength.feedback && strength.feedback.length > 0) {
         html += `<div class="mt-2 small text-muted">`;
         strength.feedback.forEach(tip => {
@@ -217,9 +217,9 @@ frappe_vault.render_strength_indicator = function(dialog, strength) {
         });
         html += `</div>`;
     }
-    
+
     html += `</div>`;
-    
+
     dialog.fields_dict.strength_html.$wrapper.html(html);
 };
 

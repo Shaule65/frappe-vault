@@ -4,7 +4,8 @@ authors = [
     { name = "lubus", email = "info@lubus.in"}
 ]
 description = "Password and secrets management application"
-requires-python = ">=3.14"
+requires-python = ">=3.10"
+license = {text = "MIT"}
 readme = "README.md"
 dynamic = ["version"]
 dependencies = []
@@ -13,11 +14,15 @@ dependencies = []
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.bench.frappe-dependencies]
-frappe = ">=16.0.0-dev,<17.0.0"
-
 [tool.bench.dev-dependencies]
-# List any dev dependencies here
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
+
+[project.urls]
+Homepage = "https://github.com/lubusIN/frappe-vault"
+Repository = "https://github.com/lubusIN/frappe-vault.git"
+"Bug Reports" = "https://github.com/lubusIN/frappe-vault/issues"
 
 [tool.ruff]
 line-length = 110
@@ -33,5 +38,7 @@ select = [
     "B",
 ]
 ignore = [
-    "E501"  # line too long
+    "E501",  # line too long
+    "W191",  # indentation contains tabs (standard for Frappe)
+    "W293",  # blank line contains whitespace
 ]

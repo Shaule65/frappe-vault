@@ -14,11 +14,17 @@ from frappe_vault.services.secret_service import (
 class TestSecretService(FrappeTestCase):
     def setUp(self):
         # Ensure clean slate for test secrets
-        frappe.db.delete("Vault Secret", {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]})
+        frappe.db.delete(
+            "Vault Secret",
+            {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]},
+        )
         frappe.db.commit()
 
     def tearDown(self):
-        frappe.db.delete("Vault Secret", {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]})
+        frappe.db.delete(
+            "Vault Secret",
+            {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]},
+        )
         frappe.db.commit()
 
     def test_create_and_get_secret(self):
@@ -27,7 +33,7 @@ class TestSecretService(FrappeTestCase):
             "secret_type": "Password",
             "username": "admin",
             "password": "SuperSecretPassword123!",
-            "url": "https://example.com"
+            "url": "https://example.com",
         }
 
         # Test creation
@@ -48,27 +54,20 @@ class TestSecretService(FrappeTestCase):
             "title": "Test Service Secret",
             "secret_type": "Password",
             "username": "admin",
-            "password": "OldPassword123!"
+            "password": "OldPassword123!",
         }
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
 
         # Update password & title
-        updated = update_secret(secret_name, {
-            "title": "Test Update Secret",
-            "password": "NewPassword456!"
-        })
+        updated = update_secret(secret_name, {"title": "Test Update Secret", "password": "NewPassword456!"})
         self.assertEqual(updated.get("title"), "Test Update Secret")
 
         decrypted = get_secret(secret_name, decrypt=True)
         self.assertEqual(decrypted.get("decrypted", {}).get("password"), "NewPassword456!")
 
     def test_delete_secret(self):
-        secret_data = {
-            "title": "Test Service Secret",
-            "secret_type": "Note",
-            "notes": "Some test notes"
-        }
+        secret_data = {"title": "Test Service Secret", "secret_type": "Note", "notes": "Some test notes"}
 
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
@@ -81,11 +80,7 @@ class TestSecretService(FrappeTestCase):
         self.assertFalse(exists)
 
     def test_toggle_bookmark(self):
-        secret_data = {
-            "title": "Test Bookmark Secret",
-            "secret_type": "Note",
-            "notes": "Some test notes"
-        }
+        secret_data = {"title": "Test Bookmark Secret", "secret_type": "Note", "notes": "Some test notes"}
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
 
@@ -117,7 +112,7 @@ class TestSecretService(FrappeTestCase):
             "title": "Test Media Secret",
             "secret_type": "Media",
             "url": "example.com",
-            "attachment": '["/private/files/1.jpeg","/private/files/2.jpeg"]'
+            "attachment": '["/private/files/1.jpeg","/private/files/2.jpeg"]',
         }
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
@@ -138,7 +133,7 @@ class TestSecretService(FrappeTestCase):
             "title": "Test SSH Key Secret",
             "secret_type": "SSH Key",
             "username": "ubuntu",
-            "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----"
+            "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----",
         }
         new_secret = create_secret(secret_data)
         secret_name = new_secret.get("name")
@@ -149,6 +144,7 @@ class TestSecretService(FrappeTestCase):
 
     def test_bulk_delete_api(self):
         from frappe_vault.api.secrets import bulk_delete as bulk_delete_api
+
         s1 = create_secret({"title": "Bulk Delete Secret 1", "password": "Password1!"})
         s2 = create_secret({"title": "Bulk Delete Secret 2", "password": "Password2!"})
 

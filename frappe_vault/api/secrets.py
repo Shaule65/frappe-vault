@@ -1,47 +1,74 @@
 import builtins
+
 import frappe
 from frappe import _
 
 
 @frappe.whitelist()
-def list(search=None, title=None, username=None, secret_type=None, folder=None, bookmarks_only=False, limit=20, offset=0, order_by="modified desc"):
+def list(
+    search: str | None = None,
+    title: str | None = None,
+    username: str | None = None,
+    secret_type: str | None = None,
+    folder: str | None = None,
+    bookmarks_only: bool = False,
+    limit: int = 20,
+    offset: int = 0,
+    order_by: str = "modified desc",
+) -> dict:
     from frappe_vault.services.secret_service import get_secrets
-    return get_secrets(search=search, title=title, username=username, secret_type=secret_type, folder=folder, bookmarks_only=frappe.utils.cint(bookmarks_only), limit=int(limit), offset=int(offset), order_by=order_by)
+
+    return get_secrets(
+        search=search,
+        title=title,
+        username=username,
+        secret_type=secret_type,
+        folder=folder,
+        bookmarks_only=frappe.utils.cint(bookmarks_only),
+        limit=int(limit),
+        offset=int(offset),
+        order_by=order_by,
+    )
 
 
 @frappe.whitelist()
-def get(name, decrypt=False):
+def get(name: str, decrypt: bool = False) -> dict:
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import get_secret
+
     return get_secret(name, decrypt=frappe.utils.cint(decrypt))
 
 
 @frappe.whitelist()
-def create(**kwargs):
+def create(**kwargs) -> dict:
     from frappe_vault.services.secret_service import create_secret
+
     return create_secret(kwargs)
 
 
 @frappe.whitelist()
-def update(name, **kwargs):
+def update(name: str, **kwargs) -> dict:
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import update_secret
+
     return update_secret(name, kwargs)
 
 
 @frappe.whitelist()
-def delete(name):
+def delete(name: str) -> dict:
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import delete_secret
+
     return delete_secret(name)
 
 
 @frappe.whitelist()
-def bulk_delete(secret_names):
+def bulk_delete(secret_names: str | builtins.list) -> dict:
     from frappe_vault.services.secret_service import bulk_delete as _delete
+
     if isinstance(secret_names, str):
         secret_names = frappe.parse_json(secret_names)
     if not isinstance(secret_names, builtins.list):
@@ -50,16 +77,18 @@ def bulk_delete(secret_names):
 
 
 @frappe.whitelist()
-def toggle_bookmark(name):
+def toggle_bookmark(name: str) -> dict:
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import toggle_bookmark as _toggle
+
     return _toggle(name)
 
 
 @frappe.whitelist()
-def bulk_move(secret_names, target_folder):
+def bulk_move(secret_names: str | builtins.list, target_folder: str) -> dict:
     from frappe_vault.services.secret_service import bulk_move as _move
+
     if isinstance(secret_names, str):
         secret_names = frappe.parse_json(secret_names)
     if not isinstance(secret_names, builtins.list) or not isinstance(target_folder, str):
@@ -68,16 +97,17 @@ def bulk_move(secret_names, target_folder):
 
 
 @frappe.whitelist()
-def stats():
+def stats() -> dict:
     from frappe_vault.services.secret_service import get_vault_stats
+
     return get_vault_stats()
 
 
 @frappe.whitelist()
-def decrypt(name):
+def decrypt(name: str) -> dict:
     """Decrypt a secret's sensitive fields."""
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
     from frappe_vault.services.secret_service import get_secret
-    return get_secret(name, decrypt=True)
 
+    return get_secret(name, decrypt=True)

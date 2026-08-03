@@ -15,17 +15,12 @@ class TestOneTimeLink(FrappeTestCase):
         frappe.db.commit()
 
     def test_create_and_consume_link(self):
-        secret = create_secret({
-            "title": "Test One-Time Link Secret",
-            "secret_type": "Password",
-            "password": "LinkPassword123!"
-        })
+        secret = create_secret(
+            {"title": "Test One-Time Link Secret", "secret_type": "Password", "password": "LinkPassword123!"}
+        )
 
         # Create one-time link without passphrase
-        link_doc = create_one_time_link(
-            secret_name=secret.get("name"),
-            max_views=1
-        )
+        link_doc = create_one_time_link(secret_name=secret.get("name"), max_views=1)
         self.assertTrue(link_doc.get("token"))
         self.assertTrue(link_doc.get("name"))
 
@@ -40,21 +35,22 @@ class TestOneTimeLink(FrappeTestCase):
         delete_secret(secret.get("name"))
 
     def test_passphrase_protected_link(self):
-        secret = create_secret({
-            "title": "Test One-Time Link Secret",
-            "secret_type": "Note",
-            "notes": "Secret Notes Content"
-        })
+        secret = create_secret(
+            {"title": "Test One-Time Link Secret", "secret_type": "Note", "notes": "Secret Notes Content"}
+        )
 
         # Create link with passphrase
         link_doc = create_one_time_link(
-            secret_name=secret.get("name"),
-            passphrase="VaultPassphrase123!",
-            max_views=1
+            secret_name=secret.get("name"), passphrase="VaultPassphrase123!", max_views=1
         )
 
         # Consume with wrong passphrase (should fail)
-        self.assertRaises(frappe.ValidationError, consume_one_time_link, token=link_doc.get("token"), passphrase="WrongPassphrase")
+        self.assertRaises(
+            frappe.ValidationError,
+            consume_one_time_link,
+            token=link_doc.get("token"),
+            passphrase="WrongPassphrase",
+        )
 
         # Consume with correct passphrase
         consumed = consume_one_time_link(token=link_doc.get("token"), passphrase="VaultPassphrase123!")

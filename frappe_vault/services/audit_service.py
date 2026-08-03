@@ -7,21 +7,23 @@ from frappe.utils import now_datetime
 def _create_log(action: str, secret: str = None, folder: str = None, details: dict = None):
     """Create an audit log entry. Never throws — failures are logged silently."""
     try:
-        log = frappe.get_doc({
-            "doctype": "Vault Audit Log",
-            "action": action,
-            "secret": secret,
-            "folder": folder,
-            "user": frappe.session.user,
-            "timestamp": now_datetime(),
-            "ip_address": getattr(frappe.local, "request_ip", ""),
-            "user_agent": (
-                frappe.request.headers.get("User-Agent", "")[:500]
-                if hasattr(frappe, "request") and frappe.request
-                else ""
-            ),
-            "details": frappe.as_json(details) if details else None,
-        })
+        log = frappe.get_doc(
+            {
+                "doctype": "Vault Audit Log",
+                "action": action,
+                "secret": secret,
+                "folder": folder,
+                "user": frappe.session.user,
+                "timestamp": now_datetime(),
+                "ip_address": getattr(frappe.local, "request_ip", ""),
+                "user_agent": (
+                    frappe.request.headers.get("User-Agent", "")[:500]
+                    if hasattr(frappe, "request") and frappe.request
+                    else ""
+                ),
+                "details": frappe.as_json(details) if details else None,
+            }
+        )
         log.insert(ignore_permissions=True)
     except Exception as e:
         try:
@@ -31,6 +33,7 @@ def _create_log(action: str, secret: str = None, folder: str = None, details: di
 
 
 # --- Doc event hooks (called from hooks.py doc_events) ---
+
 
 def log_secret_created(doc, method):
     _create_log("Created", secret=doc.name, folder=getattr(doc, "folder", None))
@@ -42,29 +45,27 @@ def log_secret_updated(doc, method):
 
 def log_secret_deleted(doc, method):
     try:
-        frappe.db.sql(
-            "UPDATE `tabVault Audit Log` SET secret = NULL WHERE secret = %s",
-            (doc.name,)
-        )
+        frappe.db.sql("UPDATE `tabVault Audit Log` SET secret = NULL WHERE secret = %s", (doc.name,))
     except Exception:
         pass
-    _create_log("Deleted", secret=None, folder=getattr(doc, "folder", None), details={"secret_name": doc.name, "title": getattr(doc, "title", doc.name)})
+    _create_log(
+        "Deleted",
+        secret=None,
+        folder=getattr(doc, "folder", None),
+        details={"secret_name": doc.name, "title": getattr(doc, "title", doc.name)},
+    )
 
 
 def log_share_created(doc, method):
     recipient = doc.user if doc.share_type == "User" else doc.frappe_role
-    details = {
-        "share_type": doc.share_type,
-        "permission": doc.permission_level,
-        "recipient": recipient
-    }
+    details = {"share_type": doc.share_type, "permission": doc.permission_level, "recipient": recipient}
     if doc.expires_on:
         details["expires_on"] = str(doc.expires_on)
     _create_log(
         "Shared",
         secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
         folder=doc.shared_name if doc.shared_doctype == "Vault Folder" else None,
-        details=details
+        details=details,
     )
 
 
@@ -76,11 +77,12 @@ def log_share_removed(doc, method):
         "Unshared",
         secret=doc.shared_name if doc.shared_doctype == "Vault Secret" else None,
         folder=doc.shared_name if doc.shared_doctype == "Vault Folder" else None,
-        details={"share_type": doc.share_type, "recipient": recipient}
+        details={"share_type": doc.share_type, "recipient": recipient},
     )
 
 
 # --- Callable from services ---
+
 
 def log_secret_viewed(secret_name: str):
     folder = frappe.db.get_value("Vault Secret", secret_name, "folder")
@@ -115,7 +117,7 @@ def log_one_time_link_created(link_doc):
             "one_time_link": link_doc.name,
             "max_views": link_doc.max_views,
             "expires_at": str(link_doc.expires_at) if link_doc.expires_at else None,
-        }
+        },
     )
 
 
@@ -129,6 +131,6 @@ def log_one_time_link_consumed(link_doc):
             "type": "One Time Link",
             "one_time_link": link_doc.name,
             "view_count": link_doc.view_count,
-            "max_views": link_doc.max_views
-        }
+            "max_views": link_doc.max_views,
+        },
     )

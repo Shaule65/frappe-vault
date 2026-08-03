@@ -44,7 +44,7 @@ STANDARD_SORT_FIELDS = [
 
 
 @frappe.whitelist()
-def get_filterable_fields(doctype="Vault Secret"):
+def get_filterable_fields(doctype: str = "Vault Secret") -> list[dict]:
     """Return fields that can be used as list filters, read from DocType meta.
 
     Excludes sensitive fields (passwords, keys) and layout-only fields.
@@ -66,20 +66,22 @@ def get_filterable_fields(doctype="Vault Secret"):
         if fieldname in SENSITIVE_FIELDS:
             continue
 
-        fields.append({
-            "fieldname": fieldname,
-            "fieldtype": fieldtype,
-            "label": _(label),
-            "value": fieldname,
-            "name": fieldname,
-            "options": fd.get("options", ""),
-        })
+        fields.append(
+            {
+                "fieldname": fieldname,
+                "fieldtype": fieldtype,
+                "label": _(label),
+                "value": fieldname,
+                "name": fieldname,
+                "options": fd.get("options", ""),
+            }
+        )
 
     return fields
 
 
 @frappe.whitelist()
-def get_sort_options(doctype="Vault Secret"):
+def get_sort_options(doctype: str = "Vault Secret") -> list[dict]:
     """Return fields available for sorting, read from DocType meta.
 
     Excludes layout-only fields (Section Break, Column Break, etc.)
@@ -101,17 +103,21 @@ def get_sort_options(doctype="Vault Secret"):
         if fieldname in SENSITIVE_FIELDS:
             continue
 
-        fields.append({
-            "label": _(label),
-            "value": fieldname,
-            "fieldname": fieldname,
-        })
+        fields.append(
+            {
+                "label": _(label),
+                "value": fieldname,
+                "fieldname": fieldname,
+            }
+        )
 
     for sf in STANDARD_SORT_FIELDS:
-        fields.append({
-            "label": _(sf["label"]),
-            "value": sf["fieldname"],
-            "fieldname": sf["fieldname"],
-        })
+        fields.append(
+            {
+                "label": _(sf["label"]),
+                "value": sf["fieldname"],
+                "fieldname": sf["fieldname"],
+            }
+        )
 
     return fields

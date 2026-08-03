@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen w-full bg-surface-base text-ink-gray-9 flex flex-col items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-sm my-auto">
-      
+
       <!-- Passphrase Screen -->
       <div v-if="!secret && needsPassphrase" class="w-full space-y-4">
         <!-- App Vault Logo Header -->
@@ -73,7 +73,7 @@
       <div v-else-if="secret" class="space-y-4">
         <!-- Unified Box Card Container -->
         <div class="w-full min-w-0 bg-surface-base rounded-2xl border border-outline-gray-1 shadow-2xs overflow-hidden divide-y divide-outline-gray-1">
-          
+
           <!-- Header Section inside the box card -->
           <div class="py-4 px-5 text-center bg-surface-gray-2">
             <!-- App Vault Logo inside unlocked card -->

@@ -125,12 +125,13 @@ def has_secret_permission(doc, ptype="read", user=None):
             "share_type": "User",
             "user": user,
             "is_revoked": 1,
-        }
+        },
     ):
         return False
 
     # Check active user-specific share first (explicit user level takes priority over role share)
-    user_shares = frappe.db.sql("""
+    user_shares = frappe.db.sql(
+        """
         SELECT permission_level FROM `tabVault Share`
         WHERE share_type = 'User'
           AND user = %s
@@ -140,14 +141,12 @@ def has_secret_permission(doc, ptype="read", user=None):
               (shared_doctype = 'Vault Secret' AND shared_name = %s)
               OR (shared_doctype = 'Vault Folder' AND shared_name = %s)
           )
-    """, (user, doc_name, doc_folder or ""), as_dict=True)
+    """,
+        (user, doc_name, doc_folder or ""),
+        as_dict=True,
+    )
 
-    perm_map = {
-        "View Only": 1,
-        "View & Copy": 2,
-        "Edit": 3,
-        "Full Control": 4
-    }
+    perm_map = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
 
     if user_shares:
         highest_share = max(user_shares, key=lambda s: perm_map.get(s.permission_level, 0))
@@ -161,7 +160,8 @@ def has_secret_permission(doc, ptype="read", user=None):
 
     # Check active role shares if no explicit user share exists
     if roles:
-        role_shares = frappe.db.sql("""
+        role_shares = frappe.db.sql(
+            """
             SELECT permission_level FROM `tabVault Share`
             WHERE share_type = 'Role'
               AND frappe_role IN %s
@@ -171,7 +171,10 @@ def has_secret_permission(doc, ptype="read", user=None):
                   (shared_doctype = 'Vault Secret' AND shared_name = %s)
                   OR (shared_doctype = 'Vault Folder' AND shared_name = %s)
               )
-        """, (tuple(roles), doc_name, doc_folder or ""), as_dict=True)
+        """,
+            (tuple(roles), doc_name, doc_folder or ""),
+            as_dict=True,
+        )
         if role_shares:
             highest_share = max(role_shares, key=lambda s: perm_map.get(s.permission_level, 0))
             level = perm_map.get(highest_share.permission_level, 1)
@@ -248,7 +251,8 @@ def has_folder_permission(doc, ptype="read", user=None):
         return True
 
     # Check explicit active user-specific share for this folder first
-    user_shares = frappe.db.sql("""
+    user_shares = frappe.db.sql(
+        """
         SELECT permission_level FROM `tabVault Share`
         WHERE shared_doctype = 'Vault Folder'
           AND shared_name = %s
@@ -256,14 +260,12 @@ def has_folder_permission(doc, ptype="read", user=None):
           AND user = %s
           AND is_revoked = 0
           AND (expires_on IS NULL OR expires_on > NOW())
-    """, (doc_name, user), as_dict=True)
+    """,
+        (doc_name, user),
+        as_dict=True,
+    )
 
-    perm_map = {
-        "View Only": 1,
-        "View & Copy": 2,
-        "Edit": 3,
-        "Full Control": 4
-    }
+    perm_map = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
 
     if user_shares:
         highest_share = max(user_shares, key=lambda s: perm_map.get(s.permission_level, 0))
@@ -277,7 +279,8 @@ def has_folder_permission(doc, ptype="read", user=None):
 
     # Check active role shares if no explicit user share exists for this folder
     if roles:
-        role_shares = frappe.db.sql("""
+        role_shares = frappe.db.sql(
+            """
             SELECT permission_level FROM `tabVault Share`
             WHERE shared_doctype = 'Vault Folder'
               AND shared_name = %s
@@ -285,7 +288,10 @@ def has_folder_permission(doc, ptype="read", user=None):
               AND frappe_role IN %s
               AND is_revoked = 0
               AND (expires_on IS NULL OR expires_on > NOW())
-        """, (doc_name, tuple(roles)), as_dict=True)
+        """,
+            (doc_name, tuple(roles)),
+            as_dict=True,
+        )
         if role_shares:
             highest_share = max(role_shares, key=lambda s: perm_map.get(s.permission_level, 0))
             level = perm_map.get(highest_share.permission_level, 1)
@@ -321,4 +327,3 @@ def has_file_permission(doc, ptype="read", user=None):
         return has_secret_permission(doc.attached_to_name, ptype="read", user=user)
 
     return None
-

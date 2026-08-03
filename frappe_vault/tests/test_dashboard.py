@@ -21,11 +21,9 @@ class TestVaultDashboard(FrappeTestCase):
         to_date = today_str
 
         # Create a test secret
-        secret = create_secret({
-            "title": "Dashboard Test Secret",
-            "secret_type": "Password",
-            "password": "dashboardpass123"
-        })
+        secret = create_secret(
+            {"title": "Dashboard Test Secret", "secret_type": "Password", "password": "dashboardpass123"}
+        )
         self.assertTrue(secret.get("name"))
 
         # Fetch dashboard layout data

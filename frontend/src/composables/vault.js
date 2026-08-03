@@ -276,6 +276,3 @@ export function useVaultDashboard() {
     auto: false,
   })
 }
-
-
-

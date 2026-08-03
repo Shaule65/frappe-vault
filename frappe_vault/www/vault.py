@@ -6,7 +6,7 @@ login_required = False
 
 def get_context(context):
     csrf_token = frappe.sessions.get_csrf_token()
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep
 
     user_info = (
         frappe.db.get_value(

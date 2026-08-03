@@ -29,7 +29,7 @@ class TestNotifications(FrappeTestCase):
             subject="Test Vault Alert",
             email_content="Testing notification creation",
             notification_type="Alert",
-            document_type="Vault Secret"
+            document_type="Vault Secret",
         )
         self.assertTrue(notif_name)
 
@@ -48,34 +48,38 @@ class TestNotifications(FrappeTestCase):
 
     def test_sharing_triggers_notification(self):
         if not frappe.db.exists("User", "test_user_vault@example.com"):
-            user_doc = frappe.get_doc({
-                "doctype": "User",
-                "email": "test_user_vault@example.com",
-                "first_name": "Test",
-                "send_welcome_email": 0
-            })
+            user_doc = frappe.get_doc(
+                {
+                    "doctype": "User",
+                    "email": "test_user_vault@example.com",
+                    "first_name": "Test",
+                    "send_welcome_email": 0,
+                }
+            )
             user_doc.insert(ignore_permissions=True)
 
-        secret = create_secret({
-            "title": "Notification Test Secret",
-            "secret_type": "Password",
-            "password": "secretpassword123"
-        })
+        secret = create_secret(
+            {"title": "Notification Test Secret", "secret_type": "Password", "password": "secretpassword123"}
+        )
 
         share_res = share_secret(
             shared_name=secret["name"],
             shared_doctype="Vault Secret",
             share_type="User",
             user="test_user_vault@example.com",
-            permission_level="View Only"
+            permission_level="View Only",
         )
         self.assertTrue(share_res.get("name"))
 
-        notifications = frappe.get_all("Notification Log", filters={"for_user": "test_user_vault@example.com"})
+        notifications = frappe.get_all(
+            "Notification Log", filters={"for_user": "test_user_vault@example.com"}
+        )
         self.assertTrue(len(notifications) > 0)
 
         unshare_res = unshare(share_res["name"])
         self.assertEqual(unshare_res.get("removed"), share_res["name"])
 
-        revocation_notifs = frappe.get_all("Notification Log", filters={"for_user": "test_user_vault@example.com", "type": "Alert"})
+        revocation_notifs = frappe.get_all(
+            "Notification Log", filters={"for_user": "test_user_vault@example.com", "type": "Alert"}
+        )
         self.assertTrue(len(revocation_notifs) > 0)

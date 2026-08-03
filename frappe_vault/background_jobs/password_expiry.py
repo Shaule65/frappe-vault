@@ -13,7 +13,7 @@ def check_password_expiry():
     old_passwords = frappe.get_all(
         "Vault Secret",
         filters={"secret_type": "Password", "password_last_changed": ("<", threshold_date)},
-        fields=["name", "title", "owner", "password_last_changed"]
+        fields=["name", "title", "owner", "password_last_changed"],
     )
 
     by_owner = {}
@@ -24,14 +24,16 @@ def check_password_expiry():
         if owner == "Administrator":
             continue
         try:
-            frappe.get_doc({
-                "doctype": "Notification Log",
-                "subject": _("Password Update Reminder"),
-                "email_content": _("You have {0} password(s) that need rotation.").format(len(secrets)),
-                "for_user": owner,
-                "type": "Alert",
-                "document_type": "Vault Secret",
-                "document_name": secrets[0].name
-            }).insert(ignore_permissions=True)
+            frappe.get_doc(
+                {
+                    "doctype": "Notification Log",
+                    "subject": _("Password Update Reminder"),
+                    "email_content": _("You have {0} password(s) that need rotation.").format(len(secrets)),
+                    "for_user": owner,
+                    "type": "Alert",
+                    "document_type": "Vault Secret",
+                    "document_name": secrets[0].name,
+                }
+            ).insert(ignore_permissions=True)
         except Exception as e:
             frappe.log_error(f"Password expiry notification failed for {owner}: {e}", "Vault")
