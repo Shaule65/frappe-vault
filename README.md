@@ -150,7 +150,7 @@ Main document for storing credentials.
 
 ### Vault Folder
 
-Tree-based organization for secrets.
+Organize your secrets into logical groups using folders.
 
 ### Vault Access Log
 
