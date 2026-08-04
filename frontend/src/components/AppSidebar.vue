@@ -541,7 +541,7 @@ const sidebarCollapsedComputed = computed({
 const showAboutModal = ref(false)
 
 const vaultVersion = computed(() => {
-  return window.frappe?.boot?.versions?.frappe_vault || '1.0.0'
+  return window.frappe?.boot?.versions?.frappe_vault || '1.0.1'
 })
 
 const aboutLinks = [
