@@ -9,7 +9,7 @@ Frappe Vault is a free, open-source application. It is provided to the community
 Frappe Vault is licensed under the MIT License. Your use, modification, and distribution of the software must adhere to the terms set forth in that license.
 
 ## 3. "As-Is" Provision and Disclaimer of Warranties
-**THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED**, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+**THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED**, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 We do not guarantee that the software will be error-free, secure, or uninterrupted. You acknowledge that your use of the software is entirely at your own risk.
 
@@ -19,7 +19,7 @@ We do not guarantee that the software will be error-free, secure, or uninterrupt
 This includes, but is not limited to, data loss, server downtime, security breaches, or business interruption resulting from the use of Frappe Vault.
 
 ## 5. Support and Maintenance
-Frappe Vault is a community-driven, open-source project. **No official, guaranteed, or dedicated technical support is provided** by the authors. 
+Frappe Vault is a community-driven, open-source project. **No official, guaranteed, or dedicated technical support is provided** by the authors.
 
 Users are encouraged to seek help, report bugs, or discuss features through community support channels on our official GitHub repository: https://github.com/lubusIN/frappe-vault
 

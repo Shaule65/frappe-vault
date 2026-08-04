@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Thank you for choosing to use Frappe Vault. We are committed to transparency and respect for your privacy. 
+Thank you for choosing to use Frappe Vault. We are committed to transparency and respect for your privacy.
 
 This Privacy Policy explains how data is handled when you use Frappe Vault.
 
@@ -8,7 +8,7 @@ This Privacy Policy explains how data is handled when you use Frappe Vault.
 Frappe Vault is a free and open-source application designed to be completely self-hosted. The developers and maintainers of Frappe Vault **do not collect, store, process, transmit, or have any access to any personal data, usage metrics, or analytics** from instances where this software is installed.
 
 ## 2. Self-Hosting and User Responsibility
-Because Frappe Vault is self-hosted, all data processed by the application remains entirely on the server infrastructure that you control and operate. 
+Because Frappe Vault is self-hosted, all data processed by the application remains entirely on the server infrastructure that you control and operate.
 
 You, as the administrator of the self-hosted instance, are fully responsible for:
 - The security and integrity of your server.
