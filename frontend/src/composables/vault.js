@@ -31,6 +31,13 @@ export function useDecryptSecret() {
   })
 }
 
+export function useGetTotp() {
+  return createResource({
+    url: 'frappe_vault.api.secrets.get_totp',
+    makeParams: ({ name }) => ({ name }),
+  })
+}
+
 export function useCreateSecret() {
   return createResource({
     url: 'frappe_vault.api.secrets.create',

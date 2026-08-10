@@ -242,7 +242,7 @@
                     <div v-else class="text-xs text-ink-gray-4 italic py-1">No files attached.</div>
                   </div>
 
-                  <div v-else-if="secretData[field.name] || field.type === 'password'" :class="field.type === 'textarea' ? 'pt-2' : 'flex items-center justify-between py-1 text-sm'">
+                  <div v-else-if="secretData[field.name] || (field.type === 'password' && (field.name !== 'totp_secret' || secretData.has_totp))" :class="field.type === 'textarea' ? 'pt-2' : 'flex items-center justify-between py-1 text-sm'">
                     <span v-if="field.type === 'textarea'" class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">{{ field.label }}</span>
                     <span v-else class="w-28 shrink-0 text-ink-gray-5 font-normal">{{ field.label }}</span>
 
@@ -275,6 +275,7 @@
                         {{ revealedFields[field.name] ? decryptedData?.[field.name] : (field.name === 'card_number' ? '•••• •••• •••• ••••' : (field.name === 'card_cvv' ? '•••' : '••••••••••••')) }}
                       </span>
                       <div class="flex items-center gap-0.5 shrink-0">
+                        <Button v-if="field.name === 'totp_secret' && secretData.has_totp" variant="subtle" theme="blue" icon="lucide-clock" class="!p-1.5 h-auto text-ink-blue-5 hover:text-ink-blue-6 focus:outline-none" title="Get TOTP Code" @click="showTotpDialog = true" />
                         <Button variant="ghost" :icon="revealedFields[field.name] ? 'lucide-eye-off' : 'lucide-eye'" class="!p-1 h-auto text-ink-gray-4 hover:text-ink-gray-9 focus:outline-none" :title="'Reveal ' + field.label" @click="toggleField(field.name)" />
                         <Button v-if="canCopy" variant="ghost" :icon="copiedField === field.name ? 'lucide-check' : 'lucide-copy'" :class="copiedField === field.name ? 'text-ink-green-3 hover:text-ink-green-4' : 'text-ink-gray-4 hover:text-ink-gray-9'" class="!p-1 h-auto focus:outline-none" :title="'Copy ' + field.label" @click="copyFieldData(field.name)" />
                       </div>
@@ -484,7 +485,7 @@
                       <div class="flex items-center gap-3 shrink-0">
                         <!-- Single User: inline permission dropdown -->
                         <Dropdown
-                          v-if="isOwnerOrAdmin && item.share_type === 'User' && !(item.user_count > 1)"
+                          v-if="canEditShare(item) && item.share_type === 'User' && !(item.user_count > 1)"
                           :options="[
                             { label: 'View Only', onClick: () => handleUpdateSharePermission(item.name, 'View Only') },
                             { label: 'View & Copy', onClick: () => handleUpdateSharePermission(item.name, 'View & Copy') },
@@ -525,6 +526,7 @@
 
                         <!-- Revoke Access Action -->
                         <Button
+                          v-if="canEditShare(item)"
                           variant="ghost"
                           icon="lucide-trash-2"
                           class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-surface-red-2"
@@ -608,7 +610,7 @@
 
                         <!-- Delete Share Entry Action -->
                         <Button
-                          v-if="isOwnerOrAdmin"
+                          v-if="canEditShare(item)"
                           variant="ghost"
                           icon="lucide-trash-2"
                           class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-surface-red-2"
@@ -705,8 +707,14 @@
       :sharedName="props.name"
       sharedDoctype="Vault Secret"
       :item="selectedRoleItem"
-      :isOwnerOrAdmin="isOwnerOrAdmin"
+      :isOwnerOrAdmin="selectedRoleItem ? canEditShare(selectedRoleItem) : isOwnerOrAdmin"
       @saved="sharesResource.fetch({ secret_name: props.name })"
+    />
+
+    <!-- TOTP Dialog -->
+    <TotpDialog
+      v-model="showTotpDialog"
+      :secretName="props.name"
     />
   </div>
 </template>
@@ -741,6 +749,7 @@ import StrengthBadge from '../components/StrengthBadge.vue'
 import PeopleWithAccessModal from '../components/PeopleWithAccessModal.vue'
 import ShareItemDialog from '../components/ShareItemDialog.vue'
 import RevokeShareDialog from '../components/RevokeShareDialog.vue'
+import TotpDialog from '../components/TotpDialog.vue'
 import { actionIcons, secretTypeOptions, permissionTheme, typeMeta, formatRelativeTime } from '../composables/constants'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 
@@ -754,6 +763,7 @@ const props = defineProps({
 const router = useRouter()
 
 const showActivitySidebar = ref(window.innerWidth >= 1024)
+const showTotpDialog = ref(false)
 
 function handleResize() {
   if (window.innerWidth >= 1024) {
@@ -791,12 +801,14 @@ const secretFieldsConfig = {
   'Password': [
     { name: 'url', label: 'URL', type: 'url', isLink: true },
     { name: 'username', label: 'Username', type: 'text', mono: true },
-    { name: 'password', label: 'Password', type: 'password', mono: true }
+    { name: 'password', label: 'Password', type: 'password', mono: true },
+    { name: 'totp_secret', label: 'TOTP Secret (2FA)', type: 'password', mono: true, placeholder: 'Base32 Seed' }
   ],
   'API Key': [
     { name: 'url', label: 'Endpoint URL', type: 'url', isLink: true },
     { name: 'api_key', label: 'API Key', type: 'text', mono: true },
-    { name: 'api_secret', label: 'API Secret', type: 'password', mono: true }
+    { name: 'api_secret', label: 'API Secret', type: 'password', mono: true },
+    { name: 'totp_secret', label: 'TOTP Secret (2FA)', type: 'password', mono: true, placeholder: 'Base32 Seed' }
   ],
   'Credit Card': [
     { name: 'card_holder', label: 'Card Holder', type: 'text', mono: false },
@@ -984,6 +996,16 @@ const isOwnerOrAdmin = computed(() => {
 })
 
 const userPermission = computed(() => secretData.value?.user_permission || 'View Only')
+
+function canEditShare(item) {
+  if (stats.data?.is_admin) return true
+  if (currentSessionUser.value === 'Administrator') return true
+  const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
+  if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
+  if (secretData.value?.owner === currentSessionUser.value) return true
+  if (item && item.shared_by === currentSessionUser.value) return true
+  return false
+}
 
 const canEdit = computed(() => {
   if (stats.data?.is_admin) return true

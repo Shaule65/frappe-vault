@@ -22,12 +22,22 @@
               <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
             </template>
           </FormControl>
+          <FormControl label="TOTP Secret (2FA Seed)" v-model="form.totp_secret" :type="showSecrets ? 'text' : 'password'" placeholder="Base32 format">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
         </template>
 
         <!-- API Key fields -->
         <template v-if="form.secret_type === 'API Key'">
           <FormControl label="API Key" v-model="form.api_key" />
           <FormControl label="API Secret" v-model="form.api_secret" :type="showSecrets ? 'text' : 'password'">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
+          <FormControl label="TOTP Secret (2FA Seed)" v-model="form.totp_secret" :type="showSecrets ? 'text' : 'password'" placeholder="Base32 format">
             <template #suffix>
               <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
             </template>
@@ -180,7 +190,7 @@ const folderOptions = computed(() => {
 
 const defaultForm = () => ({
   title: '', secret_type: 'Password', folder: props.initialFolder || '', url: '', username: '', email: '',
-  password: '', api_key: '', api_secret: '', ssh_private_key: '', attachment: '', notes: '', card_holder: '', card_number: '',
+  password: '', totp_secret: '', api_key: '', api_secret: '', ssh_private_key: '', attachment: '', notes: '', card_holder: '', card_number: '',
   card_expiry: '', card_cvv: '', db_host: '', db_port: '', db_name: '', db_password: '',
 })
 
