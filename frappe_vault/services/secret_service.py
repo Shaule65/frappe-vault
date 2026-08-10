@@ -1,6 +1,9 @@
 """Secret service — core CRUD and business logic for vault secrets."""
 
+import time
+
 import frappe
+import pyotp
 from frappe import _
 
 from frappe_vault.services.audit_service import log_secret_viewed
@@ -190,6 +193,7 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         else 0,
         "password_strength": doc.password_strength,
         "password_last_changed": doc.password_last_changed,
+        "has_totp": bool(doc.totp_secret),
         "last_accessed": str(doc.last_accessed) if doc.last_accessed else None,
         "access_count": doc.access_count,
         "expires_on": str(doc.expires_on) if doc.expires_on else None,
@@ -223,6 +227,51 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
     doc.update_access_metadata()
 
     return result
+
+
+def get_totp_code(name: str) -> dict:
+    """Generate the current TOTP code and remaining seconds for a secret."""
+    if not frappe.has_permission("Vault Secret", "read", name):
+        frappe.throw(_("You don't have permission to access this secret"), frappe.PermissionError)
+
+    secret = get_secret(name, decrypt=True)
+    decrypted = secret.get("decrypted", {})
+    totp_secret = decrypted.get("totp_secret")
+
+    if not totp_secret:
+        return {"code": None, "remaining_seconds": 0, "error": _("No TOTP secret configured.")}
+
+    try:
+        # pyotp handles both padded and unpadded base32 strings
+        clean_secret = str(totp_secret).strip().replace(" ", "")
+        totp = pyotp.TOTP(clean_secret)
+        code = totp.now()
+        remaining_seconds = 30 - (int(time.time()) % 30)
+
+        # Generate QR Code SVG only for owners/admins to prevent offline copying by shared users
+        qr_svg = None
+        if secret.get("user_permission") == "Full Control":
+            try:
+                import base64
+
+                from frappe.twofactor import get_qr_svg_code
+
+                totp_uri = totp.provisioning_uri(name=name, issuer_name="Frappe Vault")
+                qr_b64_bytes = get_qr_svg_code(totp_uri)
+                if isinstance(qr_b64_bytes, bytes):
+                    qr_svg = base64.b64decode(qr_b64_bytes).decode("utf-8")
+                elif isinstance(qr_b64_bytes, str):
+                    qr_svg = base64.b64decode(qr_b64_bytes.encode("utf-8")).decode("utf-8")
+                else:
+                    qr_svg = str(qr_b64_bytes)
+            except Exception as e:
+                frappe.logger().error(f"Could not generate QR SVG: {str(e)}")
+
+        return {"code": code, "remaining_seconds": remaining_seconds, "qr_svg": qr_svg, "error": None}
+
+    except Exception as e:
+        frappe.log_error(title=f"TOTP Generation Failed for {name}", message=str(e))
+        return {"code": None, "remaining_seconds": 0, "error": _("Invalid TOTP setup key format.")}
 
 
 def sanitize_url(url: str) -> str:
@@ -315,6 +364,7 @@ def update_secret(name: str, data: dict) -> dict:
         "username",
         "email",
         "password",
+        "totp_secret",
         "api_key",
         "api_secret",
         "notes",
@@ -436,19 +486,23 @@ def get_vault_stats() -> dict:
     user_roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
 
-    total = frappe.db.count("Vault Secret")
-    bookmarks = frappe.db.count("Vault Bookmark", filters={"user": user})
-    weak = frappe.db.count("Vault Secret", filters={"password_strength": ["in", ["weak", "fair"]]})
-
-    type_counts = frappe.db.sql(
-        """
-        SELECT secret_type, COUNT(name) as count
-        FROM `tabVault Secret`
-        GROUP BY secret_type
-    """,
-        as_dict=True,
+    permitted_secrets = frappe.get_list(
+        "Vault Secret", fields=["name", "password_strength", "secret_type"], limit_page_length=0
     )
-    secrets_by_type = {row["secret_type"] or "Other": row["count"] for row in type_counts}
+    permitted_names = {s.name for s in permitted_secrets}
+
+    total = len(permitted_secrets)
+    weak = sum(1 for s in permitted_secrets if s.get("password_strength") in ("weak", "fair"))
+
+    secrets_by_type = {}
+    for s in permitted_secrets:
+        stype = s.get("secret_type") or "Other"
+        secrets_by_type[stype] = secrets_by_type.get(stype, 0) + 1
+
+    bookmarks_list = frappe.get_list(
+        "Vault Bookmark", filters={"user": user}, pluck="secret", limit_page_length=0
+    )
+    bookmarks = sum(1 for b in bookmarks_list if b in permitted_names)
 
     recent = frappe.get_list(
         "Vault Secret",

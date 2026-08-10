@@ -13,6 +13,7 @@ class VaultSecret(Document):
         """Validate the secret before saving."""
         self.validate_title()
         self.calculate_password_strength()
+        self.validate_totp_secret()
 
     def validate_title(self):
         """Ensure title is present and trimmed."""
@@ -20,6 +21,18 @@ class VaultSecret(Document):
             self.title = self.title.strip()
         if not self.title:
             frappe.throw(_("Title is required"))
+
+    def validate_totp_secret(self):
+        """Ensure the provided TOTP secret is a valid Base32 string."""
+        if self.totp_secret and self.totp_secret != "*****":
+            import pyotp
+            
+            try:
+                clean_secret = str(self.totp_secret).strip().replace(" ", "")
+                # Generates a code to verify the base32 seed is valid
+                pyotp.TOTP(clean_secret).now()
+            except Exception:
+                frappe.throw(_("Invalid TOTP Secret (2FA Seed). Please ensure you pasted a valid Base32 key."))
 
     def calculate_password_strength(self):
         """Auto-calculate password strength when password changes."""

@@ -51,9 +51,11 @@ def get_decrypted_secret_data(secret_name: str) -> dict:
 
     if doc.secret_type == "Password":
         result["password"] = decrypt_secret_field("Vault Secret", secret_name, "password")
+        result["totp_secret"] = decrypt_secret_field("Vault Secret", secret_name, "totp_secret")
     elif doc.secret_type == "API Key":
         result["api_key"] = doc.api_key
         result["api_secret"] = decrypt_secret_field("Vault Secret", secret_name, "api_secret")
+        result["totp_secret"] = decrypt_secret_field("Vault Secret", secret_name, "totp_secret")
     elif doc.secret_type == "Credit Card":
         result["card_number"] = decrypt_secret_field("Vault Secret", secret_name, "card_number")
         result["card_cvv"] = decrypt_secret_field("Vault Secret", secret_name, "card_cvv")

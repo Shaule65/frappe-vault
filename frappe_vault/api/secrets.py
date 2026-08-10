@@ -111,3 +111,13 @@ def decrypt(name: str) -> dict:
     from frappe_vault.services.secret_service import get_secret
 
     return get_secret(name, decrypt=True)
+
+
+@frappe.whitelist()
+def get_totp(name: str) -> dict:
+    """Get live TOTP code and remaining seconds."""
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
+    from frappe_vault.services.secret_service import get_totp_code
+
+    return get_totp_code(name)
