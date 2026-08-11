@@ -147,6 +147,12 @@ export function useSecretShares(secretName) {
   })
 }
 
+export function useFolderShares() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.get_shares',
+  })
+}
+
 export function useBulkDeleteShares() {
   return createResource({
     url: 'frappe_vault.api.sharing.bulk_delete_shares',

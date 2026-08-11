@@ -499,7 +499,7 @@
       :sharedDoctype="selectedRoleItem?.shared_doctype || 'Vault Secret'"
       :item="selectedRoleItem"
       :isOwnerOrAdmin="true"
-      @saved="sharedWithMeResource.fetch()"
+      @saved="shared.fetch()"
     />
   </div>
 </template>
@@ -778,6 +778,9 @@ const formattedRows = computed(() => {
       permission_level: s.is_revoked ? 'Revoked' : (s.permission_level || 'View Only'),
       expires_on: s.expires_on ? formatTime(s.expires_on) : 'Never',
       is_revoked: s.is_revoked,
+      frappe_role: s.frappe_role,
+      user: s.user,
+      user_count: s.user_count,
     }
   })
 })

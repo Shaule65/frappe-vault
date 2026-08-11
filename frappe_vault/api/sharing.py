@@ -37,10 +37,25 @@ def unshare(share_name: str) -> dict:
 
 
 @frappe.whitelist()
-def get_shares(secret_name: str) -> dict:
+def get_shares(secret_name: str, shared_doctype: str = "Vault Secret") -> dict:
     from frappe_vault.services.sharing_service import get_shares_for_secret
 
-    return get_shares_for_secret(secret_name)
+    return get_shares_for_secret(secret_name, shared_doctype=shared_doctype)
+
+
+@frappe.whitelist()
+def dismiss_shared_logs(share_names: str | list) -> dict:
+    import json
+
+    from frappe_vault.services.sharing_service import dismiss_shared_logs as _dismiss
+
+    if isinstance(share_names, str):
+        try:
+            share_names = json.loads(share_names)
+        except Exception:
+            share_names = [share_names]
+
+    return _dismiss(share_names)
 
 
 @frappe.whitelist()

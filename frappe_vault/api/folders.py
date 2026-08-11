@@ -55,6 +55,18 @@ def create(folder_name: str, icon: str | None = None, **kwargs) -> dict:
 
     doc = frappe.get_doc({"doctype": "Vault Folder", "folder_name": folder_name, "icon": icon})
     doc.insert()
+
+    # Notify Vault Admins of new folder creation
+    from frappe_vault.services.notification_service import notify_vault_admins
+
+    creator_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"New Folder Created: '{doc.folder_name}'",
+        email_content=f"{creator_name} created folder '{doc.folder_name}'.",
+        document_type="Vault Folder",
+        document_name=doc.name,
+    )
+
     return {"name": doc.name}
 
 
@@ -66,6 +78,8 @@ def delete(name: str, delete_secrets: bool = False) -> dict:
 
     if not has_folder_permission(name, ptype="delete"):
         frappe.throw(_("You don't have permission to delete this folder"), frappe.PermissionError)
+
+    folder_name = frappe.db.get_value("Vault Folder", name, "folder_name") or name
 
     should_delete_secrets = (
         frappe.utils.cint(delete_secrets) if not isinstance(delete_secrets, bool) else delete_secrets
@@ -96,6 +110,18 @@ def delete(name: str, delete_secrets: bool = False) -> dict:
     frappe.delete_doc(
         "Vault Folder", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True
     )
+
+    # Notify Vault Admins
+    from frappe_vault.services.notification_service import notify_vault_admins
+
+    actor_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"Folder Deleted: '{folder_name}'",
+        email_content=f"{actor_name} deleted folder '{folder_name}'.",
+        document_type="Vault Folder",
+        document_name=name,
+    )
+
     return {"deleted": name, "deleted_secrets": bool(should_delete_secrets)}
 
 
