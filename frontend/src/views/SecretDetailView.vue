@@ -242,7 +242,7 @@
                     <div v-else class="text-xs text-ink-gray-4 italic py-1">No files attached.</div>
                   </div>
 
-                  <div v-else-if="secretData[field.name] || (field.type === 'password' && (field.name !== 'totp_secret' || secretData.has_totp))" :class="field.type === 'textarea' ? 'pt-2' : 'flex items-center justify-between py-1 text-sm'">
+                  <div v-else-if="hasFieldValue(field.name)" :class="field.type === 'textarea' ? 'pt-2' : 'flex items-center justify-between py-1 text-sm'">
                     <span v-if="field.type === 'textarea'" class="block text-xs font-semibold text-ink-gray-5 uppercase tracking-wider mb-1.5">{{ field.label }}</span>
                     <span v-else class="w-28 shrink-0 text-ink-gray-5 font-normal">{{ field.label }}</span>
 
@@ -309,7 +309,7 @@
                 <h3 class="text-xs font-semibold text-ink-gray-5 uppercase tracking-wider group-hover:text-ink-gray-7 transition-colors">Notes</h3>
                 <FeatherIcon name="chevron-down" class="w-4 h-4 text-ink-gray-4 transition-transform duration-200" :class="{ '-rotate-90': !notesOpen }" />
               </div>
-              <div v-show="notesOpen" class="mt-2.5 py-1 text-sm text-ink-gray-8 leading-relaxed whitespace-pre-wrap font-normal" v-html="secretData.notes" />
+              <div v-show="notesOpen" class="mt-2.5 py-1 text-sm text-ink-gray-8 leading-relaxed whitespace-pre-wrap font-normal">{{ secretData.notes }}</div>
             </article>
 
             <div class="h-px w-full bg-outline-gray-2" />
@@ -382,7 +382,7 @@
                       <div class="flex items-start justify-between w-full gap-4">
                         <div class="text-sm leading-relaxed text-ink-gray-8">
                           <span class="font-bold text-ink-gray-9">{{ item.user }}</span>
-                          <span class="text-ink-gray-6 ml-1.5">{{ getActionMainText(item) }}</span>
+                          <span class="text-ink-gray-6 ml-1"> {{ getActionMainText(item) }}</span>
                         </div>
                         <span class="ml-auto text-xs text-ink-gray-4 shrink-0 whitespace-nowrap text-right pt-0.5">{{ formatRelativeTime(item.timestamp) }}</span>
                       </div>
@@ -1252,6 +1252,7 @@ const editForm = reactive({
   email: '',
   notes: '',
   password: '',
+  totp_secret: '',
   api_key: '',
   api_secret: '',
   card_holder: '',
@@ -1282,6 +1283,18 @@ function getFolderName(folderId) {
   if (!folderId) return ''
   const found = folders.data?.find(f => f.name === folderId)
   return found ? found.folder_name : folderId
+}
+
+function hasFieldValue(fieldName) {
+  if (!secretData.value) return false
+  if (decryptedData.value && decryptedData.value[fieldName] !== undefined) {
+    return Boolean(decryptedData.value[fieldName])
+  }
+  const hasKey = 'has_' + fieldName.replace('totp_secret', 'totp')
+  if (secretData.value[hasKey] !== undefined) {
+    return Boolean(secretData.value[hasKey])
+  }
+  return Boolean(secretData.value[fieldName])
 }
 
 function copyField(value, fieldName) {
@@ -1365,6 +1378,7 @@ async function toggleEditMode() {
     editForm.notes = sd.notes || ''
 
     editForm.password = dd.password || ''
+    editForm.totp_secret = dd.totp_secret || ''
     editForm.api_key = sd.api_key || ''
     editForm.api_secret = dd.api_secret || ''
     editForm.card_holder = sd.card_holder || ''
@@ -1389,6 +1403,33 @@ async function handleSave() {
     return
   }
 
+  if (editForm.totp_secret && ['Password', 'API Key'].includes(editForm.secret_type)) {
+    const s = editForm.totp_secret.trim().replace(/\s+/g, '').toUpperCase()
+    if (/^\d{6,8}$/.test(s)) {
+      toast.error('You entered a 6-digit TOTP passcode instead of the 2FA Seed Key. Please paste the Base32 Secret Key.')
+      return
+    }
+    const unpadded = s.replace(/=+$/, '')
+    if (!unpadded || !/^[A-Z2-7]+$/.test(unpadded) || unpadded.length < 8) {
+      toast.error('Invalid TOTP Secret Key. Base32 keys must contain letters A-Z and digits 2-7 (at least 8 characters).')
+      return
+    }
+    const rem = unpadded.length % 8
+    if ([1, 3, 6].includes(rem)) {
+      toast.error('Invalid Base32 TOTP Secret key length.')
+      return
+    }
+    if (s.includes('=')) {
+      const expectedPadMap = { 0: 0, 2: 6, 4: 4, 5: 3, 7: 1 }
+      const expectedPadLen = expectedPadMap[rem] ?? 0
+      const actualPadLen = s.length - unpadded.length
+      if (actualPadLen !== expectedPadLen) {
+        toast.error(`Incorrect Base32 padding. Found ${actualPadLen} equal sign(s), expected ${expectedPadLen}.`)
+        return
+      }
+    }
+  }
+
   try {
     const payload = {
       title: editForm.title,
@@ -1401,10 +1442,12 @@ async function handleSave() {
     if (editForm.secret_type === 'Password') {
       payload.username = editForm.username
       payload.password = editForm.password
+      payload.totp_secret = editForm.totp_secret
       payload.url = editForm.url
     } else if (editForm.secret_type === 'API Key') {
       payload.api_key = editForm.api_key
       payload.api_secret = editForm.api_secret
+      payload.totp_secret = editForm.totp_secret
       payload.url = editForm.url
     } else if (editForm.secret_type === 'Credit Card') {
       payload.card_holder = editForm.card_holder
@@ -1434,8 +1477,12 @@ async function handleSave() {
     await secret.submit({ name: props.name })
     await activity.submit({ secret_name: props.name })
     decryptResource.submit({ name: props.name })
-  } catch (e) {
-    toast.error(e.messages?.[0] || e.message || 'Failed to save changes')
+  } catch (err) {
+    if (err.messages?.length) {
+      err.messages.forEach(msg => toast.error(msg))
+    } else {
+      toast.error(err.message || 'Failed to save changes')
+    }
   }
 }
 

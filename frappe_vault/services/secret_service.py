@@ -165,15 +165,23 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
             perm_map = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
 
             def share_priority_key(s):
-                direct_priority = 2 if not getattr(s, "is_role_override", 0) else 1
-                type_priority = 2 if s.share_type == "User" else 1
-                doc_priority = 2 if s.shared_doctype == "Vault Secret" else 1
-                perm_score = perm_map.get(s.permission_level, 0)
-                return (direct_priority, type_priority, doc_priority, perm_score)
+                is_user = s.get("share_type") == "User"
+                is_override = s.get("is_role_override")
+
+                if is_user and not is_override:
+                    hierarchy = 3
+                elif is_user and is_override:
+                    hierarchy = 2
+                else:
+                    hierarchy = 1
+
+                doc_priority = 2 if s.get("shared_doctype") == "Vault Secret" else 1
+                perm_score = perm_map.get(s.get("permission_level"), 0)
+                return (hierarchy, doc_priority, perm_score)
 
             best_share = max(shares, key=share_priority_key)
-            user_permission = best_share.permission_level
-            shared_by = best_share.shared_by
+            user_permission = best_share.get("permission_level")
+            shared_by = best_share.get("shared_by")
         else:
             user_permission = "View Only"
             shared_by = doc.owner
@@ -193,7 +201,12 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         else 0,
         "password_strength": doc.password_strength,
         "password_last_changed": doc.password_last_changed,
-        "has_totp": bool(doc.totp_secret),
+        "has_password": bool(doc.get("password")),
+        "has_totp": bool(doc.get("totp_secret")),
+        "has_api_secret": bool(doc.get("api_secret")),
+        "has_card_number": bool(doc.get("card_number")),
+        "has_card_cvv": bool(doc.get("card_cvv")),
+        "has_db_password": bool(doc.get("db_password")),
         "last_accessed": str(doc.last_accessed) if doc.last_accessed else None,
         "access_count": doc.access_count,
         "expires_on": str(doc.expires_on) if doc.expires_on else None,
@@ -242,9 +255,11 @@ def get_totp_code(name: str) -> dict:
         return {"code": None, "remaining_seconds": 0, "error": _("No TOTP secret configured.")}
 
     try:
-        # pyotp handles both padded and unpadded base32 strings
-        clean_secret = str(totp_secret).strip().replace(" ", "")
-        totp = pyotp.TOTP(clean_secret)
+        clean_secret = str(totp_secret).strip().replace(" ", "").upper()
+        unpadded = clean_secret.rstrip("=")
+        rem = len(unpadded) % 8
+        padded = unpadded + ("=" * {2: 6, 4: 4, 5: 3, 7: 1}.get(rem, 0))
+        totp = pyotp.TOTP(padded)
         code = totp.now()
         remaining_seconds = 30 - (int(time.time()) % 30)
 
@@ -424,6 +439,17 @@ def delete_secret(name: str) -> dict:
         "Vault Secret", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True
     )
 
+    # 5. Notify Vault Admins
+    from frappe_vault.services.notification_service import notify_vault_admins
+
+    actor_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"Secret Deleted: '{title}'",
+        email_content=f"{actor_name} deleted secret '{title}'.",
+        document_type="Vault Secret",
+        document_name=name,
+    )
+
     return {"name": name, "title": title}
 
 
@@ -486,10 +512,69 @@ def get_vault_stats() -> dict:
     user_roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
 
-    permitted_secrets = frappe.get_list(
-        "Vault Secret", fields=["name", "password_strength", "secret_type"], limit_page_length=0
-    )
-    permitted_names = {s.name for s in permitted_secrets}
+    if is_admin:
+        permitted_secrets = frappe.get_all(
+            "Vault Secret", fields=["name", "password_strength", "secret_type"], limit_page_length=0
+        )
+    else:
+        owned = frappe.get_all(
+            "Vault Secret",
+            filters={"owner": user},
+            fields=["name", "password_strength", "secret_type"],
+            limit_page_length=0,
+        )
+        permitted_map = {s.name: s for s in owned}
+
+        role_placeholders = ", ".join(["%s"] * len(user_roles)) if user_roles else "''"
+        params = [user] + list(user_roles)
+
+        secret_query = f"""
+            SELECT DISTINCT shared_name FROM `tabVault Share`
+            WHERE is_revoked = 0
+            AND (expires_on IS NULL OR expires_on > NOW())
+            AND shared_doctype = 'Vault Secret'
+            AND (
+                (share_type = 'User' AND user = %s)
+                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders}))
+            )
+        """
+        shared_secret_names = set(frappe.db.sql_list(secret_query, tuple(params)))
+
+        folder_query = f"""
+            SELECT DISTINCT shared_name FROM `tabVault Share`
+            WHERE is_revoked = 0
+            AND (expires_on IS NULL OR expires_on > NOW())
+            AND shared_doctype = 'Vault Folder'
+            AND (
+                (share_type = 'User' AND user = %s)
+                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders}))
+            )
+        """
+        shared_folders = set(frappe.db.sql_list(folder_query, tuple(params)))
+
+        if shared_folders:
+            folder_secrets = frappe.get_all(
+                "Vault Secret",
+                filters={"folder": ["in", list(shared_folders)]},
+                pluck="name",
+                limit_page_length=0,
+            )
+            shared_secret_names.update(folder_secrets)
+
+        additional_names = shared_secret_names - set(permitted_map.keys())
+        if additional_names:
+            shared_secrets_data = frappe.get_all(
+                "Vault Secret",
+                filters={"name": ["in", list(additional_names)]},
+                fields=["name", "password_strength", "secret_type"],
+                limit_page_length=0,
+            )
+            for s in shared_secrets_data:
+                permitted_map[s.name] = s
+
+        permitted_secrets = list(permitted_map.values())
+
+    permitted_names = {s["name"] for s in permitted_secrets}
 
     total = len(permitted_secrets)
     weak = sum(1 for s in permitted_secrets if s.get("password_strength") in ("weak", "fair"))
@@ -499,17 +584,20 @@ def get_vault_stats() -> dict:
         stype = s.get("secret_type") or "Other"
         secrets_by_type[stype] = secrets_by_type.get(stype, 0) + 1
 
-    bookmarks_list = frappe.get_list(
+    bookmarks_list = frappe.get_all(
         "Vault Bookmark", filters={"user": user}, pluck="secret", limit_page_length=0
     )
     bookmarks = sum(1 for b in bookmarks_list if b in permitted_names)
 
-    recent = frappe.get_list(
-        "Vault Secret",
-        fields=["name", "title", "secret_type", "folder", "last_accessed", "url"],
-        order_by="last_accessed desc",
-        limit=5,
-    )
+    recent = []
+    if permitted_names:
+        recent = frappe.get_all(
+            "Vault Secret",
+            filters={"name": ["in", list(permitted_names)]},
+            fields=["name", "title", "secret_type", "folder", "last_accessed", "url"],
+            order_by="last_accessed desc",
+            limit=5,
+        )
 
     from frappe_vault.services.demo_service import check_has_demo_data
 

@@ -259,7 +259,42 @@ function triggerFileInput(fieldname) {
 }
 
 async function handleCreate() {
-  const result = await createResource.submit(form.value)
-  emit('created', result)
+  if (['Password', 'API Key'].includes(form.value.secret_type) && form.value.totp_secret) {
+    const s = form.value.totp_secret.trim().replace(/\s+/g, '').toUpperCase()
+    if (/^\d{6,8}$/.test(s)) {
+      toast.error('You entered a 6-digit TOTP passcode instead of the 2FA Seed Key. Please paste the Base32 Secret Key.')
+      return
+    }
+    const unpadded = s.replace(/=+$/, '')
+    if (!unpadded || !/^[A-Z2-7]+$/.test(unpadded) || unpadded.length < 8) {
+      toast.error('Invalid TOTP Secret Key. Base32 keys must contain letters A-Z and digits 2-7 (at least 8 characters).')
+      return
+    }
+    const rem = unpadded.length % 8
+    if ([1, 3, 6].includes(rem)) {
+      toast.error('Invalid Base32 TOTP Secret key length.')
+      return
+    }
+    if (s.includes('=')) {
+      const expectedPadMap = { 0: 0, 2: 6, 4: 4, 5: 3, 7: 1 }
+      const expectedPadLen = expectedPadMap[rem] ?? 0
+      const actualPadLen = s.length - unpadded.length
+      if (actualPadLen !== expectedPadLen) {
+        toast.error(`Incorrect Base32 padding. Found ${actualPadLen} equal sign(s), expected ${expectedPadLen}.`)
+        return
+      }
+    }
+  }
+
+  try {
+    const result = await createResource.submit(form.value)
+    emit('created', result)
+  } catch (err) {
+    if (err.messages?.length) {
+      err.messages.forEach(msg => toast.error(msg))
+    } else {
+      toast.error(err.message || 'Failed to create secret')
+    }
+  }
 }
 </script>
