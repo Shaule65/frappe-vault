@@ -23,16 +23,61 @@ class VaultSecret(Document):
             frappe.throw(_("Title is required"))
 
     def validate_totp_secret(self):
-        """Ensure the provided TOTP secret is a valid Base32 string."""
-        if self.totp_secret and self.totp_secret != "*****":
+        """Ensure the provided TOTP secret is a valid Base32 string and auto-pad if needed."""
+        totp_secret_val = getattr(self, "totp_secret", None)
+        if totp_secret_val and totp_secret_val != "*****":
+            import re
+
             import pyotp
-            
+
+            clean_secret = str(totp_secret_val).strip().replace(" ", "").upper()
+            if not clean_secret:
+                self.totp_secret = ""
+                return
+
+            if clean_secret.isdigit() and len(clean_secret) in (6, 8):
+                frappe.throw(
+                    _(
+                        "You entered a 6-digit TOTP passcode instead of the TOTP Secret Key. Please enter the Base32 2FA seed key."
+                    )
+                )
+
+            unpadded = clean_secret.rstrip("=")
+            if not unpadded or not re.match(r"^[A-Z2-7]+$", unpadded):
+                frappe.throw(
+                    _(
+                        "Invalid TOTP Secret Key. Base32 keys can only contain letters A-Z and digits 2-7 (equal signs are only allowed at the end)."
+                    )
+                )
+
+            if len(unpadded) < 8:
+                frappe.throw(
+                    _("TOTP Secret Key is too short. Base32 seed keys must be at least 8 characters long.")
+                )
+
+            rem = len(unpadded) % 8
+            if rem in (1, 3, 6):
+                frappe.throw(_("Invalid Base32 TOTP Secret key length."))
+
+            if "=" in clean_secret:
+                expected_pad_len = {0: 0, 2: 6, 4: 4, 5: 3, 7: 1}[rem]
+                actual_pad_len = len(clean_secret) - len(unpadded)
+                if actual_pad_len != expected_pad_len:
+                    frappe.throw(
+                        _("Incorrect Base32 padding. Found {0} equal sign(s), expected {1}.").format(
+                            actual_pad_len, expected_pad_len
+                        )
+                    )
+
+            padded = unpadded + ("=" * {2: 6, 4: 4, 5: 3, 7: 1}.get(rem, 0))
+
             try:
-                clean_secret = str(self.totp_secret).strip().replace(" ", "")
-                # Generates a code to verify the base32 seed is valid
-                pyotp.TOTP(clean_secret).now()
+                pyotp.TOTP(padded).now()
+                self.totp_secret = padded
             except Exception:
-                frappe.throw(_("Invalid TOTP Secret (2FA Seed). Please ensure you pasted a valid Base32 key."))
+                frappe.throw(
+                    _("Invalid TOTP Secret (2FA Seed). Please ensure you pasted a valid Base32 key.")
+                )
 
     def calculate_password_strength(self):
         """Auto-calculate password strength when password changes."""

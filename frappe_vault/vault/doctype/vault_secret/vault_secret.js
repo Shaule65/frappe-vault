@@ -243,7 +243,7 @@ frappe_vault.show_totp_dialog = function(frm) {
                     let remaining = r.message.remaining_seconds;
                     let qr_svg = r.message.qr_svg || '';
                     d.current_code = code;
-                    
+
                     let render_totp = (c, r_sec, svg) => {
                         let indicator_color = r_sec > 5 ? 'var(--blue-500, #2490ef)' : 'var(--red-500, #ff5858)';
                         let qr_html = svg ? `<div style="margin-bottom: 20px; display: flex; justify-content: center;">${svg}</div>` : '';
@@ -259,13 +259,13 @@ frappe_vault.show_totp_dialog = function(frm) {
                         `;
                         d.get_field("totp_display").$wrapper.html(html);
                     };
-                    
+
                     render_totp(code, remaining, qr_svg);
-                    
+
                     if (d.totp_interval) {
                         clearInterval(d.totp_interval);
                     }
-                    
+
                     d.totp_interval = setInterval(() => {
                         remaining -= 1;
                         if (remaining <= 0) {
@@ -282,7 +282,7 @@ frappe_vault.show_totp_dialog = function(frm) {
             }
         });
     };
-    
+
     d.onhide = () => {
         if (d.totp_interval) {
             clearInterval(d.totp_interval);

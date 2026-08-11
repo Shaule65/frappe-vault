@@ -179,4 +179,3 @@ class TestSecretService(FrappeTestCase):
 
         # Cleanup
         delete_secret(secret_name)
-

@@ -9,7 +9,7 @@
   >
     <template #body-content>
       <div class="p-4 flex flex-col items-center justify-center space-y-6">
-        
+
         <div v-if="isInitialLoading" class="py-8 flex items-center justify-center">
           <div class="h-8 w-8 border-2 border-ink-blue-3 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -21,7 +21,7 @@
         <div v-else-if="currentCode" class="w-full flex flex-col items-center space-y-6">
           <!-- QR Code (Only returned for Owners/Admins) -->
           <div v-if="currentQr" class="flex justify-center bg-surface-base p-2 rounded-xl shadow-sm border border-outline-gray-2" v-html="currentQr" />
-          
+
           <!-- Code Display -->
           <div class="text-center">
             <div class="font-mono text-3xl font-bold tracking-[0.25em] text-ink-gray-9 select-all">
@@ -31,7 +31,7 @@
 
           <!-- Progress / Timer -->
           <div class="flex items-center gap-2 text-sm font-medium text-ink-gray-6">
-            <div 
+            <div
               class="w-2.5 h-2.5 rounded-full shadow-inner transition-colors duration-300"
               :class="remainingSeconds > 5 ? 'bg-ink-blue-500' : 'bg-ink-red-500 animate-pulse'"
             />
@@ -41,15 +41,15 @@
 
       </div>
     </template>
-    
+
     <template #actions>
       <div class="px-4 pb-4 flex justify-end gap-2">
         <Button variant="outline" @click="modelValue = false" class="text-ink-gray-7 hover:bg-surface-gray-2">
           Close
         </Button>
-        <Button 
-          v-if="currentCode" 
-          :variant="copied ? 'outline' : 'solid'" 
+        <Button
+          v-if="currentCode"
+          :variant="copied ? 'outline' : 'solid'"
           :theme="copied ? 'green' : 'gray'"
           :icon-left="copied ? 'lucide-check' : 'lucide-copy'"
           @click="copyCode"
