@@ -199,7 +199,7 @@
           <div class="flex items-center gap-2">
             <Button variant="solid" @click="showNewDialog = true">Create</Button>
             <Button
-              v-if="!hasActiveFilters && !stats.data?.has_demo_data"
+              v-if="isVaultAdmin && !hasActiveFilters && !stats.data?.has_demo_data"
               variant="outline"
               iconLeft="lucide-sparkles"
               label="Load Demo Data"
@@ -247,7 +247,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import RefreshIcon from '../components/RefreshIcon.vue'
 import FilterPanel from '../components/FilterPanel.vue'
@@ -269,6 +269,8 @@ import {
   ListFooter,
   Breadcrumbs,
   Select,
+  Badge,
+  toast
 } from 'frappe-ui'
 import {
   mobileSidebarOpened,
@@ -289,6 +291,14 @@ import StrengthBadge from '../components/StrengthBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+const isVaultAdmin = computed(() => {
+  const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name
+  if (user === 'Administrator') return true
+  const roles = window.frappe?.boot?.user?.roles || window.frappe?.user?.roles || []
+  return roles.includes('Vault Admin') || roles.includes('System Manager')
+})
+
 const titleQuery = ref('')
 const selectedSecret = ref(null)
 const showNewDialog = ref(false)
@@ -324,9 +334,23 @@ async function handleGenerateDemo() {
     await generateDemo.submit()
     secrets.reload()
     stats.reload()
+    window.dispatchEvent(new CustomEvent('vault-demo-changed'))
   } catch (err) {
   }
 }
+
+function handleDemoChanged() {
+  secrets.reload()
+  stats.reload()
+}
+
+onMounted(() => {
+  window.addEventListener('vault-demo-changed', handleDemoChanged)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vault-demo-changed', handleDemoChanged)
+})
 
 const secretsList = computed(() => secrets.data?.secrets || [])
 const totalCount = computed(() => secrets.data?.total || secretsList.value.length || 0)
@@ -472,6 +496,10 @@ async function handleDeleteSecret() {
       selectedSecrets.value.clear()
       refreshSecrets()
       stats.reload()
+
+      if (res.skipped > 0) {
+        toast.error(`Deleted ${res.deleted} secret(s), but skipped ${res.skipped} due to insufficient permissions.`)
+      }
     } else if (res && res.skipped > 0 && res.deleted === 0) {
       deleteError.value = `You don't have permission to delete the selected secret(s). Only the owner or someone with Full Control access can delete.`
     } else if (res && res.failed > 0) {
