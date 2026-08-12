@@ -38,7 +38,7 @@ def get_logs(
         filters=filters,
         fields=["name", "action", "secret", "folder", "user", "timestamp", "ip_address", "details"],
         order_by="timestamp desc",
-        limit_page_length=int(limit),
+        limit=int(limit),
         limit_start=int(offset),
     )
     total = frappe.db.count("Vault Audit Log", filters=filters)
@@ -56,5 +56,5 @@ def get_secret_activity(secret_name: str, limit: int = 20) -> list[dict]:
         filters={"secret": secret_name},
         fields=["name", "action", "user", "timestamp", "details"],
         order_by="timestamp desc",
-        limit_page_length=int(limit),
+        limit=int(limit),
     )

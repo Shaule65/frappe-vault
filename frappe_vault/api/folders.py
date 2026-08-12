@@ -16,23 +16,22 @@ def get_all() -> list[dict]:
 
     writable_folder_names = set()
     if not is_admin:
-        share_conds = [
-            "shared_doctype = 'Vault Folder'",
-            "is_revoked = 0",
-            "permission_level IN ('Edit', 'Full Control')",
-            "(expires_on IS NULL OR expires_on > NOW())",
-        ]
-        target_user_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
-        if roles:
-            roles_str = ", ".join([frappe.db.escape(r) for r in roles])
-            target_user_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
-        share_conds.append("(" + " OR ".join(target_user_conds) + ")")
-
-        writable_shares = frappe.db.sql(  # nosemgrep
-            f"""
+        # Use parameterized query instead of f-string
+        writable_shares = frappe.db.sql(
+            """
             SELECT shared_name FROM `tabVault Share`
-            WHERE {" AND ".join(share_conds)}
-        """,
+            WHERE shared_doctype = 'Vault Folder'
+            AND is_revoked = 0
+            AND permission_level IN ('Edit', 'Full Control')
+            AND (expires_on IS NULL OR expires_on > NOW())
+            AND (
+                (share_type = 'User' AND user = %(user)s)
+                OR (share_type = 'Role' AND frappe_role IN (
+                    SELECT role FROM `tabHas Role` WHERE parent = %(user)s
+                ))
+            )
+            """,
+            {"user": user},
             pluck=True,
         )
         writable_folder_names = set(writable_shares)
@@ -137,13 +136,12 @@ def update(name: str, folder_name: str | None = None, icon: str | None = None, *
     if folder_name and folder_name != name and isinstance(folder_name, str):
         from frappe.model.rename_doc import rename_doc as _rename_doc
 
-        name = _rename_doc("Vault Folder", name, folder_name, ignore_permissions=True)
+        name = _rename_doc("Vault Folder", name, folder_name)
 
     doc = frappe.get_doc("Vault Folder", name)
     if icon is not None:
         doc.icon = icon
 
-    doc.flags.ignore_permissions = True
     doc.save()
     return {"name": doc.name}
 
@@ -163,7 +161,7 @@ def get_folder_secrets(folder_name: str, limit: int = 50, offset: int = 0) -> di
         filters=filters,
         fields=LIST_VIEW_FIELDS,
         order_by="modified desc",
-        limit_page_length=int(limit),
+        limit=int(limit),
         limit_start=int(offset),
     )
     total = frappe.db.count("Vault Secret", filters=filters)

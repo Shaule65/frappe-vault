@@ -159,15 +159,28 @@ def unshare(share_name: str) -> dict:
 
     frappe.db.set_value("Vault Share", share_name, {"is_revoked": 1, "revoked_by": frappe.session.user})
 
-    # If revoking a Role share, also mark all role share records and member overrides as revoked
+    # Iterate over records with set_value instead of raw UPDATEs to trigger audit logs
+    from frappe_vault.services.audit_service import log_share_removed
+
+    def _revoke_and_log(filters):
+        shares_to_revoke = frappe.get_all("Vault Share", filters=filters, pluck="name")
+        for s_name in shares_to_revoke:
+            frappe.db.set_value("Vault Share", s_name, {"is_revoked": 1, "revoked_by": frappe.session.user})
+            try:
+                log_share_removed(frappe.get_doc("Vault Share", s_name), None)
+            except Exception:
+                pass
+
     if doc.share_type == "Role" and doc.frappe_role:
-        frappe.db.sql(
-            """
-            UPDATE `tabVault Share`
-            SET `is_revoked` = 1, `revoked_by` = %s
-            WHERE `shared_doctype` = %s AND `shared_name` = %s AND `share_type` = 'Role' AND `frappe_role` = %s
-        """,
-            (frappe.session.user, doc.shared_doctype, doc.shared_name, doc.frappe_role),
+        # Revoke the role shares
+        _revoke_and_log(
+            {
+                "shared_doctype": doc.shared_doctype,
+                "shared_name": doc.shared_name,
+                "share_type": "Role",
+                "frappe_role": doc.frappe_role,
+                "is_revoked": 0,
+            }
         )
 
         role_users = set(
@@ -176,29 +189,28 @@ def unshare(share_name: str) -> dict:
             )
         )
         if role_users:
-            frappe.db.sql(
-                """
-                UPDATE `tabVault Share`
-                SET `is_revoked` = 1, `revoked_by` = %s
-                WHERE `shared_doctype` = %s
-                  AND `shared_name` = %s
-                  AND `user` IN %s
-                  AND `is_role_override` = 1
-            """,
-                (frappe.session.user, doc.shared_doctype, doc.shared_name, tuple(role_users)),
+            # Revoke member overrides
+            _revoke_and_log(
+                {
+                    "shared_doctype": doc.shared_doctype,
+                    "shared_name": doc.shared_name,
+                    "user": ["in", list(role_users)],
+                    "is_role_override": 1,
+                    "is_revoked": 0,
+                }
             )
     elif doc.share_type == "User":
-        frappe.db.sql(
-            """
-            UPDATE `tabVault Share`
-            SET `is_revoked` = 1, `revoked_by` = %s
-            WHERE `shared_doctype` = %s AND `shared_name` = %s AND `share_type` = 'User' AND `user` = %s
-        """,
-            (frappe.session.user, doc.shared_doctype, doc.shared_name, doc.user),
+        _revoke_and_log(
+            {
+                "shared_doctype": doc.shared_doctype,
+                "shared_name": doc.shared_name,
+                "share_type": "User",
+                "user": doc.user,
+                "is_revoked": 0,
+            }
         )
 
     # Log the activity
-    from frappe_vault.services.audit_service import log_share_removed
 
     log_share_removed(doc, None)
 
@@ -559,6 +571,23 @@ def save_role_member_permission(
                 }
             )
             doc.insert(ignore_permissions=True)
+
+        item_title = (
+            frappe.db.get_value(
+                shared_doctype, shared_name, "title" if shared_doctype == "Vault Secret" else "folder_name"
+            )
+            or shared_name
+        )
+        revoker_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+        send_vault_notification(
+            for_user=user,
+            subject=f"Access Revoked for '{item_title}'",
+            email_content=f"<b>{revoker_name}</b> revoked your role access to {shared_doctype} <b>'{item_title}'</b>.",
+            notification_type="Alert",
+            document_type=shared_doctype,
+            document_name=shared_name,
+            from_user=frappe.session.user,
+        )
     else:
         target_perm = permission_level or role_share_perm
         if existing_name:
@@ -714,13 +743,21 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
     if is_admin:
         where = "(vs.is_role_override = 0 OR vs.is_role_override IS NULL)"
     else:
-        conditions = [f"vs.share_type = 'User' AND vs.user = {frappe.db.escape(user)}"]
-        if user_roles:
-            roles_str = ", ".join([frappe.db.escape(r) for r in user_roles])
-            conditions.append(f"vs.share_type = 'Role' AND vs.frappe_role IN ({roles_str})")
-        where = f"((vs.hidden_from_recipient = 0 OR vs.hidden_from_recipient IS NULL) AND vs.shared_by != {frappe.db.escape(user)} AND ({' OR '.join(f'({c})' for c in conditions)}))"
+        # Use subquery for roles instead of f-string interpolation
+        user_escaped = frappe.db.escape(user)
+        where = f"""(
+            (vs.hidden_from_recipient = 0 OR vs.hidden_from_recipient IS NULL)
+            AND vs.shared_by != {user_escaped}
+            AND (
+                (vs.share_type = 'User' AND vs.user = {user_escaped})
+                OR (vs.share_type = 'Role' AND vs.frappe_role IN (
+                    SELECT role FROM `tabHas Role` WHERE parent = {user_escaped}
+                ))
+            )
+        )"""
 
-    raw_shares = frappe.db.sql(  # nosemgrep
+    # Justify suppression (safe, all inputs are escaped or parameterized)
+    raw_shares = frappe.db.sql(  # nosemgrep: frappe-raw-sql, frappe-sql-format-injection (safe, uses frappe.db.escape for variables)
         f"""
         SELECT vs.name as share_name, vs.shared_doctype, vs.shared_name,
                vs.permission_level, vs.shared_by, vs.expires_on,
@@ -895,7 +932,12 @@ def consume_one_time_link(token: str, passphrase: str = None) -> dict:
             pass
 
     if stored_passphrase:
-        if not passphrase or passphrase != stored_passphrase:
+        if not passphrase:
+            frappe.throw(_("Invalid passphrase"))
+        import hmac
+
+        # Use constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(passphrase.encode("utf-8"), stored_passphrase.encode("utf-8")):
             frappe.throw(_("Invalid passphrase"))
 
     # Get secret data
@@ -910,7 +952,7 @@ def consume_one_time_link(token: str, passphrase: str = None) -> dict:
         "username": secret.username,
         "email": secret.email,
         "notes": secret.notes,
-        "decrypted": get_decrypted_secret_data(link.secret),
+        "decrypted": get_decrypted_secret_data(link.secret, ignore_permissions=True),
     }
 
     # Consume the link
@@ -947,8 +989,11 @@ def bulk_delete_shares(share_names: list) -> dict:
         if not can_delete:
             if doc.share_type == "User" and doc.user == user:
                 can_delete = True
+            # Do NOT allow role members to delete the role share for everyone.
+            # Only the owner, the person who shared it, or an Admin can delete a role share.
             elif doc.share_type == "Role":
-                if doc.frappe_role in roles:
+                owner = frappe.db.get_value(doc.shared_doctype, doc.shared_name, "owner")
+                if owner == user:
                     can_delete = True
 
         if can_delete:

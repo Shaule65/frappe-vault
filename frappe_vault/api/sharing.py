@@ -2,6 +2,7 @@
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 
 @frappe.whitelist()
@@ -76,7 +77,11 @@ def create_one_time_link(
     )
 
 
-@frappe.whitelist(allow_guest=True)  # nosemgrep
+# Guest access required for one-time links, protected by token/passphrase/rate-limit
+@frappe.whitelist(
+    allow_guest=True
+)  # nosemgrep: guest-whitelisted-method (safe, token verified & rate limited)
+@rate_limit(key="consume_link", limit=5, seconds=60)
 def consume_link(token: str, passphrase: str | None = None) -> dict:
     from frappe_vault.services.sharing_service import consume_one_time_link
 

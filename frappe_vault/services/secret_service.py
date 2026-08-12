@@ -9,6 +9,27 @@ from frappe import _
 from frappe_vault.services.audit_service import log_secret_viewed
 from frappe_vault.utils.constants import LIST_VIEW_FIELDS
 
+# Allowlisted order_by values to prevent SQL injection
+ALLOWED_ORDER_BY = {
+    "modified desc",
+    "modified asc",
+    "creation desc",
+    "creation asc",
+    "title asc",
+    "title desc",
+    "last_accessed desc",
+    "last_accessed asc",
+    "secret_type asc",
+    "secret_type desc",
+}
+
+
+def _sanitize_search(value: str) -> str:
+    """Strip SQL wildcard metacharacters from user search input."""
+    if not value:
+        return value
+    return value.replace("%", "").replace("_", "").strip()
+
 
 def get_secrets(
     search: str = None,
@@ -26,6 +47,10 @@ def get_secrets(
     Returns:
         dict with secrets list, total count, and pagination
     """
+    # Validate order_by against allowlist
+    if order_by not in ALLOWED_ORDER_BY:
+        order_by = "modified desc"
+
     filters = {}
 
     if secret_type:
@@ -48,18 +73,24 @@ def get_secrets(
         filters["name"] = ["in", list(user_bookmarks)]
 
     if title:
-        filters["title"] = ["like", f"%{title}%"]
+        clean_title = _sanitize_search(title)
+        if clean_title:
+            filters["title"] = ["like", f"%{clean_title}%"]
     if username:
-        filters["username"] = ["like", f"%{username}%"]
+        clean_username = _sanitize_search(username)
+        if clean_username:
+            filters["username"] = ["like", f"%{clean_username}%"]
 
     or_filters = None
     if search:
-        or_filters = [
-            ["title", "like", f"%{search}%"],
-            ["url", "like", f"%{search}%"],
-            ["username", "like", f"%{search}%"],
-            ["email", "like", f"%{search}%"],
-        ]
+        clean_search = _sanitize_search(search)
+        if clean_search:
+            or_filters = [
+                ["title", "like", f"%{clean_search}%"],
+                ["url", "like", f"%{clean_search}%"],
+                ["username", "like", f"%{clean_search}%"],
+                ["email", "like", f"%{clean_search}%"],
+            ]
 
     secrets = frappe.get_list(
         "Vault Secret",
@@ -67,7 +98,7 @@ def get_secrets(
         or_filters=or_filters,
         fields=LIST_VIEW_FIELDS,
         order_by=order_by,
-        limit_page_length=limit,
+        limit=limit,
         limit_start=offset,
     )
 
@@ -506,48 +537,66 @@ def bulk_move(secret_names: list, target_folder: str) -> dict:
     return {"moved": moved}
 
 
-def get_vault_stats() -> dict:
-    """Get dashboard statistics for current user."""
-    user = frappe.session.user
+def get_vault_stats(user: str | None = None) -> dict:
+    """Get dashboard statistics for a specific user or current user."""
+    user = user or frappe.session.user
     user_roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
 
     if is_admin:
         permitted_secrets = frappe.get_all(
-            "Vault Secret", fields=["name", "password_strength", "secret_type"], limit_page_length=0
+            "Vault Secret", fields=["name", "password_strength", "secret_type"], limit=0
         )
     else:
         owned = frappe.get_all(
             "Vault Secret",
             filters={"owner": user},
             fields=["name", "password_strength", "secret_type"],
-            limit_page_length=0,
+            limit=0,
         )
         permitted_map = {s.name: s for s in owned}
 
         role_placeholders = ", ".join(["%s"] * len(user_roles)) if user_roles else "''"
-        params = [user] + list(user_roles)
+        params = [user] + list(user_roles) + [user]
 
         secret_query = f"""
-            SELECT DISTINCT shared_name FROM `tabVault Share`
+            SELECT DISTINCT shared_name FROM `tabVault Share` vs
             WHERE is_revoked = 0
             AND (expires_on IS NULL OR expires_on > NOW())
             AND shared_doctype = 'Vault Secret'
             AND (
                 (share_type = 'User' AND user = %s)
-                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders}))
+                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders})
+                    AND NOT EXISTS (
+                        SELECT 1 FROM `tabVault Share` override
+                        WHERE override.shared_doctype = 'Vault Secret'
+                        AND override.shared_name = vs.shared_name
+                        AND override.share_type = 'User'
+                        AND override.user = %s
+                        AND override.is_revoked = 1
+                    )
+                )
             )
         """
         shared_secret_names = set(frappe.db.sql_list(secret_query, tuple(params)))
 
         folder_query = f"""
-            SELECT DISTINCT shared_name FROM `tabVault Share`
+            SELECT DISTINCT shared_name FROM `tabVault Share` vs
             WHERE is_revoked = 0
             AND (expires_on IS NULL OR expires_on > NOW())
             AND shared_doctype = 'Vault Folder'
             AND (
                 (share_type = 'User' AND user = %s)
-                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders}))
+                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders})
+                    AND NOT EXISTS (
+                        SELECT 1 FROM `tabVault Share` override
+                        WHERE override.shared_doctype = 'Vault Folder'
+                        AND override.shared_name = vs.shared_name
+                        AND override.share_type = 'User'
+                        AND override.user = %s
+                        AND override.is_revoked = 1
+                    )
+                )
             )
         """
         shared_folders = set(frappe.db.sql_list(folder_query, tuple(params)))
@@ -557,7 +606,7 @@ def get_vault_stats() -> dict:
                 "Vault Secret",
                 filters={"folder": ["in", list(shared_folders)]},
                 pluck="name",
-                limit_page_length=0,
+                limit=0,
             )
             shared_secret_names.update(folder_secrets)
 
@@ -567,7 +616,7 @@ def get_vault_stats() -> dict:
                 "Vault Secret",
                 filters={"name": ["in", list(additional_names)]},
                 fields=["name", "password_strength", "secret_type"],
-                limit_page_length=0,
+                limit=0,
             )
             for s in shared_secrets_data:
                 permitted_map[s.name] = s
@@ -584,9 +633,7 @@ def get_vault_stats() -> dict:
         stype = s.get("secret_type") or "Other"
         secrets_by_type[stype] = secrets_by_type.get(stype, 0) + 1
 
-    bookmarks_list = frappe.get_all(
-        "Vault Bookmark", filters={"user": user}, pluck="secret", limit_page_length=0
-    )
+    bookmarks_list = frappe.get_all("Vault Bookmark", filters={"user": user}, pluck="secret", limit=0)
     bookmarks = sum(1 for b in bookmarks_list if b in permitted_names)
 
     recent = []
