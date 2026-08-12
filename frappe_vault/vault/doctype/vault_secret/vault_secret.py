@@ -50,30 +50,20 @@ class VaultSecret(Document):
                     )
                 )
 
-            if len(unpadded) < 8:
+            if len(unpadded) < 16:
                 frappe.throw(
-                    _("TOTP Secret Key is too short. Base32 seed keys must be at least 8 characters long.")
+                    _("TOTP Secret Key is too short. Base32 seed keys must be at least 16 characters long.")
                 )
 
             rem = len(unpadded) % 8
             if rem in (1, 3, 6):
-                frappe.throw(_("Invalid Base32 TOTP Secret key length."))
-
-            if "=" in clean_secret:
-                expected_pad_len = {0: 0, 2: 6, 4: 4, 5: 3, 7: 1}[rem]
-                actual_pad_len = len(clean_secret) - len(unpadded)
-                if actual_pad_len != expected_pad_len:
-                    frappe.throw(
-                        _("Incorrect Base32 padding. Found {0} equal sign(s), expected {1}.").format(
-                            actual_pad_len, expected_pad_len
-                        )
-                    )
-
-            padded = unpadded + ("=" * {2: 6, 4: 4, 5: 3, 7: 1}.get(rem, 0))
+                frappe.throw(
+                    _("Invalid Base32 TOTP Secret key length. You may have missed copying a character.")
+                )
 
             try:
-                pyotp.TOTP(padded).now()
-                self.totp_secret = padded
+                pyotp.TOTP(unpadded).now()
+                self.totp_secret = unpadded
             except Exception:
                 frappe.throw(
                     _("Invalid TOTP Secret (2FA Seed). Please ensure you pasted a valid Base32 key.")

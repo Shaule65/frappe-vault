@@ -324,6 +324,7 @@
         v-model="showManageFolderSharesDialog"
         :folderName="folderToManageShares?.name"
         :folderTitle="folderToManageShares?.folder_name"
+        :isOwnerOrAdmin="isManagingFolderOwnerOrAdmin"
       />
   </Sidebar>
 </template>
@@ -633,6 +634,12 @@ const isAdmin = computed(() => {
   if (user === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
   return roles.includes('Vault Admin')
+})
+
+const isManagingFolderOwnerOrAdmin = computed(() => {
+  if (isAdmin.value) return true
+  const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name || ''
+  return folderToManageShares.value?.owner === user
 })
 
 // Single reactive sidebar config

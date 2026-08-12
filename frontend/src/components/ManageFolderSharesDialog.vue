@@ -60,6 +60,7 @@
               </Badge>
 
               <Button
+                v-if="canRevoke(item)"
                 variant="ghost"
                 icon="lucide-trash-2"
                 class="!p-1.5 h-auto text-ink-gray-4 hover:!text-ink-red-3 hover:!bg-surface-red-2"
@@ -129,6 +130,7 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   folderName: { type: String, default: '' },
   folderTitle: { type: String, default: '' },
+  isOwnerOrAdmin: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'updated'])
@@ -153,11 +155,11 @@ const allShares = computed(() => sharesResource.data || [])
 const activeShares = computed(() => allShares.value.filter(s => !s.is_revoked))
 const revokedShares = computed(() => allShares.value.filter(s => s.is_revoked))
 
-const currentUser = computed(() => window.frappe?.session?.user || '')
+const currentUser = computed(() => window.frappe?.session?.user || window.frappe?.boot?.user?.name || '')
 
 function canRevoke(item) {
-  // The sharer can always revoke. For others, the backend enforces ownership checks.
-  return item.shared_by === currentUser.value
+  // The sharer can always revoke. The owner/admin can also revoke any share.
+  return props.isOwnerOrAdmin || item.shared_by === currentUser.value
 }
 
 watch(() => props.modelValue, async (isOpen) => {
