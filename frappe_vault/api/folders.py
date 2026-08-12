@@ -16,23 +16,22 @@ def get_all() -> list[dict]:
 
     writable_folder_names = set()
     if not is_admin:
-        share_conds = [
-            "shared_doctype = 'Vault Folder'",
-            "is_revoked = 0",
-            "permission_level IN ('Edit', 'Full Control')",
-            "(expires_on IS NULL OR expires_on > NOW())",
-        ]
-        target_user_conds = [f"(share_type = 'User' AND user = {frappe.db.escape(user)})"]
-        if roles:
-            roles_str = ", ".join([frappe.db.escape(r) for r in roles])
-            target_user_conds.append(f"(share_type = 'Role' AND frappe_role IN ({roles_str}))")
-        share_conds.append("(" + " OR ".join(target_user_conds) + ")")
-
-        writable_shares = frappe.db.sql(  # nosemgrep
-            f"""
+        # Use parameterized query instead of f-string
+        writable_shares = frappe.db.sql(
+            """
             SELECT shared_name FROM `tabVault Share`
-            WHERE {" AND ".join(share_conds)}
-        """,
+            WHERE shared_doctype = 'Vault Folder'
+            AND is_revoked = 0
+            AND permission_level IN ('Edit', 'Full Control')
+            AND (expires_on IS NULL OR expires_on > NOW())
+            AND (
+                (share_type = 'User' AND user = %(user)s)
+                OR (share_type = 'Role' AND frappe_role IN (
+                    SELECT role FROM `tabHas Role` WHERE parent = %(user)s
+                ))
+            )
+            """,
+            {"user": user},
             pluck=True,
         )
         writable_folder_names = set(writable_shares)
@@ -55,6 +54,18 @@ def create(folder_name: str, icon: str | None = None, **kwargs) -> dict:
 
     doc = frappe.get_doc({"doctype": "Vault Folder", "folder_name": folder_name, "icon": icon})
     doc.insert()
+
+    # Notify Vault Admins of new folder creation
+    from frappe_vault.services.notification_service import notify_vault_admins
+
+    creator_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"New Folder Created: '{doc.folder_name}'",
+        email_content=f"{creator_name} created folder '{doc.folder_name}'.",
+        document_type="Vault Folder",
+        document_name=doc.name,
+    )
+
     return {"name": doc.name}
 
 
@@ -66,6 +77,8 @@ def delete(name: str, delete_secrets: bool = False) -> dict:
 
     if not has_folder_permission(name, ptype="delete"):
         frappe.throw(_("You don't have permission to delete this folder"), frappe.PermissionError)
+
+    folder_name = frappe.db.get_value("Vault Folder", name, "folder_name") or name
 
     should_delete_secrets = (
         frappe.utils.cint(delete_secrets) if not isinstance(delete_secrets, bool) else delete_secrets
@@ -96,6 +109,18 @@ def delete(name: str, delete_secrets: bool = False) -> dict:
     frappe.delete_doc(
         "Vault Folder", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True
     )
+
+    # Notify Vault Admins
+    from frappe_vault.services.notification_service import notify_vault_admins
+
+    actor_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"Folder Deleted: '{folder_name}'",
+        email_content=f"{actor_name} deleted folder '{folder_name}'.",
+        document_type="Vault Folder",
+        document_name=name,
+    )
+
     return {"deleted": name, "deleted_secrets": bool(should_delete_secrets)}
 
 
@@ -111,13 +136,12 @@ def update(name: str, folder_name: str | None = None, icon: str | None = None, *
     if folder_name and folder_name != name and isinstance(folder_name, str):
         from frappe.model.rename_doc import rename_doc as _rename_doc
 
-        name = _rename_doc("Vault Folder", name, folder_name, ignore_permissions=True)
+        name = _rename_doc("Vault Folder", name, folder_name)
 
     doc = frappe.get_doc("Vault Folder", name)
     if icon is not None:
         doc.icon = icon
 
-    doc.flags.ignore_permissions = True
     doc.save()
     return {"name": doc.name}
 
@@ -137,7 +161,7 @@ def get_folder_secrets(folder_name: str, limit: int = 50, offset: int = 0) -> di
         filters=filters,
         fields=LIST_VIEW_FIELDS,
         order_by="modified desc",
-        limit_page_length=int(limit),
+        limit=int(limit),
         limit_start=int(offset),
     )
     total = frappe.db.count("Vault Secret", filters=filters)

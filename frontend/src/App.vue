@@ -1,37 +1,40 @@
 <template>
-  <div class="h-screen flex bg-surface-base overflow-hidden relative">
-    <!-- Desktop Sidebar -->
-    <AppSidebar v-if="!isPublicRoute" class="hidden sm:flex" />
+  <FrappeUIProvider>
+    <div class="h-screen flex bg-surface-base overflow-hidden relative">
+      <!-- Desktop Sidebar -->
+      <AppSidebar v-if="!isPublicRoute" class="hidden sm:flex" />
 
-    <!-- Mobile Drawer Sidebar -->
-    <div
-      v-if="!isPublicRoute && mobileSidebarOpened"
-      class="fixed inset-0 z-50 flex sm:hidden"
-    >
-      <!-- Backdrop -->
+      <!-- Mobile Drawer Sidebar -->
       <div
-        class="fixed inset-0 bg-black/70 transition-opacity"
-        @click="mobileSidebarOpened = false"
-      />
-      <!-- Drawer Content -->
-      <div class="relative w-[220px] h-full bg-surface-gray-2 shadow-xl flex flex-col shrink-0 animate-slide-in">
-        <AppSidebar :is-mobile="true" />
+        v-if="!isPublicRoute && mobileSidebarOpened"
+        class="fixed inset-0 z-50 flex sm:hidden"
+      >
+        <!-- Backdrop -->
+        <div
+          class="fixed inset-0 bg-black/70 transition-opacity"
+          @click="mobileSidebarOpened = false"
+        />
+        <!-- Drawer Content -->
+        <div class="relative w-[220px] h-full bg-surface-gray-2 shadow-xl flex flex-col shrink-0 animate-slide-in">
+          <AppSidebar :is-mobile="true" />
+        </div>
       </div>
+
+      <!-- Main Content Area -->
+      <main class="flex-1 flex flex-col overflow-hidden min-w-0">
+        <router-view />
+      </main>
+
+      <!-- Global Notifications Panel -->
+      <NotificationsPanel />
     </div>
-
-    <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden min-w-0">
-      <router-view />
-    </main>
-
-    <!-- Global Notifications Panel -->
-    <NotificationsPanel />
-  </div>
+  </FrappeUIProvider>
 </template>
 
 <script setup>
 import { computed, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { FrappeUIProvider } from 'frappe-ui'
 import AppSidebar from './components/AppSidebar.vue'
 import NotificationsPanel from './components/NotificationsPanel.vue'
 import { mobileSidebarOpened } from './composables/vault'

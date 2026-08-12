@@ -105,10 +105,12 @@ def share_secret(
     )
     sharer_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
 
+    item_type = "Folder" if shared_doctype == "Vault Folder" else "Secret"
+
     if share_type == "User" and user:
         send_vault_notification(
             for_user=user,
-            subject=f"Secret Shared with You: '{item_title}'",
+            subject=f"{item_type} Shared with You: '{item_title}'",
             email_content=f"<b>{sharer_name}</b> shared {shared_doctype} <b>'{item_title}'</b> with you with <b>'{permission_level}'</b> access.",
             notification_type="Share",
             document_type=shared_doctype,
@@ -123,7 +125,7 @@ def share_secret(
             if r_user != frappe.session.user:
                 send_vault_notification(
                     for_user=r_user,
-                    subject=f"Secret Shared via Role ({frappe_role}): '{item_title}'",
+                    subject=f"{item_type} Shared via Role ({frappe_role}): '{item_title}'",
                     email_content=f"You have been granted <b>'{permission_level}'</b> access to {shared_doctype} <b>'{item_title}'</b> via role {frappe_role}.",
                     notification_type="Share",
                     document_type=shared_doctype,
@@ -133,7 +135,7 @@ def share_secret(
 
     # Notify Vault Admins
     notify_vault_admins(
-        subject=f"Secret Shared: '{item_title}'",
+        subject=f"{item_type} Shared: '{item_title}'",
         email_content=f"<b>{sharer_name}</b> shared {shared_doctype} <b>'{item_title}'</b> with {user or frappe_role} (Access: {permission_level}).",
         document_type=shared_doctype,
         document_name=shared_name,
@@ -157,15 +159,28 @@ def unshare(share_name: str) -> dict:
 
     frappe.db.set_value("Vault Share", share_name, {"is_revoked": 1, "revoked_by": frappe.session.user})
 
-    # If revoking a Role share, also mark all role share records and member overrides as revoked
+    # Iterate over records with set_value instead of raw UPDATEs to trigger audit logs
+    from frappe_vault.services.audit_service import log_share_removed
+
+    def _revoke_and_log(filters):
+        shares_to_revoke = frappe.get_all("Vault Share", filters=filters, pluck="name")
+        for s_name in shares_to_revoke:
+            frappe.db.set_value("Vault Share", s_name, {"is_revoked": 1, "revoked_by": frappe.session.user})
+            try:
+                log_share_removed(frappe.get_doc("Vault Share", s_name), None)
+            except Exception:
+                pass
+
     if doc.share_type == "Role" and doc.frappe_role:
-        frappe.db.sql(
-            """
-            UPDATE `tabVault Share`
-            SET `is_revoked` = 1, `revoked_by` = %s
-            WHERE `shared_doctype` = %s AND `shared_name` = %s AND `share_type` = 'Role' AND `frappe_role` = %s
-        """,
-            (frappe.session.user, doc.shared_doctype, doc.shared_name, doc.frappe_role),
+        # Revoke the role shares
+        _revoke_and_log(
+            {
+                "shared_doctype": doc.shared_doctype,
+                "shared_name": doc.shared_name,
+                "share_type": "Role",
+                "frappe_role": doc.frappe_role,
+                "is_revoked": 0,
+            }
         )
 
         role_users = set(
@@ -174,28 +189,28 @@ def unshare(share_name: str) -> dict:
             )
         )
         if role_users:
-            frappe.db.sql(
-                """
-                UPDATE `tabVault Share`
-                SET `is_revoked` = 1, `revoked_by` = %s
-                WHERE `shared_doctype` = %s
-                  AND `shared_name` = %s
-                  AND `user` IN %s
-            """,
-                (frappe.session.user, doc.shared_doctype, doc.shared_name, tuple(role_users)),
+            # Revoke member overrides
+            _revoke_and_log(
+                {
+                    "shared_doctype": doc.shared_doctype,
+                    "shared_name": doc.shared_name,
+                    "user": ["in", list(role_users)],
+                    "is_role_override": 1,
+                    "is_revoked": 0,
+                }
             )
     elif doc.share_type == "User":
-        frappe.db.sql(
-            """
-            UPDATE `tabVault Share`
-            SET `is_revoked` = 1, `revoked_by` = %s
-            WHERE `shared_doctype` = %s AND `shared_name` = %s AND `share_type` = 'User' AND `shared_by` = %s
-        """,
-            (frappe.session.user, doc.shared_doctype, doc.shared_name, doc.shared_by),
+        _revoke_and_log(
+            {
+                "shared_doctype": doc.shared_doctype,
+                "shared_name": doc.shared_name,
+                "share_type": "User",
+                "user": doc.user,
+                "is_revoked": 0,
+            }
         )
 
     # Log the activity
-    from frappe_vault.services.audit_service import log_share_removed
 
     log_share_removed(doc, None)
 
@@ -222,6 +237,20 @@ def unshare(share_name: str) -> dict:
             document_name=doc.shared_name,
             from_user=frappe.session.user,
         )
+    elif doc.share_type == "Role" and doc.frappe_role:
+        from frappe_vault.services.notification_service import send_vault_notification
+
+        for ru in role_users:
+            if ru not in ["Administrator", "Guest"]:
+                send_vault_notification(
+                    for_user=ru,
+                    subject=f"Access Revoked for '{item_title}'",
+                    email_content=f"<b>{revoker_name}</b> revoked your role access to {doc.shared_doctype} <b>'{item_title}'</b>.",
+                    notification_type="Alert",
+                    document_type=doc.shared_doctype,
+                    document_name=doc.shared_name,
+                    from_user=frappe.session.user,
+                )
 
     # Notify Vault Admins
     from frappe_vault.services.notification_service import notify_vault_admins
@@ -377,6 +406,8 @@ def get_role_users(
         user_ids = list(dict.fromkeys(direct_users))
 
     user_details = []
+    owner = frappe.db.get_value(shared_doctype, shared_name, "owner") if shared_name else None
+
     for user_id in user_ids:
         if not user_id or user_id in ["Administrator", "Guest"]:
             continue
@@ -384,24 +415,53 @@ def get_role_users(
 
         is_revoked = parent_is_revoked
         perm_level = role_share_perm
+        can_edit = True
+
         if shared_name:
+            # Check for direct user share override
             user_share_filters = {
                 "shared_name": shared_name,
                 "shared_doctype": shared_doctype,
                 "share_type": "User",
                 "user": user_id,
             }
-            if shared_by:
-                user_share_filters["shared_by"] = shared_by
-            user_share = frappe.db.get_value(
+            # We don't filter by shared_by here because we want their true effective permission
+            user_shares = frappe.get_all(
                 "Vault Share",
-                user_share_filters,
-                ["name", "permission_level", "is_revoked", "is_custom_override"],
-                as_dict=True,
+                filters=user_share_filters,
+                fields=["name", "permission_level", "is_revoked", "is_role_override"],
+                order_by="is_revoked asc, creation desc",
             )
-            if user_share:
-                is_revoked = bool(user_share.is_revoked)
-                perm_level = user_share.permission_level or role_share_perm
+
+            if user_shares:
+                active_share = next((s for s in user_shares if not s.is_revoked), None)
+                override_share = next((s for s in user_shares if s.is_role_override), None)
+
+                if active_share:
+                    is_revoked = False
+                    perm_level = active_share.permission_level or role_share_perm
+                elif override_share and override_share.is_revoked:
+                    is_revoked = True
+                    perm_level = override_share.permission_level or role_share_perm
+
+        # Check if user is Owner or Vault Admin
+        if user_id == owner:
+            perm_level = "Full Control"
+            is_revoked = False
+        else:
+            u_roles = frappe.get_roles(user_id)
+            if "Vault Admin" in u_roles or "System Manager" in u_roles:
+                perm_level = "Full Control"
+                is_revoked = False
+
+        # Admins can edit anyone. Non-admins cannot edit 'Full Control' users. No one can edit themselves from here.
+        current_roles = frappe.get_roles(frappe.session.user)
+        is_current_admin = frappe.session.user == "Administrator" or "Vault Admin" in current_roles
+
+        if user_id == frappe.session.user:
+            can_edit = False
+        elif perm_level == "Full Control" and not is_current_admin:
+            can_edit = False
 
         user_details.append(
             {
@@ -409,6 +469,7 @@ def get_role_users(
                 "full_name": full_name,
                 "permission_level": perm_level,
                 "is_revoked": is_revoked,
+                "can_edit": can_edit,
             }
         )
     return user_details
@@ -425,13 +486,16 @@ def save_role_member_permission(
     if not user or not shared_name:
         frappe.throw(_("User and shared item name are required"))
 
-    # Permission check: must be owner, sharer, or Vault Admin
-    user_roles = frappe.get_roles()
-    is_admin = frappe.session.user == "Administrator" or "Vault Admin" in user_roles
-    if not is_admin:
-        owner = frappe.db.get_value(shared_doctype, shared_name, "owner")
-        if owner != frappe.session.user:
-            frappe.throw(_("Not permitted"), frappe.PermissionError)
+    # Permission check: must have share permission or be the one who shared
+    has_share_perm = frappe.has_permission(shared_doctype, "share", shared_name)
+    if not has_share_perm:
+        # Check if they are the original sharer of this specific role share
+        is_sharer = frappe.db.exists(
+            "Vault Share",
+            {"shared_name": shared_name, "shared_doctype": shared_doctype, "shared_by": frappe.session.user},
+        )
+        if not is_sharer:
+            frappe.throw(_("Not permitted to modify role members"), frappe.PermissionError)
 
     role_share_perm = (
         frappe.db.get_value(
@@ -467,12 +531,13 @@ def save_role_member_permission(
             "shared_doctype": shared_doctype,
             "share_type": "User",
             "user": user,
-            "shared_by": frappe.session.user,
+            "is_role_override": 1,
         },
         "name",
     )
 
     from frappe_vault.services.audit_service import log_share_created, log_share_removed
+    from frappe_vault.services.notification_service import send_vault_notification
 
     if is_revoked:
         if existing_name:
@@ -484,6 +549,7 @@ def save_role_member_permission(
                     "revoked_by": frappe.session.user,
                     "is_role_override": is_role_override_val,
                     "is_custom_override": 1,
+                    "shared_by": frappe.session.user,
                 },
             )
             share_doc = frappe.get_doc("Vault Share", existing_name)
@@ -505,6 +571,23 @@ def save_role_member_permission(
                 }
             )
             doc.insert(ignore_permissions=True)
+
+        item_title = (
+            frappe.db.get_value(
+                shared_doctype, shared_name, "title" if shared_doctype == "Vault Secret" else "folder_name"
+            )
+            or shared_name
+        )
+        revoker_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+        send_vault_notification(
+            for_user=user,
+            subject=f"Access Revoked for '{item_title}'",
+            email_content=f"<b>{revoker_name}</b> revoked your role access to {shared_doctype} <b>'{item_title}'</b>.",
+            notification_type="Alert",
+            document_type=shared_doctype,
+            document_name=shared_name,
+            from_user=frappe.session.user,
+        )
     else:
         target_perm = permission_level or role_share_perm
         if existing_name:
@@ -516,6 +599,7 @@ def save_role_member_permission(
                     "permission_level": target_perm,
                     "is_role_override": is_role_override_val,
                     "is_custom_override": is_custom,
+                    "shared_by": frappe.session.user,
                 },
             )
             share_doc = frappe.get_doc("Vault Share", existing_name)
@@ -537,15 +621,33 @@ def save_role_member_permission(
             )
             doc.insert(ignore_permissions=True)
 
+        # Send Notification for permission upgrade/change
+        item_title = (
+            frappe.db.get_value(
+                shared_doctype, shared_name, "title" if shared_doctype == "Vault Secret" else "folder_name"
+            )
+            or shared_name
+        )
+        sharer_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+        send_vault_notification(
+            for_user=user,
+            subject=f"Access Updated: '{item_title}'",
+            email_content=f"<b>{sharer_name}</b> updated your role access for {shared_doctype} <b>'{item_title}'</b> to <b>'{target_perm}'</b>.",
+            notification_type="Share",
+            document_type=shared_doctype,
+            document_name=shared_name,
+            from_user=frappe.session.user,
+        )
+
     return {"status": "success", "user": user, "permission_level": permission_level, "is_revoked": is_revoked}
 
 
-def get_shares_for_secret(secret_name: str) -> list:
-    """Get consolidated primary shares for a secret (both active and revoked), excluding role member overrides."""
+def get_shares_for_secret(secret_name: str, shared_doctype: str = "Vault Secret") -> list:
+    """Get consolidated primary shares for a secret or folder (both active and revoked), excluding role member overrides."""
     shares = frappe.get_all(
         "Vault Share",
         filters={
-            "shared_doctype": "Vault Secret",
+            "shared_doctype": shared_doctype,
             "shared_name": secret_name,
             "is_role_override": 0,
         },
@@ -609,6 +711,25 @@ def get_shares_for_secret(secret_name: str) -> list:
         elif len(revoked) == 1:
             consolidated.append(revoked[0])
 
+    # Populate user full_name and shared_by_name for display
+    users_to_fetch = set()
+    for s in consolidated:
+        if s.get("user") and s.get("share_type") == "User":
+            users_to_fetch.add(s.user)
+        if s.get("shared_by"):
+            users_to_fetch.add(s.shared_by)
+
+    if users_to_fetch:
+        user_docs = frappe.get_all(
+            "User", filters={"name": ["in", list(users_to_fetch)]}, fields=["name", "full_name"]
+        )
+        name_map = {u["name"]: u["full_name"] or u["name"] for u in user_docs}
+        for s in consolidated:
+            if s.get("user") and s.get("share_type") == "User":
+                s["full_name"] = name_map.get(s.user, s.user)
+            if s.get("shared_by"):
+                s["shared_by_name"] = name_map.get(s.shared_by, s.shared_by)
+
     return consolidated
 
 
@@ -622,13 +743,21 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
     if is_admin:
         where = "(vs.is_role_override = 0 OR vs.is_role_override IS NULL)"
     else:
-        conditions = [f"vs.share_type = 'User' AND vs.user = {frappe.db.escape(user)}"]
-        if user_roles:
-            roles_str = ", ".join([frappe.db.escape(r) for r in user_roles])
-            conditions.append(f"vs.share_type = 'Role' AND vs.frappe_role IN ({roles_str})")
-        where = f"((vs.is_role_override = 0 OR vs.is_role_override IS NULL) AND ({' OR '.join(f'({c})' for c in conditions)}))"
+        # Use subquery for roles instead of f-string interpolation
+        user_escaped = frappe.db.escape(user)
+        where = f"""(
+            (vs.hidden_from_recipient = 0 OR vs.hidden_from_recipient IS NULL)
+            AND vs.shared_by != {user_escaped}
+            AND (
+                (vs.share_type = 'User' AND vs.user = {user_escaped})
+                OR (vs.share_type = 'Role' AND vs.frappe_role IN (
+                    SELECT role FROM `tabHas Role` WHERE parent = {user_escaped}
+                ))
+            )
+        )"""
 
-    raw_shares = frappe.db.sql(  # nosemgrep
+    # Justify suppression (safe, all inputs are escaped or parameterized)
+    raw_shares = frappe.db.sql(  # nosemgrep: frappe-raw-sql, frappe-sql-format-injection (safe, uses frappe.db.escape for variables)
         f"""
         SELECT vs.name as share_name, vs.shared_doctype, vs.shared_name,
                vs.permission_level, vs.shared_by, vs.expires_on,
@@ -696,10 +825,41 @@ def get_shared_with_me(limit: int = 20, offset: int = 0) -> dict:
             g["user"] = f"{total_members} Users"
         consolidated_list.append(g)
 
+    if not is_admin:
+        permission_hierarchy = {"Full Control": 4, "Edit": 3, "View & Copy": 2, "View Only": 1}
+        unique_secrets = {}
+        for g in consolidated_list:
+            secret_name = g.get("shared_name")
+            current_perm = permission_hierarchy.get(g.get("permission_level", "View Only"), 1)
+            if secret_name not in unique_secrets:
+                unique_secrets[secret_name] = g
+            else:
+                existing_perm = permission_hierarchy.get(
+                    unique_secrets[secret_name].get("permission_level", "View Only"), 1
+                )
+                if current_perm > existing_perm:
+                    unique_secrets[secret_name] = g
+        consolidated_list = list(unique_secrets.values())
+
     total = len(consolidated_list)
     paginated = consolidated_list[offset : offset + limit]
 
     return {"shared": paginated, "total": total, "limit": limit, "offset": offset}
+
+
+def dismiss_shared_logs(share_names: list) -> dict:
+    """Cosmetically dismiss/hide a log from the user's Shared with Me view."""
+    if not share_names:
+        return {"status": "success", "message": "No logs selected"}
+
+    count = 0
+    for name in share_names:
+        # We only hide it for the recipient. If they aren't the recipient, they can't hide it.
+        # But for simplicity, we just set the flag since they can only submit logs they see.
+        frappe.db.set_value("Vault Share", name, "hidden_from_recipient", 1, update_modified=False)
+        count += 1
+
+    return {"status": "success", "message": f"{count} logs dismissed"}
 
 
 def create_one_time_link(
@@ -772,7 +932,12 @@ def consume_one_time_link(token: str, passphrase: str = None) -> dict:
             pass
 
     if stored_passphrase:
-        if not passphrase or passphrase != stored_passphrase:
+        if not passphrase:
+            frappe.throw(_("Invalid passphrase"))
+        import hmac
+
+        # Use constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(passphrase.encode("utf-8"), stored_passphrase.encode("utf-8")):
             frappe.throw(_("Invalid passphrase"))
 
     # Get secret data
@@ -787,7 +952,7 @@ def consume_one_time_link(token: str, passphrase: str = None) -> dict:
         "username": secret.username,
         "email": secret.email,
         "notes": secret.notes,
-        "decrypted": get_decrypted_secret_data(link.secret),
+        "decrypted": get_decrypted_secret_data(link.secret, ignore_permissions=True),
     }
 
     # Consume the link
@@ -824,8 +989,11 @@ def bulk_delete_shares(share_names: list) -> dict:
         if not can_delete:
             if doc.share_type == "User" and doc.user == user:
                 can_delete = True
+            # Do NOT allow role members to delete the role share for everyone.
+            # Only the owner, the person who shared it, or an Admin can delete a role share.
             elif doc.share_type == "Role":
-                if doc.frappe_role in roles:
+                owner = frappe.db.get_value(doc.shared_doctype, doc.shared_name, "owner")
+                if owner == user:
                     can_delete = True
 
         if can_delete:

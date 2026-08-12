@@ -31,6 +31,13 @@ export function useDecryptSecret() {
   })
 }
 
+export function useGetTotp() {
+  return createResource({
+    url: 'frappe_vault.api.secrets.get_totp',
+    makeParams: ({ name }) => ({ name }),
+  })
+}
+
 export function useCreateSecret() {
   return createResource({
     url: 'frappe_vault.api.secrets.create',
@@ -137,6 +144,12 @@ export function useSecretShares(secretName) {
     url: 'frappe_vault.api.sharing.get_shares',
     params: { secret_name: secretName },
     auto: !!secretName,
+  })
+}
+
+export function useFolderShares() {
+  return createResource({
+    url: 'frappe_vault.api.sharing.get_shares',
   })
 }
 

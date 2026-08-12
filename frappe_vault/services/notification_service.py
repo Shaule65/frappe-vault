@@ -58,13 +58,13 @@ def send_vault_notification(
 
 
 def get_vault_admins() -> list:
-    """Return list of user IDs who have Vault Admin or System Manager role."""
-    roles = ["Vault Admin", "System Manager"]
+    """Return list of user IDs who have Vault Admin role."""
+    roles = ["Vault Admin"]
     user_roles = frappe.get_all(
         "Has Role", filters={"role": ["in", roles], "parenttype": "User"}, pluck="parent"
     )
     # Exclude current session user and system users
-    admins = set(user_roles) - {frappe.session.user, "Guest", "Administrator"}
+    admins = set(user_roles) - {frappe.session.user, "Guest"}
     return list(admins)
 
 

@@ -6,12 +6,7 @@ app_email = "info@lubus.in"
 app_license = "MIT"
 app_logo_url = "/assets/frappe_vault/images/vault-logo.svg"
 app_home = "/vault"
-required_apps = ["frappe"]
 
-# Role Home Page — redirect Vault Users directly to Vault SPA on login
-role_home_page = {
-    "Vault User": "/vault",
-}
 
 # Apps Screen
 add_to_apps_screen = [

@@ -22,12 +22,22 @@
               <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
             </template>
           </FormControl>
+          <FormControl label="TOTP Secret (2FA Seed)" v-model="form.totp_secret" :type="showSecrets ? 'text' : 'password'" placeholder="Base32 format">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
         </template>
 
         <!-- API Key fields -->
         <template v-if="form.secret_type === 'API Key'">
           <FormControl label="API Key" v-model="form.api_key" />
           <FormControl label="API Secret" v-model="form.api_secret" :type="showSecrets ? 'text' : 'password'">
+            <template #suffix>
+              <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+            </template>
+          </FormControl>
+          <FormControl label="TOTP Secret (2FA Seed)" v-model="form.totp_secret" :type="showSecrets ? 'text' : 'password'" placeholder="Base32 format">
             <template #suffix>
               <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
             </template>
@@ -180,7 +190,7 @@ const folderOptions = computed(() => {
 
 const defaultForm = () => ({
   title: '', secret_type: 'Password', folder: props.initialFolder || '', url: '', username: '', email: '',
-  password: '', api_key: '', api_secret: '', ssh_private_key: '', attachment: '', notes: '', card_holder: '', card_number: '',
+  password: '', totp_secret: '', api_key: '', api_secret: '', ssh_private_key: '', attachment: '', notes: '', card_holder: '', card_number: '',
   card_expiry: '', card_cvv: '', db_host: '', db_port: '', db_name: '', db_password: '',
 })
 
@@ -249,7 +259,42 @@ function triggerFileInput(fieldname) {
 }
 
 async function handleCreate() {
-  const result = await createResource.submit(form.value)
-  emit('created', result)
+  if (['Password', 'API Key'].includes(form.value.secret_type) && form.value.totp_secret) {
+    const s = form.value.totp_secret.trim().replace(/\s+/g, '').toUpperCase()
+    if (/^\d{6,8}$/.test(s)) {
+      toast.error('You entered a 6-digit TOTP passcode instead of the 2FA Seed Key. Please paste the Base32 Secret Key.')
+      return
+    }
+    const unpadded = s.replace(/=+$/, '')
+    if (!unpadded || !/^[A-Z2-7]+$/.test(unpadded) || unpadded.length < 8) {
+      toast.error('Invalid TOTP Secret Key. Base32 keys must contain letters A-Z and digits 2-7 (at least 8 characters).')
+      return
+    }
+    const rem = unpadded.length % 8
+    if ([1, 3, 6].includes(rem)) {
+      toast.error('Invalid Base32 TOTP Secret key length.')
+      return
+    }
+    if (s.includes('=')) {
+      const expectedPadMap = { 0: 0, 2: 6, 4: 4, 5: 3, 7: 1 }
+      const expectedPadLen = expectedPadMap[rem] ?? 0
+      const actualPadLen = s.length - unpadded.length
+      if (actualPadLen !== expectedPadLen) {
+        toast.error(`Incorrect Base32 padding. Found ${actualPadLen} equal sign(s), expected ${expectedPadLen}.`)
+        return
+      }
+    }
+  }
+
+  try {
+    const result = await createResource.submit(form.value)
+    emit('created', result)
+  } catch (err) {
+    if (err.messages?.length) {
+      err.messages.forEach(msg => toast.error(msg))
+    } else {
+      toast.error(err.message || 'Failed to create secret')
+    }
+  }
 }
 </script>

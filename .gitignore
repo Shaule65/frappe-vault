@@ -6,8 +6,10 @@ dist/
 build/
 *.egg
 scratch/
+.agents/
 
-# Frontend build artifacts
+# Node / Frontend build artifacts
+node_modules/
 frontend/dist/
 frontend/node_modules/
 frontend/.vite/

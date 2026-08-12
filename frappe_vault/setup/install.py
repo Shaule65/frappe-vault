@@ -44,8 +44,8 @@ def create_roles():
 
 
 def grant_roles_to_admin():
-    """Automatically assign Vault Admin and Vault User roles to Administrator and System Managers."""
-    vault_roles = ["Vault Admin", "Vault User"]
+    """Automatically assign Vault Admin role to Administrator and System Managers."""
+    vault_roles = ["Vault Admin"]
 
     # 1. Assign to Administrator
     if frappe.db.exists("User", "Administrator"):

@@ -2,6 +2,7 @@
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 
 @frappe.whitelist()
@@ -37,10 +38,25 @@ def unshare(share_name: str) -> dict:
 
 
 @frappe.whitelist()
-def get_shares(secret_name: str) -> dict:
+def get_shares(secret_name: str, shared_doctype: str = "Vault Secret") -> dict:
     from frappe_vault.services.sharing_service import get_shares_for_secret
 
-    return get_shares_for_secret(secret_name)
+    return get_shares_for_secret(secret_name, shared_doctype=shared_doctype)
+
+
+@frappe.whitelist()
+def dismiss_shared_logs(share_names: str | list) -> dict:
+    import json
+
+    from frappe_vault.services.sharing_service import dismiss_shared_logs as _dismiss
+
+    if isinstance(share_names, str):
+        try:
+            share_names = json.loads(share_names)
+        except Exception:
+            share_names = [share_names]
+
+    return _dismiss(share_names)
 
 
 @frappe.whitelist()
@@ -61,7 +77,10 @@ def create_one_time_link(
     )
 
 
-@frappe.whitelist(allow_guest=True)  # nosemgrep
+# Guest access required for one-time links, protected by token/passphrase/rate-limit
+# nosemgrep: guest-whitelisted-method (safe, token verified & rate limited)
+@frappe.whitelist(allow_guest=True)
+@rate_limit(key="consume_link", limit=5, seconds=60)
 def consume_link(token: str, passphrase: str | None = None) -> dict:
     from frappe_vault.services.sharing_service import consume_one_time_link
 

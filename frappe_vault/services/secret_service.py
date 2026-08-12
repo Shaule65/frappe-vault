@@ -1,10 +1,34 @@
 """Secret service — core CRUD and business logic for vault secrets."""
 
+import time
+
 import frappe
+import pyotp
 from frappe import _
 
 from frappe_vault.services.audit_service import log_secret_viewed
 from frappe_vault.utils.constants import LIST_VIEW_FIELDS
+
+# Allowlisted order_by values to prevent SQL injection
+ALLOWED_ORDER_BY = {
+    "modified desc",
+    "modified asc",
+    "creation desc",
+    "creation asc",
+    "title asc",
+    "title desc",
+    "last_accessed desc",
+    "last_accessed asc",
+    "secret_type asc",
+    "secret_type desc",
+}
+
+
+def _sanitize_search(value: str) -> str:
+    """Strip SQL wildcard metacharacters from user search input."""
+    if not value:
+        return value
+    return value.replace("%", "").replace("_", "").strip()
 
 
 def get_secrets(
@@ -23,6 +47,10 @@ def get_secrets(
     Returns:
         dict with secrets list, total count, and pagination
     """
+    # Validate order_by against allowlist
+    if order_by not in ALLOWED_ORDER_BY:
+        order_by = "modified desc"
+
     filters = {}
 
     if secret_type:
@@ -45,18 +73,24 @@ def get_secrets(
         filters["name"] = ["in", list(user_bookmarks)]
 
     if title:
-        filters["title"] = ["like", f"%{title}%"]
+        clean_title = _sanitize_search(title)
+        if clean_title:
+            filters["title"] = ["like", f"%{clean_title}%"]
     if username:
-        filters["username"] = ["like", f"%{username}%"]
+        clean_username = _sanitize_search(username)
+        if clean_username:
+            filters["username"] = ["like", f"%{clean_username}%"]
 
     or_filters = None
     if search:
-        or_filters = [
-            ["title", "like", f"%{search}%"],
-            ["url", "like", f"%{search}%"],
-            ["username", "like", f"%{search}%"],
-            ["email", "like", f"%{search}%"],
-        ]
+        clean_search = _sanitize_search(search)
+        if clean_search:
+            or_filters = [
+                ["title", "like", f"%{clean_search}%"],
+                ["url", "like", f"%{clean_search}%"],
+                ["username", "like", f"%{clean_search}%"],
+                ["email", "like", f"%{clean_search}%"],
+            ]
 
     secrets = frappe.get_list(
         "Vault Secret",
@@ -64,7 +98,7 @@ def get_secrets(
         or_filters=or_filters,
         fields=LIST_VIEW_FIELDS,
         order_by=order_by,
-        limit_page_length=limit,
+        limit=limit,
         limit_start=offset,
     )
 
@@ -162,15 +196,23 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
             perm_map = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
 
             def share_priority_key(s):
-                direct_priority = 2 if not getattr(s, "is_role_override", 0) else 1
-                type_priority = 2 if s.share_type == "User" else 1
-                doc_priority = 2 if s.shared_doctype == "Vault Secret" else 1
-                perm_score = perm_map.get(s.permission_level, 0)
-                return (direct_priority, type_priority, doc_priority, perm_score)
+                is_user = s.get("share_type") == "User"
+                is_override = s.get("is_role_override")
+
+                if is_user and not is_override:
+                    hierarchy = 3
+                elif is_user and is_override:
+                    hierarchy = 2
+                else:
+                    hierarchy = 1
+
+                doc_priority = 2 if s.get("shared_doctype") == "Vault Secret" else 1
+                perm_score = perm_map.get(s.get("permission_level"), 0)
+                return (hierarchy, doc_priority, perm_score)
 
             best_share = max(shares, key=share_priority_key)
-            user_permission = best_share.permission_level
-            shared_by = best_share.shared_by
+            user_permission = best_share.get("permission_level")
+            shared_by = best_share.get("shared_by")
         else:
             user_permission = "View Only"
             shared_by = doc.owner
@@ -190,6 +232,12 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         else 0,
         "password_strength": doc.password_strength,
         "password_last_changed": doc.password_last_changed,
+        "has_password": bool(doc.get("password")),
+        "has_totp": bool(doc.get("totp_secret")),
+        "has_api_secret": bool(doc.get("api_secret")),
+        "has_card_number": bool(doc.get("card_number")),
+        "has_card_cvv": bool(doc.get("card_cvv")),
+        "has_db_password": bool(doc.get("db_password")),
         "last_accessed": str(doc.last_accessed) if doc.last_accessed else None,
         "access_count": doc.access_count,
         "expires_on": str(doc.expires_on) if doc.expires_on else None,
@@ -223,6 +271,53 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
     doc.update_access_metadata()
 
     return result
+
+
+def get_totp_code(name: str) -> dict:
+    """Generate the current TOTP code and remaining seconds for a secret."""
+    if not frappe.has_permission("Vault Secret", "read", name):
+        frappe.throw(_("You don't have permission to access this secret"), frappe.PermissionError)
+
+    secret = get_secret(name, decrypt=True)
+    decrypted = secret.get("decrypted", {})
+    totp_secret = decrypted.get("totp_secret")
+
+    if not totp_secret:
+        return {"code": None, "remaining_seconds": 0, "error": _("No TOTP secret configured.")}
+
+    try:
+        clean_secret = str(totp_secret).strip().replace(" ", "").upper()
+        unpadded = clean_secret.rstrip("=")
+        rem = len(unpadded) % 8
+        padded = unpadded + ("=" * {2: 6, 4: 4, 5: 3, 7: 1}.get(rem, 0))
+        totp = pyotp.TOTP(padded)
+        code = totp.now()
+        remaining_seconds = 30 - (int(time.time()) % 30)
+
+        # Generate QR Code SVG only for owners/admins to prevent offline copying by shared users
+        qr_svg = None
+        if secret.get("user_permission") == "Full Control":
+            try:
+                import base64
+
+                from frappe.twofactor import get_qr_svg_code
+
+                totp_uri = totp.provisioning_uri(name=name, issuer_name="Frappe Vault")
+                qr_b64_bytes = get_qr_svg_code(totp_uri)
+                if isinstance(qr_b64_bytes, bytes):
+                    qr_svg = base64.b64decode(qr_b64_bytes).decode("utf-8")
+                elif isinstance(qr_b64_bytes, str):
+                    qr_svg = base64.b64decode(qr_b64_bytes.encode("utf-8")).decode("utf-8")
+                else:
+                    qr_svg = str(qr_b64_bytes)
+            except Exception as e:
+                frappe.logger().error(f"Could not generate QR SVG: {str(e)}")
+
+        return {"code": code, "remaining_seconds": remaining_seconds, "qr_svg": qr_svg, "error": None}
+
+    except Exception as e:
+        frappe.log_error(title=f"TOTP Generation Failed for {name}", message=str(e))
+        return {"code": None, "remaining_seconds": 0, "error": _("Invalid TOTP setup key format.")}
 
 
 def sanitize_url(url: str) -> str:
@@ -315,6 +410,7 @@ def update_secret(name: str, data: dict) -> dict:
         "username",
         "email",
         "password",
+        "totp_secret",
         "api_key",
         "api_secret",
         "notes",
@@ -374,6 +470,17 @@ def delete_secret(name: str) -> dict:
         "Vault Secret", name, force=True, ignore_doctypes=["Vault Audit Log"], ignore_permissions=True
     )
 
+    # 5. Notify Vault Admins
+    from frappe_vault.services.notification_service import notify_vault_admins
+
+    actor_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+    notify_vault_admins(
+        subject=f"Secret Deleted: '{title}'",
+        email_content=f"{actor_name} deleted secret '{title}'.",
+        document_type="Vault Secret",
+        document_name=name,
+    )
+
     return {"name": name, "title": title}
 
 
@@ -430,32 +537,114 @@ def bulk_move(secret_names: list, target_folder: str) -> dict:
     return {"moved": moved}
 
 
-def get_vault_stats() -> dict:
-    """Get dashboard statistics for current user."""
-    user = frappe.session.user
+def get_vault_stats(user: str | None = None) -> dict:
+    """Get dashboard statistics for a specific user or current user."""
+    user = user or frappe.session.user
     user_roles = frappe.get_roles(user)
     is_admin = user == "Administrator" or "Vault Admin" in user_roles or "System Manager" in user_roles
 
-    total = frappe.db.count("Vault Secret")
-    bookmarks = frappe.db.count("Vault Bookmark", filters={"user": user})
-    weak = frappe.db.count("Vault Secret", filters={"password_strength": ["in", ["weak", "fair"]]})
+    if is_admin:
+        permitted_secrets = frappe.get_all(
+            "Vault Secret", fields=["name", "password_strength", "secret_type"], limit=0
+        )
+    else:
+        owned = frappe.get_all(
+            "Vault Secret",
+            filters={"owner": user},
+            fields=["name", "password_strength", "secret_type"],
+            limit=0,
+        )
+        permitted_map = {s.name: s for s in owned}
 
-    type_counts = frappe.db.sql(
+        role_placeholders = ", ".join(["%s"] * len(user_roles)) if user_roles else "''"
+        params = [user] + list(user_roles) + [user]
+
+        secret_query = f"""
+            SELECT DISTINCT shared_name FROM `tabVault Share` vs
+            WHERE is_revoked = 0
+            AND (expires_on IS NULL OR expires_on > NOW())
+            AND shared_doctype = 'Vault Secret'
+            AND (
+                (share_type = 'User' AND user = %s)
+                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders})
+                    AND NOT EXISTS (
+                        SELECT 1 FROM `tabVault Share` override
+                        WHERE override.shared_doctype = 'Vault Secret'
+                        AND override.shared_name = vs.shared_name
+                        AND override.share_type = 'User'
+                        AND override.user = %s
+                        AND override.is_revoked = 1
+                    )
+                )
+            )
         """
-        SELECT secret_type, COUNT(name) as count
-        FROM `tabVault Secret`
-        GROUP BY secret_type
-    """,
-        as_dict=True,
-    )
-    secrets_by_type = {row["secret_type"] or "Other": row["count"] for row in type_counts}
+        shared_secret_names = set(frappe.db.sql_list(secret_query, tuple(params)))
 
-    recent = frappe.get_list(
-        "Vault Secret",
-        fields=["name", "title", "secret_type", "folder", "last_accessed", "url"],
-        order_by="last_accessed desc",
-        limit=5,
-    )
+        folder_query = f"""
+            SELECT DISTINCT shared_name FROM `tabVault Share` vs
+            WHERE is_revoked = 0
+            AND (expires_on IS NULL OR expires_on > NOW())
+            AND shared_doctype = 'Vault Folder'
+            AND (
+                (share_type = 'User' AND user = %s)
+                OR (share_type = 'Role' AND frappe_role IN ({role_placeholders})
+                    AND NOT EXISTS (
+                        SELECT 1 FROM `tabVault Share` override
+                        WHERE override.shared_doctype = 'Vault Folder'
+                        AND override.shared_name = vs.shared_name
+                        AND override.share_type = 'User'
+                        AND override.user = %s
+                        AND override.is_revoked = 1
+                    )
+                )
+            )
+        """
+        shared_folders = set(frappe.db.sql_list(folder_query, tuple(params)))
+
+        if shared_folders:
+            folder_secrets = frappe.get_all(
+                "Vault Secret",
+                filters={"folder": ["in", list(shared_folders)]},
+                pluck="name",
+                limit=0,
+            )
+            shared_secret_names.update(folder_secrets)
+
+        additional_names = shared_secret_names - set(permitted_map.keys())
+        if additional_names:
+            shared_secrets_data = frappe.get_all(
+                "Vault Secret",
+                filters={"name": ["in", list(additional_names)]},
+                fields=["name", "password_strength", "secret_type"],
+                limit=0,
+            )
+            for s in shared_secrets_data:
+                permitted_map[s.name] = s
+
+        permitted_secrets = list(permitted_map.values())
+
+    permitted_names = {s["name"] for s in permitted_secrets}
+
+    total = len(permitted_secrets)
+    weak = sum(1 for s in permitted_secrets if s.get("password_strength") in ("weak", "fair"))
+
+    secrets_by_type = {}
+    for s in permitted_secrets:
+        stype = s.get("secret_type") or "Other"
+        secrets_by_type[stype] = secrets_by_type.get(stype, 0) + 1
+
+    bookmarks_list = frappe.get_all("Vault Bookmark", filters={"user": user}, pluck="secret", limit=0)
+    bookmarks = sum(1 for b in bookmarks_list if b in permitted_names)
+
+    recent = []
+    if permitted_names:
+        recent = frappe.get_all(
+            "Vault Secret",
+            filters={"name": ["in", list(permitted_names)]},
+            fields=["name", "title", "secret_type", "folder", "last_accessed", "url"],
+            order_by="last_accessed desc",
+            limit=5,
+        )
 
     from frappe_vault.services.demo_service import check_has_demo_data
 

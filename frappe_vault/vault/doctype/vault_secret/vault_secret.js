@@ -62,20 +62,6 @@ frappe_vault.setup_vault_secret_form = function(frm) {
     if (!frm.is_new()) {
         frappe_vault.setup_action_buttons(frm);
     }
-
-    // Generate Password button (for Password type, both new and existing)
-    if (frm.doc.secret_type === "Password") {
-        frm.add_custom_button(__("Generate Password"), () => {
-            frappe_vault.show_password_generator((password) => {
-                frm.set_value("password", password);
-                frm.refresh_field("password");
-                frappe.show_alert({
-                    message: __("Password generated and set"),
-                    indicator: "green"
-                });
-            });
-        });
-    }
 };
 
 frappe_vault.toggle_secret_fields = function(frm) {
@@ -86,6 +72,7 @@ frappe_vault.toggle_secret_fields = function(frm) {
     frm.toggle_display("password", type === "Password");
     frm.toggle_display("username", ["Password", "API Key"].includes(type));
     frm.toggle_display("url", ["Password", "API Key"].includes(type));
+    frm.toggle_display("totp_secret", ["Password", "API Key"].includes(type));
 
     // API Key fields
     frm.toggle_display("api_key", type === "API Key");
@@ -147,6 +134,15 @@ frappe_vault.setup_action_buttons = function(frm) {
         }, __("Actions"));
     }
 
+    // TOTP Code Action
+    if (["Password", "API Key"].includes(frm.doc.secret_type)) {
+        if (frm.doc.totp_secret) {
+            frm.add_custom_button(__("Get TOTP Code"), () => {
+                frappe_vault.show_totp_dialog(frm);
+            }, __("Actions"));
+        }
+    }
+
     // URL actions
     if (frm.doc.url) {
         frm.add_custom_button(__("Copy URL"), () => {
@@ -157,12 +153,6 @@ frappe_vault.setup_action_buttons = function(frm) {
             window.open(frm.doc.url, "_blank");
         }, __("Actions"));
     }
-
-    // View Access Log link
-    frm.add_custom_button(__("Access Log"), () => {
-        frappe.route_options = { secret: frm.doc.name };
-        frappe.set_route("List", "Vault Access Log");
-    }, __("View"));
 };
 
 frappe_vault.add_strength_indicator = function(frm) {
@@ -221,4 +211,96 @@ frappe_vault.show_revealed_secret = function(label, value) {
         }
     });
     d.show();
+};
+
+frappe_vault.show_totp_dialog = function(frm) {
+    let d = new frappe.ui.Dialog({
+        title: __("TOTP Code"),
+        fields: [
+            {
+                fieldname: "totp_display",
+                fieldtype: "HTML"
+            }
+        ],
+        primary_action_label: __("Copy"),
+        primary_action: () => {
+            if (d.current_code) {
+                frappe_vault.copy_to_clipboard(d.current_code, __("TOTP Code"));
+                d.hide();
+            }
+        }
+    });
+
+    let fetch_totp = () => {
+        frappe.call({
+            method: "frappe_vault.api.secrets.get_totp",
+            args: {
+                name: frm.doc.name
+            },
+            callback: function(r) {
+                if (r.message && r.message.code) {
+                    let code = r.message.code;
+                    let remaining = r.message.remaining_seconds;
+                    let qr_svg = r.message.qr_svg || '';
+                    d.current_code = code;
+
+                    let render_totp = (c, r_sec, svg) => {
+                        let indicator_color = r_sec > 5 ? 'var(--blue-500, #2490ef)' : 'var(--red-500, #ff5858)';
+                        let qr_html = svg ? `<div style="margin-bottom: 20px; display: flex; justify-content: center;">${svg}</div>` : '';
+                        let html = `
+                            <div style="text-align: center; padding: 10px 0;">
+                                ${qr_html}
+                                <div style="font-family: monospace; font-size: 2.5em; font-weight: bold; letter-spacing: 4px; color: var(--text-color);">${c.slice(0,3)} ${c.slice(3)}</div>
+                                <div style="margin-top: 10px; font-size: 0.9em; color: var(--text-muted); display: flex; align-items: center; justify-content: center;">
+                                    <span style="display:inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${indicator_color}; margin-right: 8px;"></span>
+                                    ${r_sec} seconds remaining
+                                </div>
+                            </div>
+                        `;
+                        d.get_field("totp_display").$wrapper.html(html);
+                    };
+
+                    render_totp(code, remaining, qr_svg);
+
+                    if (d.totp_interval) {
+                        clearInterval(d.totp_interval);
+                    }
+
+                    d.totp_interval = setInterval(() => {
+                        remaining -= 1;
+                        if (remaining <= 0) {
+                            clearInterval(d.totp_interval);
+                            fetch_totp();
+                        } else {
+                            render_totp(code, remaining, qr_svg);
+                        }
+                    }, 1000);
+                } else {
+                    let err_msg = (r.message && r.message.error) ? r.message.error : __("Invalid or missing TOTP secret.");
+                    d.get_field("totp_display").$wrapper.html(`<div class="text-muted text-center py-4" style="color: var(--red-500);">${err_msg}</div>`);
+                }
+            }
+        });
+    };
+
+    d.onhide = () => {
+        if (d.totp_interval) {
+            clearInterval(d.totp_interval);
+        }
+    };
+
+    d.show();
+    fetch_totp();
+};
+
+frappe_vault.reveal_password = function(name, callback) {
+    frappe.call({
+        method: "frappe_vault.api.secrets.decrypt",
+        args: { name: name },
+        callback: function(r) {
+            if (r.message && r.message.decrypted) {
+                if (callback) callback(r.message.decrypted);
+            }
+        }
+    });
 };

@@ -96,7 +96,7 @@
 
       <div class="mt-auto">
         <SidebarItem
-          v-if="stats.data?.has_demo_data"
+          v-if="isVaultAdmin && stats.data?.has_demo_data"
           label="Clear Demo Data"
           :icon="{ render: () => h(BrushCleaningIcon, { class: 'size-4 text-ink-red-5 shrink-0' }) }"
           class="hover:bg-surface-red-2 text-ink-red-6 transition-colors cursor-pointer font-medium"
@@ -107,7 +107,7 @@
           </template>
         </SidebarItem>
         <SidebarItem
-          v-else-if="stats.data?.total_secrets === 0 && !generateDemo.loading"
+          v-else-if="isVaultAdmin && stats.data?.total_secrets === 0 && !generateDemo.loading"
           label="Load Demo Data"
           :icon="{ render: () => h(SparklesIcon, { class: 'size-4 text-ink-blue-5 shrink-0' }) }"
           class="hover:bg-surface-blue-2 text-ink-blue-3 transition-colors cursor-pointer font-medium"
@@ -310,13 +310,29 @@
           </div>
         </template>
       </Dialog>
+
+      <!-- Share Folder Dialog -->
+      <ShareItemDialog
+        v-model="showShareFolderDialog"
+        :sharedName="folderToShare?.name"
+        :itemTitle="folderToShare?.folder_name"
+        sharedDoctype="Vault Folder"
+      />
+
+      <!-- Manage Folder Shares Dialog -->
+      <ManageFolderSharesDialog
+        v-model="showManageFolderSharesDialog"
+        :folderName="folderToManageShares?.name"
+        :folderTitle="folderToManageShares?.folder_name"
+        :isOwnerOrAdmin="isManagingFolderOwnerOrAdmin"
+      />
   </Sidebar>
 </template>
 
 <script setup>
 import { ref, computed, reactive, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Checkbox, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource } from 'frappe-ui'
+import { Badge, Button, FeatherIcon, Tooltip, Dialog, Dropdown, FormControl, Checkbox, Sidebar, SidebarItem, SidebarHeader, SidebarCollapseToggle, createResource, toast } from 'frappe-ui'
 import { IconPicker, Icon } from 'frappe-ui/icons'
 import { useVaultStats, useFolders, useCreateFolder, useDeleteFolder, useUpdateFolder, useFolderSecrets, useGenerateDemoData, useClearDemoData, mobileSidebarOpened, isSidebarCollapsed } from '../composables/vault'
 import {
@@ -325,6 +341,9 @@ import {
   unreadNotificationsCount,
   toggleNotificationPanel,
 } from '../stores/notifications'
+import NotificationsPanel from './NotificationsPanel.vue'
+import ShareItemDialog from './ShareItemDialog.vue'
+import ManageFolderSharesDialog from './ManageFolderSharesDialog.vue'
 import LayoutDashboard from '~icons/lucide/layout-dashboard'
 import HelpCircleIcon from '~icons/lucide/help-circle'
 import HeartIcon from '~icons/lucide/heart'
@@ -346,6 +365,13 @@ const foldersResource = useFolders()
 const generateDemo = useGenerateDemoData()
 const clearDemo = useClearDemoData()
 const showClearDemoConfirm = ref(false)
+
+const isVaultAdmin = computed(() => {
+  const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name
+  if (user === 'Administrator') return true
+  const roles = window.frappe?.boot?.user?.roles || window.frappe?.user?.roles || []
+  return roles.includes('Vault Admin') || roles.includes('System Manager')
+})
 
 const appsResource = createResource({
   url: 'frappe.apps.get_apps',
@@ -394,6 +420,12 @@ const deleteSecretsCheck = ref(false)
 const loadingCount = ref(false)
 const deleteFolderError = ref('')
 
+const showShareFolderDialog = ref(false)
+const folderToShare = ref(null)
+
+const showManageFolderSharesDialog = ref(false)
+const folderToManageShares = ref(null)
+
 function parseFrappeError(error) {
   if (error?.message && !error.message.includes('Traceback')) {
     return error.message
@@ -433,6 +465,29 @@ async function handleCreateFolder() {
 
 function getFolderOptions(folder) {
   const options = []
+
+  const currentUser = window.frappe?.session?.user || window.frappe?.boot?.user?.name || ''
+  const isOwnerOrAdmin = folder.owner === currentUser || isAdmin.value
+
+  if (isOwnerOrAdmin || folder.can_write) {
+    options.push({
+      label: 'Share',
+      icon: 'lucide-share-2',
+      onClick: () => {
+        folderToShare.value = folder
+        showShareFolderDialog.value = true
+      }
+    })
+    options.push({
+      label: 'Manage Shares',
+      icon: 'lucide-users',
+      onClick: () => {
+        folderToManageShares.value = folder
+        showManageFolderSharesDialog.value = true
+      }
+    })
+  }
+
   if (folder.can_write) {
     options.push({
       label: 'Edit Folder',
@@ -511,10 +566,13 @@ async function handleGenerateDemo() {
     await generateDemo.submit()
     stats.reload()
     foldersResource.reload()
+    window.dispatchEvent(new CustomEvent('vault-demo-changed'))
+    toast.success('Demo data generated successfully')
     if (route.name === 'SecretDetail') {
       router.push('/')
     }
   } catch (err) {
+    toast.error(err.message || 'Failed to generate demo data')
   }
 }
 
@@ -524,8 +582,13 @@ async function handleClearDemo() {
     showClearDemoConfirm.value = false
     stats.reload()
     foldersResource.reload()
-    router.push('/')
+    window.dispatchEvent(new CustomEvent('vault-demo-changed'))
+    toast.success('Demo data cleared successfully')
+    if (route.name === 'SecretDetail') {
+      router.push('/')
+    }
   } catch (err) {
+    toast.error(err.message || 'Failed to clear demo data')
   }
 }
 
@@ -541,7 +604,7 @@ const sidebarCollapsedComputed = computed({
 const showAboutModal = ref(false)
 
 const vaultVersion = computed(() => {
-  return window.frappe?.boot?.versions?.frappe_vault || '1.0.0'
+  return window.frappe?.boot?.versions?.frappe_vault || '1.1.0'
 })
 
 const aboutLinks = [
@@ -571,6 +634,12 @@ const isAdmin = computed(() => {
   if (user === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
   return roles.includes('Vault Admin')
+})
+
+const isManagingFolderOwnerOrAdmin = computed(() => {
+  if (isAdmin.value) return true
+  const user = window.frappe?.session?.user || window.frappe?.boot?.user?.name || ''
+  return folderToManageShares.value?.owner === user
 })
 
 // Single reactive sidebar config

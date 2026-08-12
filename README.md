@@ -1,7 +1,7 @@
 <p align="center"><img width="160" src=".github/assets/logo.svg"></p>
 
 
-<img src=".github/assets/banner.jpg" />
+<img src=".github/assets/banner.png" />
 
 # Frappe Vault
 
@@ -150,7 +150,7 @@ Main document for storing credentials.
 
 ### Vault Folder
 
-Tree-based organization for secrets.
+Organize your secrets into logical groups using folders.
 
 ### Vault Access Log
 

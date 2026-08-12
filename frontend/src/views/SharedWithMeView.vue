@@ -27,6 +27,7 @@
       </template>
       <template #right>
 
+
         <!-- Refresh Button -->
         <Button
           :tooltip="'Refresh'"
@@ -47,11 +48,11 @@
       <!-- Shared secrets list view -->
       <template v-else-if="filteredList.length">
         <ListView
-          v-model:selections="selectedShares"
           class="flex-1 flex flex-col overflow-hidden bg-surface-base"
           :columns="columns"
           :rows="paginatedRows"
           row-key="name"
+          v-model:selections="selectedShares"
           :options="{
             selectable: true,
             showTooltip: true,
@@ -115,13 +116,14 @@
             </ListRow>
           </ListRows>
           <ListSelectBanner>
-            <template #actions="{ unselectAll }">
+            <template #actions>
               <Button
                 variant="solid"
-                theme="red"
-                iconLeft="trash-2"
-                label="Delete"
-                @click="showBulkDeleteDialog = true"
+                theme="gray"
+                iconLeft="lucide-eye-off"
+                label="Dismiss Logs"
+                :loading="bulkDeleteLoading"
+                @click="handleBulkDismiss"
               />
             </template>
           </ListSelectBanner>
@@ -142,34 +144,6 @@
       <!-- Empty state -->
       <EmptyState v-else icon="users" title="Nothing shared with you" description="When someone shares a secret with you, it will appear here" />
     </div>
-
-    <!-- Bulk Delete Confirmation Dialog -->
-    <Dialog
-      v-model="showBulkDeleteDialog"
-      :options="{
-        title: 'Delete Sharing Logs',
-        size: 'sm',
-      }"
-    >
-      <template #body-content>
-        <p class="text-sm text-ink-gray-7 pt-2">
-          Are you sure you want to delete the <span class="font-semibold text-ink-gray-9">{{ selectedShares.size }}</span> selected sharing log records from your list?
-        </p>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-2 px-4 pb-4">
-          <Button variant="ghost" label="Cancel" @click="showBulkDeleteDialog = false" class="text-ink-gray-7 focus:outline-none" />
-          <Button
-            variant="solid"
-            theme="red"
-            label="Delete Logs"
-            :loading="bulkDeleteLoading"
-            @click="handleBulkDelete"
-            class="px-4 font-semibold shadow-sm focus:outline-none"
-          />
-        </div>
-      </template>
-    </Dialog>
   </div>
 </template>
 
@@ -178,22 +152,25 @@ import ViewControlsBar from '../components/ViewControlsBar.vue'
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import RefreshIcon from '../components/RefreshIcon.vue'
-import { Badge, Button, TextInput, FeatherIcon, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Dialog, Breadcrumbs, toast } from 'frappe-ui'
-import { mobileSidebarOpened, useSharedWithMe, useBulkDeleteShares, useFolders } from '../composables/vault'
+import { Badge, Button, TextInput, FeatherIcon, ListView, ListHeader, ListHeaderItem, ListRows, ListRow, ListRowItem, ListSelectBanner, ListFooter, Breadcrumbs, toast } from 'frappe-ui'
+import { mobileSidebarOpened, useSharedWithMe, useFolders } from '../composables/vault'
+import { createResource } from 'frappe-ui'
 import EmptyState from '../components/EmptyState.vue'
 import SecretTypeIcon from '../components/SecretTypeIcon.vue'
 import { permissionTheme, formatDateTime as formatTime, getFolderIcon } from '../composables/constants'
 
 const router = useRouter()
 const shared = useSharedWithMe()
-const bulkDeleteResource = useBulkDeleteShares()
 const foldersResource = useFolders()
 
 const titleQuery = ref('')
 const selectedShares = ref(new Set())
-const showBulkDeleteDialog = ref(false)
 const bulkDeleteLoading = ref(false)
 const pageLength = ref(20)
+
+const dismissResource = createResource({
+  url: 'frappe_vault.api.sharing.dismiss_shared_logs',
+})
 
 const list = computed(() => shared.data?.shared || [])
 const totalCount = computed(() => shared.data?.total || filteredList.value.length || 0)
@@ -258,22 +235,20 @@ function handleRowClick(row) {
   }
 }
 
-async function handleBulkDelete() {
+async function handleBulkDismiss() {
   if (selectedShares.value.size === 0) return
   bulkDeleteLoading.value = true
   try {
-    await bulkDeleteResource.submit({
-      share_names: Array.from(selectedShares.value)
+    await dismissResource.submit({
+      share_names: JSON.stringify(Array.from(selectedShares.value))
     })
-    toast.success('Selected logs deleted successfully')
+    toast.success('Selected logs dismissed successfully')
     selectedShares.value.clear()
     shared.reload()
-    showBulkDeleteDialog.value = false
   } catch (err) {
-    toast.error(err.message || 'Failed to delete logs')
+    toast.error(err.message || 'Failed to dismiss logs')
   } finally {
     bulkDeleteLoading.value = false
   }
 }
-
 </script>

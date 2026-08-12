@@ -13,6 +13,7 @@ class VaultSecret(Document):
         """Validate the secret before saving."""
         self.validate_title()
         self.calculate_password_strength()
+        self.validate_totp_secret()
 
     def validate_title(self):
         """Ensure title is present and trimmed."""
@@ -20,6 +21,53 @@ class VaultSecret(Document):
             self.title = self.title.strip()
         if not self.title:
             frappe.throw(_("Title is required"))
+
+    def validate_totp_secret(self):
+        """Ensure the provided TOTP secret is a valid Base32 string and auto-pad if needed."""
+        totp_secret_val = getattr(self, "totp_secret", None)
+        if totp_secret_val and totp_secret_val != "*****":
+            import re
+
+            import pyotp
+
+            clean_secret = str(totp_secret_val).strip().replace(" ", "").upper()
+            if not clean_secret:
+                self.totp_secret = ""
+                return
+
+            if clean_secret.isdigit() and len(clean_secret) in (6, 8):
+                frappe.throw(
+                    _(
+                        "You entered a 6-digit TOTP passcode instead of the TOTP Secret Key. Please enter the Base32 2FA seed key."
+                    )
+                )
+
+            unpadded = clean_secret.rstrip("=")
+            if not unpadded or not re.match(r"^[A-Z2-7]+$", unpadded):
+                frappe.throw(
+                    _(
+                        "Invalid TOTP Secret Key. Base32 keys can only contain letters A-Z and digits 2-7 (equal signs are only allowed at the end)."
+                    )
+                )
+
+            if len(unpadded) < 16:
+                frappe.throw(
+                    _("TOTP Secret Key is too short. Base32 seed keys must be at least 16 characters long.")
+                )
+
+            rem = len(unpadded) % 8
+            if rem in (1, 3, 6):
+                frappe.throw(
+                    _("Invalid Base32 TOTP Secret key length. You may have missed copying a character.")
+                )
+
+            try:
+                pyotp.TOTP(unpadded).now()
+                self.totp_secret = unpadded
+            except Exception:
+                frappe.throw(
+                    _("Invalid TOTP Secret (2FA Seed). Please ensure you pasted a valid Base32 key.")
+                )
 
     def calculate_password_strength(self):
         """Auto-calculate password strength when password changes."""

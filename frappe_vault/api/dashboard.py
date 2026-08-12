@@ -5,6 +5,18 @@ import json
 import frappe
 from frappe import _
 
+# Allowlisted chart names to prevent arbitrary function dispatch
+ALLOWED_CHART_NAMES = {
+    "total_secrets",
+    "active_shares",
+    "bookmarks",
+    "vault_trend",
+    "secrets_by_folder",
+    "recently_accessed",
+    "security_score",
+    "revoked_shares",
+}
+
 
 @frappe.whitelist()
 def get_vault_dashboard(
@@ -23,6 +35,20 @@ def get_chart(
     to_date: str | None = None,
     user: str | None = None,
 ) -> dict:
+    # Only allow known chart names
+    if name not in ALLOWED_CHART_NAMES:
+        frappe.throw(_("Invalid chart name"), frappe.ValidationError)
+
+    # Enforce user scope for non-admins
+    user_roles = frappe.get_roles()
+    is_admin = (
+        frappe.session.user == "Administrator"
+        or "Vault Admin" in user_roles
+        or "System Manager" in user_roles
+    )
+    if not is_admin:
+        user = frappe.session.user
+
     from frappe_vault.services import dashboard_service
 
     method_name = f"get_{name}"
