@@ -322,3 +322,62 @@ class TestSharingService(FrappeTestCase):
 
         delete_folder(folder.get("name"))
         assert_notification("Folder Deleted", "Administrator")
+
+    def test_non_cascading_role_share_revocation(self):
+        """Test that revoking a user's access does NOT cascade and delete role shares they created,
+        and that the original owner can still manually revoke that role share.
+        """
+        if not frappe.db.exists("User", "test_shared_2@example.com"):
+            doc = frappe.get_doc(
+                {"doctype": "User", "email": "test_shared_2@example.com", "first_name": "Test Shared 2"}
+            )
+            doc.insert(ignore_permissions=True)
+            doc.append("roles", {"role": "Vault User"})
+            doc.save(ignore_permissions=True)
+
+        frappe.set_user("test_shared_1@example.com")
+
+        # 1. User 1 creates folder
+        folder_res = create_folder(folder_name="Non Cascade Test Folder", color="Blue", icon="folder")
+        folder_name = folder_res.get("name")
+
+        # 2. User 1 shares it with User 2 with Full Control
+        user2_share = share_secret(
+            shared_name=folder_name,
+            shared_doctype="Vault Folder",
+            share_type="User",
+            user="test_shared_2@example.com",
+            permission_level="Full Control",
+        )
+
+        # 3. User 2 shares it with Vault User Role
+        frappe.set_user("test_shared_2@example.com")
+        role_share = share_secret(
+            shared_name=folder_name,
+            shared_doctype="Vault Folder",
+            share_type="Role",
+            frappe_role="Vault User",
+            permission_level="View Only",
+        )
+        self.assertTrue(role_share.get("name"))
+
+        # 4. User 1 revokes User 2's access
+        frappe.set_user("test_shared_1@example.com")
+        unshare(user2_share.get("name"))
+
+        # 5. Role share should still exist (no cascading revocation)
+        shares = get_shares_for_secret(folder_name, shared_doctype="Vault Folder")
+        active_shares = [s for s in shares if not s.get("is_revoked")]
+        self.assertEqual(len(active_shares), 1)
+        self.assertEqual(active_shares[0].get("share_type"), "Role")
+        self.assertEqual(active_shares[0].get("shared_by"), "test_shared_2@example.com")
+
+        # 6. User 1 (owner) can manually revoke the Role share
+        unshare(active_shares[0].get("name"))
+
+        # Verify it was revoked
+        shares_after = get_shares_for_secret(folder_name, shared_doctype="Vault Folder")
+        active_shares_after = [s for s in shares_after if not s.get("is_revoked")]
+        self.assertEqual(len(active_shares_after), 0)
+
+        delete_folder(folder_name)
