@@ -50,10 +50,6 @@ frappe_vault.setup_vault_secret_form = function(frm) {
         frappe_vault.add_strength_indicator(frm);
     }
 
-    // Add bookmark toggle button to page actions
-    if (!frm.is_new()) {
-        frappe_vault.add_bookmark_toggle(frm);
-    }
 
     // Toggle secret type specific fields
     frappe_vault.toggle_secret_fields(frm);
@@ -171,25 +167,6 @@ frappe_vault.add_strength_indicator = function(frm) {
     }
 };
 
-frappe_vault.add_bookmark_toggle = function(frm) {
-    // Use Frappe's standard action icon pattern
-    const is_bookmark = frm.doc.is_bookmark;
-
-    frm.page.add_action_icon(
-        is_bookmark ? "es-solid-bookmark" : "es-line-bookmark",
-        async () => {
-            await frm.set_value("is_bookmark", !is_bookmark);
-            await frm.save();
-            frappe.show_alert({
-                message: is_bookmark
-                    ? __("Removed from bookmarks")
-                    : __("Added to bookmarks"),
-                indicator: is_bookmark ? "grey" : "yellow"
-            });
-        },
-        is_bookmark ? __("Remove from Bookmarks") : __("Add to Bookmarks")
-    );
-};
 
 frappe_vault.show_revealed_secret = function(label, value) {
     // Use Frappe's standard dialog for revealing secrets
