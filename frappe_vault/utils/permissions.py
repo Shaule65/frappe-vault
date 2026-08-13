@@ -343,9 +343,9 @@ def has_file_permission(doc, ptype="read", user=None):
         try:
             doc = frappe.get_doc("File", doc)
         except Exception:
-            return None
+            return True
 
     if doc and doc.attached_to_doctype == "Vault Secret" and doc.attached_to_name:
         return has_secret_permission(doc.attached_to_name, ptype="read", user=user)
 
-    return None
+    return True

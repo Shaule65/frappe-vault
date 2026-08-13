@@ -10,6 +10,7 @@ from frappe_vault.utils.encryption import get_decrypted_secret_data
 
 class TestSecurityExploits(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Test Exploit Secret"})
         frappe.db.commit()
 
@@ -24,6 +25,7 @@ class TestSecurityExploits(FrappeTestCase):
         )
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Test Exploit Secret"})
         frappe.db.delete("Vault Share", {"shared_name": self.secret.get("name")})
         frappe.db.commit()
@@ -90,3 +92,20 @@ class TestSecurityExploits(FrappeTestCase):
             get_decrypted_secret_data(self.secret.get("name"))
 
         self.assertIn("Not permitted", str(context.exception))
+
+    def test_has_file_permission_non_vault_file(self):
+        from frappe_vault.utils.permissions import has_file_permission
+
+        frappe.set_user("test_hacker@example.com")
+
+        non_vault_file = frappe.get_doc(
+            {
+                "doctype": "File",
+                "file_name": "lms_course_notes.pdf",
+                "attached_to_doctype": "LMS Course",
+                "attached_to_name": "LMS-0001",
+                "is_private": 1,
+            }
+        )
+        perm = has_file_permission(non_vault_file, ptype="read", user="test_hacker@example.com")
+        self.assertTrue(perm, "has_file_permission hook must not block files from other applications")
