@@ -427,17 +427,19 @@ const showManageFolderSharesDialog = ref(false)
 const folderToManageShares = ref(null)
 
 function parseFrappeError(error) {
-  if (error?.message && !error.message.includes('Traceback')) {
-    return error.message
-  }
   if (Array.isArray(error?.messages) && error.messages.length) {
     const msg = error.messages[0]
-    if (msg && !msg.includes('Traceback')) return msg
+    if (msg && !msg.includes('Traceback')) {
+      return msg.replace(/<[^>]*>?/gm, '')
+    }
   }
   if (error?.exc) {
     const lines = error.exc.split('\n').map(l => l.trim()).filter(Boolean)
     const last = lines[lines.length - 1]
     if (last) return last.replace(/^frappe\.\w+\.\w+:\s*/, '')
+  }
+  if (error?.message && !error.message.includes('Traceback')) {
+    return error.message
   }
   return 'Failed to delete folder. Please try again.'
 }
