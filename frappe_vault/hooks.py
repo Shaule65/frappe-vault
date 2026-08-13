@@ -38,8 +38,9 @@ website_route_rules = [
     {"from_route": "/desk/vault", "to_route": "vault"},
 ]
 
-# Installation
+# Installation & Migration
 after_install = "frappe_vault.setup.install.after_install"
+after_migrate = "frappe_vault.setup.install.after_migrate"
 
 # Document Events
 doc_events = {
