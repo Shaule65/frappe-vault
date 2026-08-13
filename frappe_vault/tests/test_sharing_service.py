@@ -16,6 +16,7 @@ from frappe_vault.utils.permissions import has_folder_permission, has_secret_per
 
 class TestSharingService(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Test Shared Secret"})
         frappe.db.delete("Vault Share", {"shared_name": "Test Shared Secret"})
         frappe.db.commit()

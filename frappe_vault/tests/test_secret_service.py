@@ -14,6 +14,7 @@ from frappe_vault.services.secret_service import (
 
 class TestSecretService(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         # Ensure clean slate for test secrets
         frappe.db.delete(
             "Vault Secret",
@@ -22,6 +23,7 @@ class TestSecretService(FrappeTestCase):
         frappe.db.commit()
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         frappe.db.delete(
             "Vault Secret",
             {"title": ["in", ["Test Service Secret", "Test Bookmark Secret", "Test Update Secret"]]},
@@ -179,3 +181,73 @@ class TestSecretService(FrappeTestCase):
 
         # Cleanup
         delete_secret(secret_name)
+
+    def test_upload_file_api(self):
+        from frappe_vault.api.secrets import upload_file as upload_file_api
+
+        test_email = "standard_vault_test_user@example.com"
+        if not frappe.db.exists("User", test_email):
+            user_doc = frappe.get_doc(
+                {
+                    "doctype": "User",
+                    "email": test_email,
+                    "first_name": "Standard",
+                    "last_name": "Vault User",
+                    "roles": [{"role": "Vault User"}],
+                }
+            )
+            user_doc.insert(ignore_permissions=True)
+
+        orig_user = frappe.session.user
+        try:
+            frappe.set_user(test_email)
+
+            frappe.form_dict = frappe._dict({"is_private": 1})
+            frappe.request = frappe._dict(
+                {
+                    "files": {
+                        "file": frappe._dict(
+                            {
+                                "stream": frappe._dict({"read": lambda: b"test image file content"}),
+                                "filename": "sample_media.png",
+                            }
+                        )
+                    }
+                }
+            )
+
+            # 1. Upload for new secret (without doctype/docname)
+            res = upload_file_api()
+            self.assertIsNotNone(res.get("file_url"))
+            self.assertEqual(res.get("file_name"), "sample_media.png")
+            self.assertTrue(frappe.db.exists("File", res.get("name")))
+
+            # 2. Upload attached to existing secret owned by user
+            s_own = create_secret({"title": "User Owned Secret", "secret_type": "Note"})
+            frappe.form_dict = frappe._dict(
+                {
+                    "is_private": 1,
+                    "doctype": "Vault Secret",
+                    "docname": s_own["name"],
+                }
+            )
+            res_own = upload_file_api()
+            self.assertEqual(res_own.get("file_name"), "sample_media.png")
+
+            # 3. Upload attached to another user's secret (unauthorized) -> must throw PermissionError
+            frappe.set_user("Administrator")
+            s_other = create_secret({"title": "Admin Secret", "secret_type": "Note"})
+            frappe.set_user(test_email)
+
+            frappe.form_dict = frappe._dict(
+                {
+                    "is_private": 1,
+                    "doctype": "Vault Secret",
+                    "docname": s_other["name"],
+                }
+            )
+            with self.assertRaises(frappe.PermissionError):
+                upload_file_api()
+
+        finally:
+            frappe.set_user(orig_user)
