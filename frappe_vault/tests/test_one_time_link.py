@@ -7,10 +7,12 @@ from frappe_vault.services.sharing_service import consume_one_time_link, create_
 
 class TestOneTimeLink(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Test One-Time Link Secret"})
         frappe.db.commit()
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Test One-Time Link Secret"})
         frappe.db.commit()
 

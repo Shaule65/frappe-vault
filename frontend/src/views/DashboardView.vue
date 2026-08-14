@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, provide } from 'vue'
+import { ref, reactive, computed, provide, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   createResource,
@@ -328,4 +328,17 @@ function onSecretCreated(newSecret) {
     router.push('/secrets')
   }
 }
+
+function handleDemoChanged() {
+  dashboardItems.reload()
+  scoreResource.reload()
+}
+
+onMounted(() => {
+  window.addEventListener('vault-demo-changed', handleDemoChanged)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vault-demo-changed', handleDemoChanged)
+})
 </script>

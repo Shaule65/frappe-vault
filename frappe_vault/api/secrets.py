@@ -15,6 +15,7 @@ def list(
     limit: int = 20,
     offset: int = 0,
     order_by: str = "modified desc",
+    **kwargs,
 ) -> dict:
     from frappe_vault.services.secret_service import get_secrets
 
@@ -28,6 +29,7 @@ def list(
         limit=int(limit),
         offset=int(offset),
         order_by=order_by,
+        **kwargs,
     )
 
 
@@ -111,3 +113,40 @@ def decrypt(name: str) -> dict:
     from frappe_vault.services.secret_service import get_secret
 
     return get_secret(name, decrypt=True)
+
+
+@frappe.whitelist()
+def get_totp(name: str) -> dict:
+    """Get live TOTP code and remaining seconds."""
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
+    from frappe_vault.services.secret_service import get_totp_code
+
+    return get_totp_code(name)
+
+
+@frappe.whitelist()
+def upload_file() -> dict:
+    """Upload a file attachment for a Vault Secret (works for both standard Vault Users and Admins)."""
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Authentication required"), frappe.PermissionError)
+
+    files = frappe.request.files
+    if "file" not in files:
+        frappe.throw(_("No file attached"), frappe.ValidationError)
+
+    file = files["file"]
+    filename = file.filename
+    is_private = frappe.utils.cint(frappe.form_dict.get("is_private", 1))
+    doctype = frappe.form_dict.get("doctype")
+    docname = frappe.form_dict.get("docname")
+
+    from frappe_vault.services.secret_service import upload_secret_attachment
+
+    return upload_secret_attachment(
+        file_obj=file.stream,
+        filename=filename,
+        is_private=is_private,
+        doctype=doctype,
+        docname=docname,
+    )

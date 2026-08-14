@@ -6,10 +6,12 @@ from frappe_vault.api.folders import create, get_all
 
 class TestFolders(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Folder", {"folder_name": "Test Folder"})
         frappe.db.commit()
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Folder", {"folder_name": "Test Folder"})
         frappe.db.commit()
 
