@@ -319,6 +319,7 @@ async function handleSaveChanges() {
           user: u.user,
           permission_level: permLevel,
           is_revoked: isRev,
+          is_role_override: props.item?.share_type === 'Role' ? true : false,
         })
       }
     }

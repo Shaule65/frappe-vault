@@ -5,6 +5,114 @@ Ensures row-level security: users only see secrets they own or that are shared w
 
 import frappe
 
+PERM_HIERARCHY = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
+
+
+def get_effective_user_permission(shared_doctype: str, shared_name: str, user: str = None) -> int:
+    """Calculate user's effective numeric permission level (0 to 4) for a secret or folder.
+
+    Priority:
+    1. Owner / Admin -> 4 (Full Control)
+    2. Direct User Share (is_role_override = 0, is_revoked = 0, not expired)
+    3. Role Member Override (is_role_override = 1) -> ONLY IF active role share exists
+    4. Highest among active applicable Role Shares
+    5. 0 (No access)
+    """
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator":
+        return 4
+
+    roles = frappe.get_roles(user)
+    if "Vault Admin" in roles or "System Manager" in roles:
+        return 4
+
+    doc_folder = None
+    if shared_doctype == "Vault Secret":
+        res = frappe.db.get_value("Vault Secret", shared_name, ["owner", "folder"])
+        doc_owner, doc_folder = res if res else (None, None)
+        if doc_owner == user:
+            return 4
+        if doc_folder:
+            folder_owner = frappe.db.get_value("Vault Folder", doc_folder, "owner")
+            if folder_owner == user:
+                return 4
+    elif shared_doctype == "Vault Folder":
+        doc_owner = frappe.db.get_value("Vault Folder", shared_name, "owner")
+        if doc_owner == user:
+            return 4
+
+    # Direct User Shares (non-role-override)
+    user_shares = frappe.db.sql(
+        """
+        SELECT permission_level FROM `tabVault Share`
+        WHERE share_type = 'User'
+          AND user = %s
+          AND is_revoked = 0
+          AND (is_role_override = 0 OR is_role_override IS NULL)
+          AND (expires_on IS NULL OR expires_on > NOW())
+          AND (
+              (shared_doctype = %s AND shared_name = %s)
+              OR (%s = 'Vault Secret' AND shared_doctype = 'Vault Folder' AND shared_name = %s)
+          )
+        ORDER BY creation DESC
+    """,
+        (user, shared_doctype, shared_name, shared_doctype, doc_folder or ""),
+        as_dict=True,
+    )
+    if user_shares:
+        highest = max(user_shares, key=lambda s: PERM_HIERARCHY.get(s.permission_level, 0))
+        return PERM_HIERARCHY.get(highest.permission_level, 1)
+
+    # Active Role Shares
+    active_role_shares = []
+    if roles:
+        active_role_shares = frappe.db.sql(
+            """
+            SELECT permission_level FROM `tabVault Share`
+            WHERE share_type = 'Role'
+              AND frappe_role IN %s
+              AND is_revoked = 0
+              AND (expires_on IS NULL OR expires_on > NOW())
+              AND (
+                  (shared_doctype = %s AND shared_name = %s)
+                  OR (%s = 'Vault Secret' AND shared_doctype = 'Vault Folder' AND shared_name = %s)
+              )
+        """,
+            (tuple(roles), shared_doctype, shared_name, shared_doctype, doc_folder or ""),
+            as_dict=True,
+        )
+
+    # Role Member Overrides (applicable only if active role share exists)
+    role_overrides = frappe.db.sql(
+        """
+        SELECT permission_level, is_revoked FROM `tabVault Share`
+        WHERE share_type = 'User'
+          AND user = %s
+          AND is_role_override = 1
+          AND (
+              (shared_doctype = %s AND shared_name = %s)
+              OR (%s = 'Vault Secret' AND shared_doctype = 'Vault Folder' AND shared_name = %s)
+          )
+        ORDER BY creation DESC
+    """,
+        (user, shared_doctype, shared_name, shared_doctype, doc_folder or ""),
+        as_dict=True,
+    )
+
+    if active_role_shares:
+        if role_overrides:
+            override = role_overrides[0]
+            if override.is_revoked:
+                return 0
+            return PERM_HIERARCHY.get(override.permission_level, 1)
+
+        highest_role = max(active_role_shares, key=lambda s: PERM_HIERARCHY.get(s.permission_level, 0))
+        return PERM_HIERARCHY.get(highest_role.permission_level, 1)
+
+    return 0
+
 
 def get_secret_permission_query(user=None):
     """Return SQL condition to filter Vault Secrets for current user.

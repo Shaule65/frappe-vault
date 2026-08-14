@@ -379,11 +379,18 @@ const isOwnerOrAdmin = computed(() => {
 })
 
 function canEditShare(item) {
+  // Users cannot edit or revoke their own direct share unless they are system admins
+  if (item && item.share_type === 'User' && item.user === currentSessionUser.value) {
+    if (stats.data?.is_admin || currentSessionUser.value === 'Administrator') return true
+    return false
+  }
+
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
   if (roles.includes('Vault Admin') || roles.includes('System Manager')) return true
   if (props.secretData.owner === currentSessionUser.value) return true
+  if (props.secretData.user_permission === 'Full Control') return true
   if (item && item.shared_by === currentSessionUser.value) return true
   return false
 }

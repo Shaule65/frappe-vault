@@ -178,15 +178,21 @@ def save_role_member_permission(
     user: str | None = None,
     permission_level: str = "View Only",
     is_revoked: bool = False,
+    is_role_override: bool | str | None = None,
 ) -> dict:
     from frappe_vault.services.sharing_service import save_role_member_permission as _save_role_member_perm
 
     if isinstance(is_revoked, str):
         is_revoked = is_revoked.lower() in ("true", "1")
+
+    if isinstance(is_role_override, str):
+        is_role_override = is_role_override.lower() in ("true", "1")
+
     return _save_role_member_perm(
         shared_name=shared_name,
         shared_doctype=shared_doctype,
         user=user,
         permission_level=permission_level,
         is_revoked=bool(is_revoked),
+        is_role_override=is_role_override,
     )

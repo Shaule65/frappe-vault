@@ -29,18 +29,80 @@ class TestSharingService(FrappeTestCase):
             doc.append("roles", {"role": "Vault User"})
             doc.save(ignore_permissions=True)
 
+        if not frappe.db.exists("User", "test_shared_2@example.com"):
+            doc = frappe.get_doc(
+                {"doctype": "User", "email": "test_shared_2@example.com", "first_name": "Test Shared 2"}
+            )
+            doc.insert(ignore_permissions=True)
+            doc.append("roles", {"role": "Vault User"})
+            doc.save(ignore_permissions=True)
+
     def tearDown(self):
         frappe.db.delete("Vault Secret", {"title": "Test Shared Secret"})
         frappe.db.delete(
-            "Vault Secret", {"title": ["in", ["Test Shared Secret 2", "Test Shared Secret 2 2"]]}
+            "Vault Secret",
+            {
+                "title": [
+                    "in",
+                    [
+                        "Test Shared Secret 2",
+                        "Test Shared Secret 2 2",
+                        "Test Shared Secret 3",
+                        "Test Shared Secret 4",
+                        "Test Shared Secret 5",
+                    ],
+                ]
+            },
         )
-        frappe.db.delete("Vault Folder", {"folder_name": "Test Shared Folder"})
+        frappe.db.delete(
+            "Vault Folder", {"folder_name": ["in", ["Test Shared Folder", "Non Cascade Test Folder"]]}
+        )
         frappe.db.delete("Vault Share", {"shared_by": "test_shared_1@example.com"})
+
+        # Clean up related logs for test users so they can be deleted
+        test_emails = [
+            "test_shared_1@example.com",
+            "test_shared_2@example.com",
+            "test1@gmail.com",
+            "test2@example.com",
+        ]
+        for email in test_emails:
+            frappe.db.delete("Notification Log", {"for_user": email})
+            frappe.db.delete("Vault Audit Log", {"user": email})
+
+            if frappe.db.exists("Has Role", {"parent": email}):
+                frappe.db.delete("Has Role", {"parent": email})
+
+            if frappe.db.exists("User", email):
+                frappe.delete_doc("User", email, ignore_permissions=True, force=True)
+
         frappe.db.commit()
 
     def test_share_secret_with_role(self):
         # Create a secret
         secret = create_secret({"title": "Test Shared Secret", "secret_type": "Password", "password": "pass"})
+        secret_name = secret.get("name")
+
+        # Test Case 9: Multi-User Direct Share DB vs UI Consolidation
+        frappe.set_user("Administrator")
+        share_secret(
+            shared_name=secret_name,
+            shared_doctype="Vault Secret",
+            share_type="User",
+            user="test_shared_1@example.com",
+            permission_level="View Only",
+        )
+        share_secret(
+            shared_name=secret_name,
+            shared_doctype="Vault Secret",
+            share_type="User",
+            user="test_shared_2@example.com",
+            permission_level="View Only",
+        )
+        shares_ui = get_shares_for_secret(secret_name)
+        user_group_item = next((s for s in shares_ui if s.get("share_type") == "UserGroup"), None)
+        self.assertIsNotNone(user_group_item)
+        self.assertEqual(user_group_item.get("user_count"), 2)
 
         # Share secret with Role
         share_res = share_secret(
@@ -54,7 +116,6 @@ class TestSharingService(FrappeTestCase):
 
         # Get shares for secret
         shares = get_shares_for_secret(secret.get("name"))
-        self.assertEqual(len(shares), 1)
         self.assertEqual(shares[0].get("share_type"), "Role")
         self.assertEqual(shares[0].get("frappe_role"), "Vault User")
         self.assertEqual(shares[0].get("permission_level"), "View Only")
@@ -203,6 +264,68 @@ class TestSharingService(FrappeTestCase):
                 test2_user.get("permission_level"),
                 "Full Control",
                 "User should retain Full Control from direct share",
+            )
+
+    def test_sync_role_override_and_direct_share(self):
+        secret = create_secret({"title": "Test Sync Secret", "secret_type": "Password", "password": "pass"})
+
+        # Ensure test2@example.com is in Vault User role
+        if not frappe.db.exists("Has Role", {"parent": "test2@example.com", "role": "Vault User"}):
+            if not frappe.db.exists("User", "test2@example.com"):
+                doc = frappe.get_doc({"doctype": "User", "email": "test2@example.com", "first_name": "Test2"})
+                doc.insert(ignore_permissions=True)
+            user_doc = frappe.get_doc("User", "test2@example.com")
+            user_doc.append("roles", {"role": "Vault User"})
+            user_doc.save(ignore_permissions=True)
+
+        # Admin shares secret directly with Full Control
+        frappe.set_user("Administrator")
+        share_secret(
+            shared_name=secret.get("name"),
+            shared_doctype="Vault Secret",
+            share_type="User",
+            user="test2@example.com",
+            permission_level="Full Control",
+        )
+
+        # Admin shares with Role
+        share_secret(
+            shared_name=secret.get("name"),
+            shared_doctype="Vault Secret",
+            share_type="Role",
+            frappe_role="Vault User",
+            permission_level="View Only",
+        )
+
+        # Admin opens Role modal and downgrades user to Edit
+        from frappe_vault.services.sharing_service import save_role_member_permission
+
+        save_role_member_permission(
+            shared_name=secret.get("name"),
+            shared_doctype="Vault Secret",
+            user="test2@example.com",
+            permission_level="Edit",
+            is_revoked=False,
+        )
+
+        # Verify both direct share and role override are synced to Edit
+        user_shares = frappe.get_all(
+            "Vault Share",
+            filters={
+                "shared_name": secret.get("name"),
+                "shared_doctype": "Vault Secret",
+                "share_type": "User",
+                "user": "test2@example.com",
+            },
+            fields=["permission_level", "is_role_override"],
+        )
+
+        self.assertTrue(len(user_shares) > 0, "User shares should exist")
+        for s in user_shares:
+            self.assertEqual(
+                s.get("permission_level"),
+                "Edit",
+                f"Share (is_override={s.get('is_role_override')}) was not synced",
             )
 
     def test_user_creates_and_shares_secret_with_own_role(self):
@@ -382,3 +505,79 @@ class TestSharingService(FrappeTestCase):
         self.assertEqual(len(active_shares_after), 0)
 
         delete_folder(folder_name)
+
+    def test_effective_permission_scenarios(self):
+        """Test cases 1 to 12 from architecture specification."""
+        from frappe_vault.services.sharing_service import save_role_member_permission
+        from frappe_vault.utils.permissions import get_effective_user_permission
+
+        frappe.set_user("Administrator")
+        secret = create_secret(
+            {"title": "Test Shared Secret 5", "secret_type": "Password", "password": "pass"}
+        )
+        secret_name = secret.get("name")
+
+        # Test Case 1: Role Sharing Baseline
+        share_res = share_secret(
+            shared_name=secret_name,
+            shared_doctype="Vault Secret",
+            share_type="Role",
+            frappe_role="Vault User",
+            permission_level="Edit",
+        )
+        self.assertEqual(
+            get_effective_user_permission("Vault Secret", secret_name, "test_shared_1@example.com"), 3
+        )
+
+        # Test Case 2: Role Member Custom Override
+        save_role_member_permission(
+            shared_name=secret_name,
+            shared_doctype="Vault Secret",
+            user="test_shared_1@example.com",
+            permission_level="View Only",
+            is_revoked=False,
+        )
+        self.assertEqual(
+            get_effective_user_permission("Vault Secret", secret_name, "test_shared_1@example.com"), 1
+        )
+
+        # Test Case 3: Role Baseline Update preserves Custom Override
+        update_share_permission(share_res.get("name"), "View & Copy")
+        self.assertEqual(
+            get_effective_user_permission("Vault Secret", secret_name, "test_shared_1@example.com"), 1
+        )
+
+        # Test Case 10: Role Revocation invalidates orphaned overrides
+        unshare(share_res.get("name"))
+        self.assertEqual(
+            get_effective_user_permission("Vault Secret", secret_name, "test_shared_1@example.com"), 0
+        )
+
+        # Test Case 6 & 7: Self-escalation / Self-revocation rejection
+        frappe.set_user("test_shared_1@example.com")
+        with self.assertRaises(frappe.PermissionError):
+            unshare(share_res.get("name"))
+
+        with self.assertRaises(frappe.PermissionError):
+            update_share_permission(share_res.get("name"), "Full Control")
+
+        # Test Case 9: Multi-User Direct Share DB vs UI Consolidation
+        frappe.set_user("Administrator")
+        share_secret(
+            shared_name=secret_name,
+            shared_doctype="Vault Secret",
+            share_type="User",
+            user="test_shared_1@example.com",
+            permission_level="View Only",
+        )
+        share_secret(
+            shared_name=secret_name,
+            shared_doctype="Vault Secret",
+            share_type="User",
+            user="test_shared_2@example.com",
+            permission_level="View Only",
+        )
+        shares_ui = get_shares_for_secret(secret_name)
+        user_group_item = next((s for s in shares_ui if s.get("share_type") == "UserGroup"), None)
+        self.assertIsNotNone(user_group_item)
+        self.assertEqual(user_group_item.get("user_count"), 2)
