@@ -13,11 +13,13 @@ from frappe_vault.services.sharing_service import share_secret, unshare
 
 class TestNotifications(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Notification Log", {"for_user": "Administrator"})
         frappe.db.delete("Vault Secret", {"title": "Notification Test Secret"})
         frappe.db.commit()
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Notification Log", {"for_user": "Administrator"})
         frappe.db.delete("Vault Secret", {"title": "Notification Test Secret"})
         frappe.db.commit()

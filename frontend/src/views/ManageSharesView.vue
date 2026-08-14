@@ -781,6 +781,7 @@ const formattedRows = computed(() => {
       frappe_role: s.frappe_role,
       user: s.user,
       user_count: s.user_count,
+      user_list: s.user_list,
     }
   })
 })

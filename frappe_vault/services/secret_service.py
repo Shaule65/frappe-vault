@@ -41,6 +41,7 @@ def get_secrets(
     limit: int = 20,
     offset: int = 0,
     order_by: str = "modified desc",
+    **kwargs,
 ) -> dict:
     """Get list of secrets visible to current user (respects permission_query_conditions).
 
@@ -57,6 +58,21 @@ def get_secrets(
         filters["secret_type"] = secret_type
     if folder:
         filters["folder"] = folder
+
+    # Dynamic filters from kwargs (FilterPanel)
+    for k, v in kwargs.items():
+        if k in ("cmd", "csrf_token"):
+            continue
+        if v is not None:
+            if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+                try:
+                    # Frappe's frontend may send lists as stringified JSON if they use arrays
+                    parsed_v = frappe.parse_json(v)
+                    filters[k] = parsed_v
+                except Exception:
+                    filters[k] = v
+            else:
+                filters[k] = v
 
     # Resolve user bookmarks
     user = frappe.session.user
@@ -331,6 +347,75 @@ def sanitize_url(url: str) -> str:
     return url
 
 
+def upload_secret_attachment(
+    file_obj,
+    filename: str,
+    is_private: int = 1,
+    doctype: str | None = None,
+    docname: str | None = None,
+) -> dict:
+    """Upload a file attachment for a Vault Secret (works for standard Vault Users and Admins)."""
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Authentication required"), frappe.PermissionError)
+
+    if doctype == "Vault Secret" and docname:
+        from frappe_vault.utils.permissions import has_secret_permission
+
+        if not has_secret_permission(docname, ptype="write"):
+            frappe.throw(_("You don't have permission to modify this secret"), frappe.PermissionError)
+
+    content = file_obj.read() if hasattr(file_obj, "read") else file_obj
+
+    file_doc = frappe.get_doc(
+        {
+            "doctype": "File",
+            "file_name": filename,
+            "attached_to_doctype": doctype,
+            "attached_to_name": docname,
+            "is_private": frappe.utils.cint(is_private),
+            "content": content,
+        }
+    )
+    file_doc.save(ignore_permissions=True)
+
+    return {
+        "file_url": file_doc.file_url,
+        "file_name": file_doc.file_name,
+        "name": file_doc.name,
+    }
+
+
+def _link_attachments(doc):
+    if getattr(doc, "secret_type", None) != "Media":
+        return
+    attachment = getattr(doc, "attachment", None)
+    if not attachment:
+        return
+
+    import json
+
+    urls = []
+    if isinstance(attachment, str):
+        if attachment.startswith("["):
+            try:
+                urls = json.loads(attachment)
+            except Exception:
+                urls = [attachment]
+        else:
+            urls = [attachment]
+
+    if not urls:
+        return
+
+    for url in urls:
+        file_name = frappe.db.get_value("File", {"file_url": url}, "name")
+        if file_name:
+            # Attach the file to the secret so permissions are inherited
+            frappe.db.set_value(
+                "File", file_name, {"attached_to_doctype": "Vault Secret", "attached_to_name": doc.name}
+            )
+
+
 def create_secret(data: dict) -> dict:
     """Create a new vault secret.
 
@@ -360,6 +445,8 @@ def create_secret(data: dict) -> dict:
         }
     )
     doc.insert()
+
+    _link_attachments(doc)
 
     # Notify Vault Admins of new secret creation
     from frappe_vault.services.notification_service import notify_vault_admins
@@ -434,6 +521,7 @@ def update_secret(name: str, data: dict) -> dict:
             doc.set(field, value)
 
     doc.save()
+    _link_attachments(doc)
     return {"name": doc.name, "title": doc.title}
 
 

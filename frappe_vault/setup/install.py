@@ -20,6 +20,14 @@ def after_install():
     frappe.db.commit()  # nosemgrep
 
 
+def after_migrate():
+    """Run after bench migrate."""
+    ensure_module()
+    create_roles()
+    grant_roles_to_admin()
+    create_default_settings()
+
+
 def ensure_module():
     """Create Vault module if missing."""
     if not frappe.db.exists("Module Def", "Vault"):
