@@ -22,6 +22,31 @@
               <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
             </template>
           </FormControl>
+
+          <!-- Automatic rotation -->
+          <div class="pt-1 space-y-2">
+            <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="form.enable_rotation" />
+            <p class="text-xs text-ink-gray-5 leading-relaxed">
+              Generate a new password on a schedule and email it to everyone with access as an encrypted archive.
+              Updates the stored value only &mdash; you must apply it to the target system yourself.
+            </p>
+            <div v-if="form.enable_rotation" class="grid grid-cols-2 gap-4 pt-1">
+              <FormControl label="Rotate Every" type="number" min="1" v-model="form.rotation_interval" />
+              <FormControl label="Interval Unit" type="select" v-model="form.rotation_unit" :options="ROTATION_UNITS" />
+            </div>
+
+            <FormControl
+              v-if="form.enable_rotation"
+              label="Custom Rotation Passphrase (optional)"
+              v-model="form.zip_passphrase"
+              :type="showSecrets ? 'text' : 'password'"
+              placeholder="Leave blank to use the shared site passphrase"
+            />
+            <p v-if="form.enable_rotation" class="text-xs text-ink-gray-5 leading-relaxed">
+              Stored encrypted, the same way as this secret's own password. Used automatically when this
+              secret rotates, so its archive opens with your passphrase instead of the shared site one.
+            </p>
+          </div>
         </template>
 
         <!-- API Key fields -->
@@ -151,7 +176,7 @@
 import { ref, computed, watch } from 'vue'
 import { Button, Dialog, FormControl, FeatherIcon, toast } from 'frappe-ui'
 import { useCreateSecret, useFolders } from '../composables/vault'
-import { SECRET_TYPES } from '../composables/constants'
+import { SECRET_TYPES, ROTATION_UNITS } from '../composables/constants'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 
 const props = defineProps({
@@ -182,6 +207,7 @@ const defaultForm = () => ({
   title: '', secret_type: 'Password', folder: props.initialFolder || '', url: '', username: '', email: '',
   password: '', api_key: '', api_secret: '', ssh_private_key: '', attachment: '', notes: '', card_holder: '', card_number: '',
   card_expiry: '', card_cvv: '', db_host: '', db_port: '', db_name: '', db_password: '',
+  enable_rotation: 0, rotation_interval: 90, rotation_unit: 'Days', zip_passphrase: '',
 })
 
 const form = ref(defaultForm())
@@ -249,7 +275,31 @@ function triggerFileInput(fieldname) {
 }
 
 async function handleCreate() {
-  const result = await createResource.submit(form.value)
-  emit('created', result)
+  if (!form.value.title || !form.value.title.trim()) {
+    toast.error('Please enter a secret title')
+    return
+  }
+
+  const payload = { ...form.value }
+
+  // Rotation only applies to Password secrets — the backend rejects it otherwise,
+  // and the flag can survive a secret_type switch after the box was ticked.
+  if (payload.secret_type === 'Password' && payload.enable_rotation) {
+    payload.enable_rotation = 1
+    payload.rotation_interval = Number(payload.rotation_interval) || 90
+    if (!payload.zip_passphrase) delete payload.zip_passphrase
+  } else {
+    payload.enable_rotation = 0
+    delete payload.rotation_interval
+    delete payload.rotation_unit
+    delete payload.zip_passphrase
+  }
+
+  try {
+    const result = await createResource.submit(payload)
+    emit('created', result)
+  } catch (err) {
+    toast.error(err.messages?.[0] || err.message || 'Failed to create secret')
+  }
 }
 </script>

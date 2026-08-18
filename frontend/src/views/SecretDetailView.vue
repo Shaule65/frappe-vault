@@ -154,6 +154,42 @@
                   </template>
                 </div>
 
+                <!-- Automatic rotation (Password secrets only) -->
+                <div v-if="editForm.secret_type === 'Password'" class="pt-3 border-t border-outline-gray-1 space-y-2">
+                  <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="editForm.enable_rotation" />
+                  <p class="text-xs text-ink-gray-5 leading-relaxed">
+                    Generate a new password on a schedule and email it to everyone with access as an encrypted
+                    archive. Updates the stored value only &mdash; you must apply it to the target system yourself.
+                  </p>
+                  <div v-if="editForm.enable_rotation" class="grid grid-cols-2 gap-4 pt-1">
+                    <FormControl label="Rotate Every" type="number" min="1" v-model="editForm.rotation_interval" class="w-full text-sm" />
+                    <FormControl label="Interval Unit" type="select" v-model="editForm.rotation_unit" :options="ROTATION_UNITS" class="w-full text-sm cursor-pointer" />
+                  </div>
+
+                  <template v-if="editForm.enable_rotation">
+                    <div v-if="secretData.has_zip_passphrase" class="flex items-center justify-between gap-2 pt-1">
+                      <p class="text-xs text-ink-gray-6">
+                        <FeatherIcon name="lock" class="w-3.5 h-3.5 inline -mt-0.5 mr-1" />
+                        Passphrase protection is ON. Leave the field below blank to keep it.
+                      </p>
+                      <Button variant="ghost" size="xs" class="text-xs text-ink-red-4 shrink-0" @click="handleRemovePassphrase">
+                        Remove
+                      </Button>
+                    </div>
+                    <FormControl
+                      label="Custom Rotation Passphrase (optional)"
+                      v-model="editForm.zip_passphrase"
+                      :type="showSecrets ? 'text' : 'password'"
+                      :placeholder="secretData.has_zip_passphrase ? 'Leave blank to keep current passphrase' : 'Leave blank to use the shared site passphrase'"
+                      class="w-full text-sm"
+                    />
+                    <p class="text-xs text-ink-gray-5 leading-relaxed">
+                      Stored encrypted, the same way as this secret's own password. Used automatically
+                      when this secret rotates, so its archive opens with your passphrase instead of the shared site one.
+                    </p>
+                  </template>
+                </div>
+
                 <!-- Notes input -->
                 <div class="pt-2">
                   <FormControl type="textarea" label="Notes" v-model="editForm.notes" :rows="3" placeholder="Enter notes..." class="w-full text-sm" />
@@ -180,6 +216,29 @@
                   <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">
                     {{ getFolderName(secretData.folder) || '—' }}
                   </span>
+                </div>
+
+                <!-- Rotation schedule -->
+                <div v-if="secretData.enable_rotation" class="flex items-center justify-between py-1 text-sm">
+                  <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Rotation</span>
+                  <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">
+                    Every {{ secretData.rotation_interval }} {{ (secretData.rotation_unit || 'Days').toLowerCase() }}
+                    <span v-if="secretData.next_rotation_on" class="text-ink-gray-5 font-normal">
+                      &middot; next {{ formatRelativeTime(secretData.next_rotation_on) }}
+                    </span>
+                  </span>
+                </div>
+
+                <div v-if="secretData.enable_rotation && secretData.has_zip_passphrase" class="flex items-center justify-between py-1 text-sm">
+                  <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Protection</span>
+                  <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">
+                    <FeatherIcon name="lock" class="w-3 h-3 inline -mt-0.5 mr-1" />
+                    Custom archive passphrase
+                  </span>
+                </div>
+
+                <div v-if="secretData.enable_rotation && canEdit" class="flex justify-end pt-1">
+                  <Button variant="outline" size="sm" icon="lucide-refresh-cw" label="Rotate Now" @click="openRotateDialog" />
                 </div>
 
                 <!-- Dynamic Fields Array -->
@@ -340,6 +399,18 @@
                   <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Last Changed</span>
                   <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ formatDateOnly(secretData.password_last_changed) }}</span>
                 </div>
+
+                <template v-if="secretData.enable_rotation">
+                  <div v-if="secretData.last_rotated_on" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Last Rotated</span>
+                    <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ formatDateOnly(secretData.last_rotated_on) }}</span>
+                  </div>
+
+                  <div v-if="secretData.next_rotation_on" class="flex items-center justify-between py-1 text-sm">
+                    <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Next Rotation</span>
+                    <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">{{ formatRelativeTime(secretData.next_rotation_on) }}</span>
+                  </div>
+                </template>
               </div>
             </article>
 
@@ -659,6 +730,36 @@
       </template>
     </Dialog>
 
+    <!-- Rotate Now Dialog -->
+    <Dialog
+      v-model="showRotateDialog"
+      :options="{
+        title: 'Rotate ' + (secretData?.title || 'Secret'),
+        size: 'sm',
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-3">
+          <p class="text-sm text-ink-gray-6 leading-normal">
+            Generate a new password now and email it to everyone with access
+            <span v-if="secretData?.has_zip_passphrase">, as an archive opened with this secret's custom passphrase</span>.
+            The current password is replaced in Vault only &mdash; it is <strong>not</strong> changed on the
+            target system, you must apply it there yourself.
+          </p>
+          <ErrorMessage v-if="rotateError" :message="rotateError" />
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex items-center justify-end gap-2 px-4 pb-4">
+          <Button variant="outline" @click="showRotateDialog = false" class="text-ink-gray-7 hover:bg-surface-gray-2">
+            Cancel
+          </Button>
+          <Button variant="solid" @click="handleRotateNow" :loading="rotateNowResource.loading" class="font-semibold shadow-sm px-4">
+            Rotate
+          </Button>
+        </div>
+      </template>
+    </Dialog>
 
 
     <!-- Share Secret Dialog -->
@@ -734,14 +835,14 @@ import {
   Avatar,
   MultiSelect
 } from 'frappe-ui'
-import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders, useRoleUsers, useUpdateSharePermission, useSaveRoleMemberPermission, useBulkDeleteShares } from '../composables/vault'
+import { mobileSidebarOpened, useSecret, useDecryptSecret, useSecretActivity, useDeleteSecret, useUpdateSecret, useShareSecret, useUnshare, useSecretShares, useShareOptions, useVaultStats, useFolders, useRoleUsers, useUpdateSharePermission, useSaveRoleMemberPermission, useBulkDeleteShares, useRotateNow, useClearZipPassphrase } from '../composables/vault'
 import { useClipboard } from '../composables/clipboard'
 import EmptyState from '../components/EmptyState.vue'
 import StrengthBadge from '../components/StrengthBadge.vue'
 import PeopleWithAccessModal from '../components/PeopleWithAccessModal.vue'
 import ShareItemDialog from '../components/ShareItemDialog.vue'
 import RevokeShareDialog from '../components/RevokeShareDialog.vue'
-import { actionIcons, secretTypeOptions, permissionTheme, typeMeta, formatRelativeTime } from '../composables/constants'
+import { actionIcons, secretTypeOptions, permissionTheme, typeMeta, formatRelativeTime, ROTATION_UNITS } from '../composables/constants'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 
 const props = defineProps({
@@ -903,6 +1004,8 @@ const decryptResource = useDecryptSecret()
 const activity = useSecretActivity(props.name)
 const deleteResource = useDeleteSecret()
 const updateResource = useUpdateSecret()
+const rotateNowResource = useRotateNow()
+const clearPassphraseResource = useClearZipPassphrase()
 const folders = useFolders()
 const clipboard = useClipboard()
 
@@ -1241,6 +1344,10 @@ const editForm = reactive({
   db_name: '',
   db_password: '',
   ssh_private_key: '',
+  enable_rotation: 0,
+  rotation_interval: 90,
+  rotation_unit: 'Days',
+  zip_passphrase: '',
   attachment: '',
 })
 
@@ -1354,6 +1461,11 @@ async function toggleEditMode() {
     editForm.db_name = sd.db_name || ''
     editForm.db_password = dd.db_password || ''
     editForm.ssh_private_key = sd.ssh_private_key || ''
+    editForm.enable_rotation = sd.enable_rotation ? 1 : 0
+    editForm.rotation_interval = sd.rotation_interval || 90
+    editForm.rotation_unit = sd.rotation_unit || 'Days'
+    // Never returned by the server (it's a one-way hash) — always starts blank.
+    editForm.zip_passphrase = ''
     editAttachmentList.value = parseAttachments(sd.attachment)
     syncEditAttachmentForm()
 
@@ -1380,6 +1492,16 @@ async function handleSave() {
       payload.username = editForm.username
       payload.password = editForm.password
       payload.url = editForm.url
+      payload.enable_rotation = editForm.enable_rotation ? 1 : 0
+      if (editForm.enable_rotation) {
+        payload.rotation_interval = Number(editForm.rotation_interval) || 90
+        payload.rotation_unit = editForm.rotation_unit || 'Days'
+        // Blank means "leave whatever's already set (or unset) alone" —
+        // only send it when the owner actually typed a new one.
+        if (editForm.zip_passphrase) {
+          payload.zip_passphrase = editForm.zip_passphrase
+        }
+      }
     } else if (editForm.secret_type === 'API Key') {
       payload.api_key = editForm.api_key
       payload.api_secret = editForm.api_secret
@@ -1430,6 +1552,38 @@ async function confirmDelete() {
   } catch (err) {
     deleteError.value = err.messages?.[0] || err.message || 'Failed to delete secret'
     toast.error(deleteError.value)
+  }
+}
+
+const showRotateDialog = ref(false)
+const rotateError = ref('')
+
+function openRotateDialog() {
+  rotateError.value = ''
+  showRotateDialog.value = true
+}
+
+async function handleRotateNow() {
+  rotateError.value = ''
+  try {
+    const result = await rotateNowResource.submit({ name: props.name })
+    showRotateDialog.value = false
+    toast.success(result.message || 'Password rotated')
+    await secret.submit({ name: props.name })
+    await activity.submit({ secret_name: props.name })
+  } catch (err) {
+    rotateError.value = err.messages?.[0] || err.message || 'Failed to rotate password'
+  }
+}
+
+async function handleRemovePassphrase() {
+  try {
+    await clearPassphraseResource.submit({ name: props.name })
+    toast.success('Passphrase protection removed')
+    editForm.zip_passphrase = ''
+    await secret.submit({ name: props.name })
+  } catch (err) {
+    toast.error(err.messages?.[0] || err.message || 'Failed to remove passphrase')
   }
 }
 
