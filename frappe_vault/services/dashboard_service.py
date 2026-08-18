@@ -98,21 +98,27 @@ def get_total_secrets(
     diff = max(1, date_diff(to_date, from_date) + 1)
     prev_from_date = str(add_days(from_date, -diff))
 
-    filters = {}
-    if user:
-        filters["owner"] = user
-
-    curr_count = frappe.db.count(
-        "Vault Secret",
-        filters={**filters, "creation": ["between", [f"{from_date} 00:00:00", f"{to_date} 23:59:59"]]},
+    curr_count = len(
+        frappe.get_all(
+            "Vault Secret",
+            filters={"creation": ["between", [f"{from_date} 00:00:00", f"{to_date} 23:59:59"]]},
+            limit=0,
+        )
     )
 
-    prev_count = frappe.db.count(
-        "Vault Secret",
-        filters={**filters, "creation": ["between", [f"{prev_from_date} 00:00:00", f"{from_date} 00:00:00"]]},
+    prev_count = len(
+        frappe.get_all(
+            "Vault Secret",
+            filters={"creation": ["between", [f"{prev_from_date} 00:00:00", f"{from_date} 00:00:00"]]},
+            limit=0,
+        )
     )
 
-    total_all = frappe.db.count("Vault Secret", filters=filters)
+    from frappe_vault.services.secret_service import get_vault_stats
+
+    target_user = user or frappe.session.user
+    stats = get_vault_stats(target_user)
+    total_all = stats.get("total_secrets", 0)
     delta = round(((curr_count - prev_count) / prev_count * 100.0), 1) if prev_count else 0.0
 
     return {

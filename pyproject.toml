@@ -12,6 +12,7 @@ dependencies = [
     # AES-256 encrypted ZIP archives for password rotation delivery.
     # stdlib zipfile can only *read* encrypted zips, never write them.
     "pyzipper>=0.4.0",
+    "pyotp",
 ]
 
 [build-system]

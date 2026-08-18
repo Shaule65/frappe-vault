@@ -56,7 +56,11 @@ def log_secret_deleted(doc, method):
     )
 
 
-def log_share_created(doc, method):
+def log_share_created(doc, method=None):
+    if doc.get("is_revoked"):
+        log_share_removed(doc, method)
+        return
+
     recipient = doc.user if doc.share_type == "User" else doc.frappe_role
     details = {"share_type": doc.share_type, "permission": doc.permission_level, "recipient": recipient}
     if doc.expires_on:
@@ -69,8 +73,8 @@ def log_share_created(doc, method):
     )
 
 
-def log_share_removed(doc, method):
-    if doc.get("is_revoked"):
+def log_share_removed(doc, method=None):
+    if method == "on_trash" and doc.get("is_revoked"):
         return
     recipient = doc.user if doc.share_type == "User" else doc.frappe_role
     _create_log(

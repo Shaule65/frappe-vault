@@ -8,10 +8,12 @@ from frappe_vault.services.secret_service import create_secret
 
 class TestVaultDashboard(FrappeTestCase):
     def setUp(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Dashboard Test Secret"})
         frappe.db.commit()
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         frappe.db.delete("Vault Secret", {"title": "Dashboard Test Secret"})
         frappe.db.commit()
 

@@ -5,6 +5,114 @@ Ensures row-level security: users only see secrets they own or that are shared w
 
 import frappe
 
+PERM_HIERARCHY = {"View Only": 1, "View & Copy": 2, "Edit": 3, "Full Control": 4}
+
+
+def get_effective_user_permission(shared_doctype: str, shared_name: str, user: str = None) -> int:
+    """Calculate user's effective numeric permission level (0 to 4) for a secret or folder.
+
+    Priority:
+    1. Owner / Admin -> 4 (Full Control)
+    2. Direct User Share (is_role_override = 0, is_revoked = 0, not expired)
+    3. Role Member Override (is_role_override = 1) -> ONLY IF active role share exists
+    4. Highest among active applicable Role Shares
+    5. 0 (No access)
+    """
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator":
+        return 4
+
+    roles = frappe.get_roles(user)
+    if "Vault Admin" in roles or "System Manager" in roles:
+        return 4
+
+    doc_folder = None
+    if shared_doctype == "Vault Secret":
+        res = frappe.db.get_value("Vault Secret", shared_name, ["owner", "folder"])
+        doc_owner, doc_folder = res if res else (None, None)
+        if doc_owner == user:
+            return 4
+        if doc_folder:
+            folder_owner = frappe.db.get_value("Vault Folder", doc_folder, "owner")
+            if folder_owner == user:
+                return 4
+    elif shared_doctype == "Vault Folder":
+        doc_owner = frappe.db.get_value("Vault Folder", shared_name, "owner")
+        if doc_owner == user:
+            return 4
+
+    # Direct User Shares (non-role-override)
+    user_shares = frappe.db.sql(
+        """
+        SELECT permission_level FROM `tabVault Share`
+        WHERE share_type = 'User'
+          AND user = %s
+          AND is_revoked = 0
+          AND (is_role_override = 0 OR is_role_override IS NULL)
+          AND (expires_on IS NULL OR expires_on > NOW())
+          AND (
+              (shared_doctype = %s AND shared_name = %s)
+              OR (%s = 'Vault Secret' AND shared_doctype = 'Vault Folder' AND shared_name = %s)
+          )
+        ORDER BY creation DESC
+    """,
+        (user, shared_doctype, shared_name, shared_doctype, doc_folder or ""),
+        as_dict=True,
+    )
+    if user_shares:
+        highest = max(user_shares, key=lambda s: PERM_HIERARCHY.get(s.permission_level, 0))
+        return PERM_HIERARCHY.get(highest.permission_level, 1)
+
+    # Active Role Shares
+    active_role_shares = []
+    if roles:
+        active_role_shares = frappe.db.sql(
+            """
+            SELECT permission_level FROM `tabVault Share`
+            WHERE share_type = 'Role'
+              AND frappe_role IN %s
+              AND is_revoked = 0
+              AND (expires_on IS NULL OR expires_on > NOW())
+              AND (
+                  (shared_doctype = %s AND shared_name = %s)
+                  OR (%s = 'Vault Secret' AND shared_doctype = 'Vault Folder' AND shared_name = %s)
+              )
+        """,
+            (tuple(roles), shared_doctype, shared_name, shared_doctype, doc_folder or ""),
+            as_dict=True,
+        )
+
+    # Role Member Overrides (applicable only if active role share exists)
+    role_overrides = frappe.db.sql(
+        """
+        SELECT permission_level, is_revoked FROM `tabVault Share`
+        WHERE share_type = 'User'
+          AND user = %s
+          AND is_role_override = 1
+          AND (
+              (shared_doctype = %s AND shared_name = %s)
+              OR (%s = 'Vault Secret' AND shared_doctype = 'Vault Folder' AND shared_name = %s)
+          )
+        ORDER BY creation DESC
+    """,
+        (user, shared_doctype, shared_name, shared_doctype, doc_folder or ""),
+        as_dict=True,
+    )
+
+    if active_role_shares:
+        if role_overrides:
+            override = role_overrides[0]
+            if override.is_revoked:
+                return 0
+            return PERM_HIERARCHY.get(override.permission_level, 1)
+
+        highest_role = max(active_role_shares, key=lambda s: PERM_HIERARCHY.get(s.permission_level, 0))
+        return PERM_HIERARCHY.get(highest_role.permission_level, 1)
+
+    return 0
+
 
 def get_secret_permission_query(user=None):
     """Return SQL condition to filter Vault Secrets for current user.
@@ -39,6 +147,13 @@ def get_secret_permission_query(user=None):
                 OR (vs.share_type = 'Role' AND vs.frappe_role IN (
                     SELECT role FROM `tabHas Role`
                     WHERE parent = {user_escaped}
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM `tabVault Share` override
+                    WHERE override.shared_doctype = 'Vault Secret'
+                    AND override.shared_name = vs.shared_name
+                    AND override.share_type = 'User'
+                    AND override.user = {user_escaped}
+                    AND override.is_revoked = 1
                 ))
             )
             AND (vs.expires_on IS NULL OR vs.expires_on > NOW())
@@ -55,6 +170,13 @@ def get_secret_permission_query(user=None):
                     OR (vs.share_type = 'Role' AND vs.frappe_role IN (
                         SELECT role FROM `tabHas Role`
                         WHERE parent = {user_escaped}
+                    ) AND NOT EXISTS (
+                        SELECT 1 FROM `tabVault Share` override
+                        WHERE override.shared_doctype = 'Vault Folder'
+                        AND override.shared_name = vs.shared_name
+                        AND override.share_type = 'User'
+                        AND override.user = {user_escaped}
+                        AND override.is_revoked = 1
                     ))
                 )
                 AND (vs.expires_on IS NULL OR vs.expires_on > NOW())
@@ -116,20 +238,7 @@ def has_secret_permission(doc, ptype="read", user=None):
         if folder_owner == user:
             return True
 
-    # Check if user has an explicit revoked share record for this secret
-    if frappe.db.exists(
-        "Vault Share",
-        {
-            "shared_name": doc_name,
-            "shared_doctype": "Vault Secret",
-            "share_type": "User",
-            "user": user,
-            "is_revoked": 1,
-        },
-    ):
-        return False
-
-    # Check active user-specific share first (explicit user level takes priority over role share)
+    # Check active user-specific share first (explicit user level takes priority over everything else)
     user_shares = frappe.db.sql(
         """
         SELECT permission_level FROM `tabVault Share`
@@ -157,6 +266,20 @@ def has_secret_permission(doc, ptype="read", user=None):
             return level >= 3
         elif ptype in ("delete", "share"):
             return level >= 4
+
+    # If no active user share exists, check if user was explicitly revoked
+    # This prevents them from inheriting access via a role if they were explicitly removed
+    if frappe.db.exists(
+        "Vault Share",
+        {
+            "shared_name": doc_name,
+            "shared_doctype": "Vault Secret",
+            "share_type": "User",
+            "user": user,
+            "is_revoked": 1,
+        },
+    ):
+        return False
 
     # Check active role shares if no explicit user share exists
     if roles:
@@ -198,9 +321,14 @@ def get_users_with_secret_access(secret_name, include_admins=False):
     Included: the secret's owner, its folder's owner, and the holders of any
     active (non-revoked, unexpired) Vault Share on either the secret or its
     folder — for `User` shares directly, and for `Role` shares by expanding the
-    role's members. A user with an explicit revoked user-level share is removed
-    even if a role share would otherwise grant them access, mirroring the
-    short-circuit in `has_secret_permission`.
+    role's members.
+
+    A role member's access can be individually revoked without touching the
+    role share itself, via a per-user override row (`is_role_override=1,
+    is_revoked=1`) scoped to either the secret or its folder — exactly the two
+    `NOT EXISTS` checks in `get_secret_permission_query`. Both are excluded
+    here too. Ownership is never subject to this: an owner or folder owner is
+    always included regardless of any stray/override share row.
 
     Vault Admins and System Managers are excluded by default. The role bypass
     lets them read every secret, but they were not "given access" to any
@@ -220,14 +348,13 @@ def get_users_with_secret_access(secret_name, include_admins=False):
     if not secret:
         return []
 
-    candidates = set()
-    if secret.owner:
-        candidates.add(secret.owner)
-
+    always_included = {u for u in (secret.owner,) if u}
     if secret.folder:
         folder_owner = frappe.db.get_value("Vault Folder", secret.folder, "owner")
         if folder_owner:
-            candidates.add(folder_owner)
+            always_included.add(folder_owner)
+
+    candidates = set(always_included)
 
     # Active shares on the secret itself or on the folder containing it.
     shares = frappe.db.sql(
@@ -266,20 +393,22 @@ def get_users_with_secret_access(secret_name, include_admins=False):
             )
         )
 
-    # An explicit revoked user-level share overrides any role-derived access.
+    # A revoked User-type share on either the secret or its folder overrides
+    # any role-derived (or stray direct) grant — same scope as the two
+    # NOT EXISTS checks in get_secret_permission_query.
     revoked = set(
         frappe.get_all(
             "Vault Share",
             filters={
-                "shared_doctype": "Vault Secret",
-                "shared_name": secret_name,
                 "share_type": "User",
                 "is_revoked": 1,
+                "shared_name": ["in", [n for n in (secret_name, secret.folder) if n]],
             },
             pluck="user",
         )
     )
     candidates -= revoked
+    candidates |= always_included
     candidates.discard("Guest")
     candidates.discard(None)
 
@@ -322,6 +451,13 @@ def get_folder_permission_query(user=None):
                 OR (vs.share_type = 'Role' AND vs.frappe_role IN (
                     SELECT role FROM `tabHas Role`
                     WHERE parent = {user_escaped}
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM `tabVault Share` override
+                    WHERE override.shared_doctype = 'Vault Folder'
+                    AND override.shared_name = vs.shared_name
+                    AND override.share_type = 'User'
+                    AND override.user = {user_escaped}
+                    AND override.is_revoked = 1
                 ))
             )
             AND (vs.expires_on IS NULL OR vs.expires_on > NOW())
@@ -429,9 +565,9 @@ def has_file_permission(doc, ptype="read", user=None):
         try:
             doc = frappe.get_doc("File", doc)
         except Exception:
-            return None
+            return True
 
     if doc and doc.attached_to_doctype == "Vault Secret" and doc.attached_to_name:
         return has_secret_permission(doc.attached_to_name, ptype="read", user=user)
 
-    return None
+    return True

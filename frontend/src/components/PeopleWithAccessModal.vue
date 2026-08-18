@@ -69,7 +69,7 @@
 
                 <!-- Permission Level Selector -->
                 <FormControl
-                  v-if="isOwnerOrAdmin && !isShareRevoked"
+                  v-if="isOwnerOrAdmin && !isShareRevoked && u.can_edit !== false"
                   type="select"
                   :modelValue="getUserPermissionLevel(u)"
                   :options="[
@@ -84,17 +84,17 @@
                 />
                 <Badge
                   v-else
-                  :theme="isShareRevoked ? 'red' : 'gray'"
+                  :theme="revokedUserIds.has(u.user) ? 'red' : 'gray'"
                   variant="subtle"
                   size="sm"
                   class="!w-36 flex items-center justify-center shrink-0"
                 >
-                  {{ isShareRevoked ? 'Revoked' : getUserPermissionLevel(u) }}
+                  {{ revokedUserIds.has(u.user) ? 'Revoked' : getUserPermissionLevel(u) }}
                 </Badge>
 
                 <!-- Three-Dot Menu -->
                 <Dropdown
-                  v-if="isOwnerOrAdmin && !isShareRevoked"
+                  v-if="isOwnerOrAdmin && !isShareRevoked && u.can_edit !== false"
                   :options="[
                     {
                       label: 'Revoke Access',
@@ -145,7 +145,7 @@
                 </div>
 
                 <Button
-                  v-if="isOwnerOrAdmin && !isShareRevoked"
+                  v-if="isOwnerOrAdmin && !isShareRevoked && u.can_edit !== false"
                   variant="ghost"
                   size="sm"
                   label="Re-grant"
@@ -200,6 +200,8 @@ const isShareRevoked = computed(() => Boolean(props.item?.is_revoked))
 const searchQuery = ref('')
 const revokedUserIds = ref(new Set())
 const userPermissionOverrides = ref({})
+const originalRevokedUserIds = ref(new Set())
+const originalUserPermissionOverrides = ref({})
 const isSaving = ref(false)
 
 const roleUsersResource = useRoleUsers()
@@ -217,11 +219,11 @@ const filteredRoleUsersList = computed(() => {
 })
 
 const activeMembers = computed(() => {
-  return filteredRoleUsersList.value.filter(u => !revokedUserIds.value.has(u.user) && !u.is_revoked)
+  return filteredRoleUsersList.value.filter(u => !revokedUserIds.value.has(u.user))
 })
 
 const revokedMembers = computed(() => {
-  return filteredRoleUsersList.value.filter(u => revokedUserIds.value.has(u.user) || u.is_revoked)
+  return filteredRoleUsersList.value.filter(u => revokedUserIds.value.has(u.user))
 })
 
 watch(() => props.modelValue, (isOpen) => {
@@ -229,6 +231,8 @@ watch(() => props.modelValue, (isOpen) => {
     searchQuery.value = ''
     revokedUserIds.value = new Set()
     userPermissionOverrides.value = {}
+    originalRevokedUserIds.value = new Set()
+    originalUserPermissionOverrides.value = {}
     fetchMembers()
   }
 })
@@ -241,8 +245,10 @@ watch(() => roleUsersResource.data, (data) => {
       if (u.is_revoked) rev.add(u.user)
       if (u.permission_level) perms[u.user] = u.permission_level
     })
-    revokedUserIds.value = rev
-    userPermissionOverrides.value = perms
+    revokedUserIds.value = new Set(rev)
+    userPermissionOverrides.value = { ...perms }
+    originalRevokedUserIds.value = new Set(rev)
+    originalUserPermissionOverrides.value = { ...perms }
   }
 })
 
@@ -252,7 +258,7 @@ function fetchMembers() {
     userListArg = Array.isArray(props.item.user_list)
       ? JSON.stringify(props.item.user_list)
       : props.item.user_list
-  } else if (props.item?.user && props.item.user.includes('@')) {
+  } else if (props.item?.user) {
     userListArg = JSON.stringify([props.item.user])
   }
 
@@ -296,18 +302,32 @@ async function handleSaveChanges() {
   isSaving.value = true
   try {
     const users = roleUsersList.value || []
+    let changesMade = false
+
     for (const u of users) {
       const isRev = revokedUserIds.value.has(u.user)
       const permLevel = userPermissionOverrides.value[u.user] || u.permission_level || 'View Only'
-      await saveRoleMemberPermResource.submit({
-        shared_name: props.sharedName,
-        shared_doctype: props.sharedDoctype,
-        user: u.user,
-        permission_level: permLevel,
-        is_revoked: isRev,
-      })
+
+      const originalIsRev = originalRevokedUserIds.value.has(u.user)
+      const originalPermLevel = originalUserPermissionOverrides.value[u.user] || u.permission_level || 'View Only'
+
+      if (isRev !== originalIsRev || permLevel !== originalPermLevel) {
+        changesMade = true
+        await saveRoleMemberPermResource.submit({
+          shared_name: props.sharedName,
+          shared_doctype: props.sharedDoctype,
+          user: u.user,
+          permission_level: permLevel,
+          is_revoked: isRev,
+          is_role_override: props.item?.share_type === 'Role' ? true : false,
+        })
+      }
     }
-    toast.success('Member permissions saved successfully')
+
+    if (changesMade) {
+      toast.success('Member permissions saved successfully')
+    }
+
     emit('update:modelValue', false)
     emit('saved')
   } catch (err) {

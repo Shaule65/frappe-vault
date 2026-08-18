@@ -37,23 +37,32 @@ def decrypt_secret_field(doctype: str, name: str, fieldname: str) -> str:
     return ""
 
 
-def get_decrypted_secret_data(secret_name: str) -> dict:
+def get_decrypted_secret_data(secret_name: str, ignore_permissions: bool = False) -> dict:
     """Get all decrypted fields for a Vault Secret based on its type.
 
     Args:
         secret_name: Vault Secret document name
+        ignore_permissions: Skip permission check (used by guest one-time link)
 
     Returns:
         dict with decrypted field values
     """
+    # Ensure caller has read access to the secret
+    if not ignore_permissions and not frappe.has_permission("Vault Secret", "read", secret_name):
+        from frappe import _
+
+        frappe.throw(_("Not permitted to decrypt this secret"), frappe.PermissionError)
+
     doc = frappe.get_doc("Vault Secret", secret_name)
     result = {}
 
     if doc.secret_type == "Password":
         result["password"] = decrypt_secret_field("Vault Secret", secret_name, "password")
+        result["totp_secret"] = decrypt_secret_field("Vault Secret", secret_name, "totp_secret")
     elif doc.secret_type == "API Key":
         result["api_key"] = doc.api_key
         result["api_secret"] = decrypt_secret_field("Vault Secret", secret_name, "api_secret")
+        result["totp_secret"] = decrypt_secret_field("Vault Secret", secret_name, "totp_secret")
     elif doc.secret_type == "Credit Card":
         result["card_number"] = decrypt_secret_field("Vault Secret", secret_name, "card_number")
         result["card_cvv"] = decrypt_secret_field("Vault Secret", secret_name, "card_cvv")

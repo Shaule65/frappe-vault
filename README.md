@@ -3,6 +3,8 @@
 
 <img src=".github/assets/banner.png" />
 
+[![Playground Demo Link](https://img.shields.io/badge/Live%20Demo-3858e9?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMTkuNzUgMjE2Ij4KICA8ZGVmcz4KICAgIDxjbGlwUGF0aCBpZD0iYSI+CiAgICAgIDxwYXRoIGQ9Ik0wIC4xMjFoMjE5VjIxMkgwWm0wIDAiLz4KICAgIDwvY2xpcFBhdGg+CiAgPC9kZWZzPgogIDxnIGNsaXAtcGF0aD0idXJsKCNhKSI+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTQ4LjQwMiAyMTEuNTI3Yy0xMi43OC03NC4xMjUtMzQuMTQ0LTExMy42MTctODYuMjU3LTE0MS43OGwyMi40NjQtNC41OTljMTIuMjM5IDguMDM2IDIyLjg4IDE3LjA2NyAzMi4wOTggMjcuNDk3IDE1LjM1NiAxNy4zNyAyNi4xNCAzNy45MDYgMzQuMTg4IDYyLjU0M2w0NC45MTQtMTM0LjU3NUw1NS43MjMgNDkuMjYycS4wMDYuMDA2LjAyLjAxMWwtMjYuODAyIDUuNDhjLTguOTA2LTMuNDA1LTE4LjQ3Ni02LjY4Ny0yOC43Ny05Ljg5TDIxOC45NTQuMTIxWm0wIDAiLz4KICA8L2c+Cjwvc3ZnPg==&logoSize=auto)](https://frappe-playground.lubus.in/?name=Frappe%20Vault&onboarding=0&apps=frappe_vault&path=/vault)
+
 # Frappe Vault
 
 Secrets and password management application. Securely store, share, and manage sensitive credentials within your Frappe/ERPNext portal.

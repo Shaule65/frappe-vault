@@ -8,11 +8,6 @@ app_logo_url = "/assets/frappe_vault/images/vault-logo.svg"
 app_home = "/vault"
 
 
-# Role Home Page — redirect Vault Users directly to Vault SPA on login
-role_home_page = {
-    "Vault User": "/vault",
-}
-
 # Apps Screen
 add_to_apps_screen = [
     {
@@ -27,14 +22,6 @@ add_to_apps_screen = [
 app_include_css = "/assets/frappe_vault/css/frappe_vault.css"
 app_include_js = "/assets/frappe_vault/js/frappe_vault.js"
 
-# Fixtures
-fixtures = [
-    {
-        "dt": "Role",
-        "filters": [["name", "in", ["Vault User", "Vault Admin"]]],
-    }
-]
-
 # Website Route Rules — serve Vue SPA
 website_route_rules = [
     {"from_route": "/vault/<path:app_path>", "to_route": "vault"},
@@ -43,8 +30,9 @@ website_route_rules = [
     {"from_route": "/desk/vault", "to_route": "vault"},
 ]
 
-# Installation
+# Installation & Migration
 after_install = "frappe_vault.setup.install.after_install"
+after_migrate = "frappe_vault.setup.install.after_migrate"
 
 # Document Events
 doc_events = {
