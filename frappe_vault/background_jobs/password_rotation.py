@@ -148,14 +148,10 @@ def _check_delivery_prereqs():
     try:
         import pyzipper  # noqa: F401
     except ImportError:
-        frappe.throw(
-            _("The 'pyzipper' package is not installed; run: bench pip install pyzipper")
-        )
+        frappe.throw(_("The 'pyzipper' package is not installed; run: bench pip install pyzipper"))
 
     if not frappe.db.exists("Email Account", {"enable_outgoing": 1, "default_outgoing": 1}):
-        frappe.throw(
-            _("No default outgoing Email Account is configured; set one up at /app/email-account.")
-        )
+        frappe.throw(_("No default outgoing Email Account is configured; set one up at /app/email-account."))
 
 
 # ----------------------------------------------------------------------
@@ -297,8 +293,7 @@ def _readme(custom_passphrase: bool) -> str:
         "The passphrase is the one set specifically for this secret, shared with you\n"
         "by its owner separately — NOT the standing site-wide Vault passphrase."
         if custom_passphrase
-        else "The passphrase is the standing Vault rotation passphrase issued to you\n"
-        "separately."
+        else "The passphrase is the standing Vault rotation passphrase issued to you\n" "separately."
     )
     return (
         "Frappe Vault — Automatic Password Rotation\n"

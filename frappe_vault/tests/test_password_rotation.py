@@ -67,14 +67,18 @@ class TestPasswordRotation(FrappeTestCase):
     # ------------------------------------------------------------------
 
     def test_next_rotation_in_days(self):
-        doc = make_secret(title="Rotation Days Secret", enable_rotation=1, rotation_interval=30, rotation_unit="Days")
+        doc = make_secret(
+            title="Rotation Days Secret", enable_rotation=1, rotation_interval=30, rotation_unit="Days"
+        )
 
         self.assertIsNotNone(doc.next_rotation_on)
         delta = get_datetime(doc.next_rotation_on) - now_datetime()
         self.assertAlmostEqual(delta.total_seconds(), 30 * 86400, delta=120)
 
     def test_next_rotation_in_hours(self):
-        doc = make_secret(title="Rotation Hours Secret", enable_rotation=1, rotation_interval=6, rotation_unit="Hours")
+        doc = make_secret(
+            title="Rotation Hours Secret", enable_rotation=1, rotation_interval=6, rotation_unit="Hours"
+        )
 
         delta = get_datetime(doc.next_rotation_on) - now_datetime()
         self.assertAlmostEqual(delta.total_seconds(), 6 * 3600, delta=120)
@@ -95,7 +99,9 @@ class TestPasswordRotation(FrappeTestCase):
         self.assertGreater(get_datetime(doc.next_rotation_on), now_datetime())
 
     def test_disabling_rotation_clears_schedule(self):
-        doc = make_secret(title="Rotation Days Secret", enable_rotation=1, rotation_interval=5, rotation_unit="Days")
+        doc = make_secret(
+            title="Rotation Days Secret", enable_rotation=1, rotation_interval=5, rotation_unit="Days"
+        )
         self.assertIsNotNone(doc.next_rotation_on)
 
         doc.enable_rotation = 0
@@ -332,7 +338,7 @@ class TestPasswordRotation(FrappeTestCase):
 
         data = create_encrypted_zip({"secret.txt": "the-new-password"}, "correct-horse-battery")
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):
             with pyzipper.AESZipFile(io.BytesIO(data)) as archive:
                 archive.setpassword(b"wrong-passphrase-xx")
                 archive.read("secret.txt")

@@ -224,9 +224,7 @@ class VaultSecret(Document):
 
         from frappe.utils.password import passlibctx
 
-        recent = sorted(self.get("password_history") or [], key=_history_sort_key, reverse=True)[
-            :reuse_count
-        ]
+        recent = sorted(self.get("password_history") or [], key=_history_sort_key, reverse=True)[:reuse_count]
 
         for row in recent:
             if not row.password_hash:
@@ -234,9 +232,9 @@ class VaultSecret(Document):
             try:
                 if passlibctx.verify(self.password, row.password_hash):
                     frappe.throw(
-                        _("This password was used within the last {0} change(s). Choose a different one.").format(
-                            reuse_count
-                        )
+                        _(
+                            "This password was used within the last {0} change(s). Choose a different one."
+                        ).format(reuse_count)
                     )
             except frappe.ValidationError:
                 raise

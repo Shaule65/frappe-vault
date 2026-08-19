@@ -140,9 +140,7 @@ def rotate_now(name: str) -> dict:
         "success": True,
         "name": result["name"],
         "recipients": result["recipients"],
-        "message": _("Password rotated and sent to {0} recipient(s).").format(
-            len(result["recipients"])
-        ),
+        "message": _("Password rotated and sent to {0} recipient(s).").format(len(result["recipients"])),
     }
 
 

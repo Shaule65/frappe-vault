@@ -9,6 +9,8 @@ a passphrase distinct from the shared site one, while still rotating on
 schedule.
 """
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_to_date, now_datetime
@@ -47,6 +49,18 @@ def make_protected_secret(title, **kwargs):
 class TestZipPassphrase(FrappeTestCase):
     def setUp(self):
         self.cleanup()
+        # These tests exercise the passphrase-resolution logic in rotate_secret,
+        # not delivery infrastructure — a real default outgoing Email Account
+        # would need to be the site-wide default, and actually sending mail
+        # (or leaving a broken account behind) risks bleeding into unrelated
+        # tests. Skip the account precondition and stub the actual send.
+        for target in (
+            "frappe_vault.background_jobs.password_rotation._check_delivery_prereqs",
+            "frappe.sendmail",
+        ):
+            patcher = patch(target)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def tearDown(self):
         self.cleanup()
@@ -88,9 +102,7 @@ class TestZipPassphrase(FrappeTestCase):
 
         reloaded = frappe.get_doc("Vault Secret", doc.name)
         self.assertTrue(reloaded.has_zip_passphrase)
-        self.assertEqual(
-            reloaded.get_password("zip_passphrase", raise_exception=False), VALID_PASSPHRASE
-        )
+        self.assertEqual(reloaded.get_password("zip_passphrase", raise_exception=False), VALID_PASSPHRASE)
 
     def test_get_secret_never_returns_the_passphrase_value(self):
         doc = make_protected_secret("Passphrase Store Secret")
@@ -109,9 +121,7 @@ class TestZipPassphrase(FrappeTestCase):
             make_protected_secret("Passphrase Store Secret", zip_passphrase="short")
 
     def test_minimum_length_passphrase_is_accepted(self):
-        doc = make_protected_secret(
-            "Passphrase Store Secret", zip_passphrase="x" * MIN_ZIP_PASSPHRASE_LENGTH
-        )
+        doc = make_protected_secret("Passphrase Store Secret", zip_passphrase="x" * MIN_ZIP_PASSPHRASE_LENGTH)
         self.assertTrue(doc.has_zip_passphrase)
 
     def test_has_zip_passphrase_cannot_be_forged_without_a_real_value(self):
@@ -140,9 +150,7 @@ class TestZipPassphrase(FrappeTestCase):
 
         reloaded = frappe.get_doc("Vault Secret", doc.name)
         self.assertTrue(reloaded.has_zip_passphrase)
-        self.assertEqual(
-            reloaded.get_password("zip_passphrase", raise_exception=False), VALID_PASSPHRASE
-        )
+        self.assertEqual(reloaded.get_password("zip_passphrase", raise_exception=False), VALID_PASSPHRASE)
 
     # ------------------------------------------------------------------
     # Clearing protection
