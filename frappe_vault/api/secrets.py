@@ -120,9 +120,10 @@ def rotate_now(name: str) -> dict:
     """Rotate a secret's password immediately, off the rotation schedule.
 
     Generates a new password and emails it to everyone with access, exactly as
-    the scheduled job would. If the secret has its own passphrase set, it is
-    retrieved and used automatically — no need to supply it here. Requires
-    write access to the secret.
+    the scheduled job would — including applying it to the live server when a
+    Database secret is configured to do that. If the secret has its own
+    passphrase set, it is retrieved and used automatically; no need to supply it
+    here. Requires write access to the secret.
     """
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
@@ -135,12 +136,59 @@ def rotate_now(name: str) -> dict:
     from frappe_vault.background_jobs.password_rotation import rotate_secret
 
     result = rotate_secret(name)
+    count = len(result["recipients"])
+
+    if result.get("applied_to_target"):
+        message = _("Password rotated on {0} and sent to {1} recipient(s).").format(
+            result["applied_to_target"], count
+        )
+    else:
+        message = _("Password rotated and sent to {0} recipient(s).").format(count)
 
     return {
         "success": True,
         "name": result["name"],
         "recipients": result["recipients"],
-        "message": _("Password rotated and sent to {0} recipient(s).").format(len(result["recipients"])),
+        "applied_to_target": result.get("applied_to_target"),
+        "message": message,
+    }
+
+
+@frappe.whitelist()
+def test_db_connection(name: str) -> dict:
+    """Check that a Database secret's stored credentials actually reach its server.
+
+    Runs the exact connection the rotation job would make, so a secret can be
+    proved reachable *before* it is trusted to rotate unattended. Nothing is
+    changed on the server. Requires write access to the secret.
+    """
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
+
+    from frappe_vault.utils.permissions import has_secret_permission
+
+    if not has_secret_permission(name, ptype="write"):
+        frappe.throw(_("You don't have permission to test this secret"), frappe.PermissionError)
+
+    from frappe_vault.services import db_rotation_service
+
+    doc = frappe.get_doc("Vault Secret", name)
+    if doc.secret_type != "Database":
+        frappe.throw(_("Only Database secrets can be tested against a server."), frappe.ValidationError)
+
+    current_password = doc.get_password("db_password", raise_exception=False)
+    target = db_rotation_service.build_target(doc, current_password)
+
+    # Prove the stored credential works. When a rotation admin is configured,
+    # prove that separately too — it is the account that would run the change.
+    db_rotation_service.verify_credentials(target, current_password)
+    if target.via_admin:
+        db_rotation_service.verify_admin_credentials(target)
+
+    return {
+        "success": True,
+        "target": db_rotation_service.describe(target),
+        "message": _("Connected to {0}.").format(db_rotation_service.describe(target)),
     }
 
 

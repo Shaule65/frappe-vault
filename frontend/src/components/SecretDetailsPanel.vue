@@ -35,7 +35,7 @@
 
         <!-- Dynamic type inputs -->
         <div class="space-y-3">
-          <template v-for="field in secretFieldsConfig[editForm.secret_type] || []" :key="field.name">
+          <template v-for="field in visibleFieldsFor(editForm.secret_type, editForm)" :key="field.name">
             <!-- Textarea -->
             <div v-if="field.type === 'textarea'" class="pt-1">
               <FormControl type="textarea" :label="field.label" v-model="editForm[field.name]" :rows="5" :placeholder="field.placeholder" class="w-full text-xs" :class="field.mono ? 'font-mono' : ''" />
@@ -94,6 +94,22 @@
               </div>
             </div>
 
+            <!-- Engine / option picker -->
+            <div v-else-if="field.type === 'select'" class="flex items-center justify-between gap-3 text-sm">
+              <label class="w-28 shrink-0 text-ink-gray-5 font-normal">{{ field.label }}</label>
+              <div class="flex-1 min-w-0">
+                <FormControl type="select" v-model="editForm[field.name]" :options="field.options" class="w-full text-sm cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Toggle -->
+            <div v-else-if="field.type === 'checkbox'" class="flex items-center justify-between gap-3 text-sm">
+              <label class="w-28 shrink-0 text-ink-gray-5 font-normal">{{ field.label }}</label>
+              <div class="flex-1 min-w-0 flex justify-end">
+                <FormControl type="checkbox" v-model="editForm[field.name]" />
+              </div>
+            </div>
+
             <!-- Text / Password / URL -->
             <div v-else class="flex items-center justify-between gap-3 text-sm">
               <label class="w-28 shrink-0 text-ink-gray-5 font-normal">{{ field.label }}</label>
@@ -105,12 +121,18 @@
           </template>
         </div>
 
-        <!-- Automatic rotation (Password secrets only) -->
-        <div v-if="editForm.secret_type === 'Password'" class="pt-3 border-t border-outline-gray-1 space-y-2">
+        <!-- Automatic rotation (Password and Database secrets) -->
+        <div v-if="ROTATABLE_SECRET_TYPES.includes(editForm.secret_type)" class="pt-3 border-t border-outline-gray-1 space-y-2">
           <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="editForm.enable_rotation" />
           <p class="text-xs text-ink-gray-5 leading-relaxed">
             Generate a new password on a schedule and email it to everyone with access as an encrypted
-            archive. Updates the stored value only &mdash; you must apply it to the target system yourself.
+            archive.
+            <template v-if="editForm.secret_type === 'Database'">
+              Updates the stored value only, unless you also turn on applying it to the database below.
+            </template>
+            <template v-else>
+              Updates the stored value only &mdash; you must apply it to the target system yourself.
+            </template>
           </p>
           <div v-if="editForm.enable_rotation" class="grid grid-cols-2 gap-4 pt-1">
             <FormControl label="Rotate Every" type="number" min="1" v-model="editForm.rotation_interval" class="w-full text-sm" />
@@ -142,6 +164,47 @@
               Stored encrypted, the same way as this secret's own password. Used automatically when this
               secret rotates, so its archive opens with your passphrase instead of the shared site one.
             </p>
+          </template>
+
+          <!-- Push the rotated password to the live server -->
+          <template v-if="editForm.enable_rotation && editForm.secret_type === 'Database'">
+            <div class="pt-2 border-t border-outline-gray-1 space-y-2">
+              <FormControl
+                type="checkbox"
+                label="Apply New Password to the Database"
+                v-model="editForm.apply_rotation_to_target"
+              />
+              <p class="text-xs text-ink-gray-5 leading-relaxed">
+                Connect to <strong>{{ editForm.database_type || 'the database' }}</strong> on every rotation
+                and change the password there too, so Vault and the server stay in sync. If the server cannot
+                be updated the rotation is abandoned and the stored password is left untouched.
+              </p>
+
+              <template v-if="editForm.apply_rotation_to_target">
+                <FormControl
+                  label="Rotation Admin Username (optional)"
+                  v-model="editForm.rotation_admin_username"
+                  placeholder="Leave blank to let this secret's user change its own password"
+                  class="w-full text-sm"
+                />
+                <FormControl
+                  v-if="editForm.rotation_admin_username"
+                  label="Rotation Admin Password"
+                  v-model="editForm.rotation_admin_password"
+                  :type="editRevealedFields.rotation_admin_password ? 'text' : 'password'"
+                  :placeholder="secretData.has_rotation_admin_password ? 'Leave blank to keep current password' : ''"
+                  class="w-full text-sm"
+                >
+                  <template #suffix>
+                    <Button variant="ghost" :icon="editRevealedFields.rotation_admin_password ? 'lucide-eye-off' : 'lucide-eye'" class="!p-1 h-auto text-ink-gray-4 hover:text-ink-gray-9 focus:outline-none" @click="toggleField('rotation_admin_password', true)" />
+                  </template>
+                </FormControl>
+                <p class="text-xs text-ink-gray-5 leading-relaxed">
+                  Only needed when this secret's own account cannot change its own password. Stored
+                  encrypted, and never rotated by Vault. Clear the username to remove it.
+                </p>
+              </template>
+            </div>
           </template>
         </div>
 
@@ -192,12 +255,50 @@
           </span>
         </div>
 
-        <div v-if="secretData.enable_rotation && canEdit" class="flex justify-end pt-1">
-          <Button variant="outline" size="sm" icon="lucide-refresh-cw" label="Rotate Now" @click="$emit('open-rotate')" />
+        <!-- Applies straight to the live server -->
+        <div v-if="secretData.apply_rotation_to_target" class="flex items-center justify-between py-1 text-sm">
+          <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Applies To</span>
+          <span class="min-w-0 flex-1 text-right font-medium text-ink-gray-9 truncate">
+            <FeatherIcon name="database" class="w-3 h-3 inline -mt-0.5 mr-1" />
+            {{ secretData.database_type || 'Database' }} &middot; live server
+          </span>
+        </div>
+
+        <div v-if="secretData.apply_rotation_to_target && secretData.last_target_apply_status" class="flex items-center justify-between py-1 text-sm">
+          <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Last Applied</span>
+          <span
+            class="min-w-0 flex-1 text-right font-medium truncate"
+            :class="secretData.last_target_apply_status === 'Success' ? 'text-ink-green-3' : 'text-ink-red-3'"
+          >
+            {{ secretData.last_target_apply_status }}
+            <span v-if="secretData.last_target_apply_on" class="text-ink-gray-5 font-normal">
+              &middot; {{ formatRelativeTime(secretData.last_target_apply_on) }}
+            </span>
+          </span>
+        </div>
+
+        <p
+          v-if="secretData.last_target_apply_status === 'Failed' && secretData.last_target_apply_error"
+          class="text-xs text-ink-red-3 bg-surface-red-1 border border-outline-red-1 rounded-lg p-2 whitespace-pre-line break-words"
+        >
+          {{ secretData.last_target_apply_error }}
+        </p>
+
+        <div v-if="canEdit && (secretData.enable_rotation || secretData.secret_type === 'Database')" class="flex justify-end gap-2 pt-1">
+          <Button
+            v-if="secretData.secret_type === 'Database'"
+            variant="outline"
+            size="sm"
+            icon="lucide-plug"
+            label="Test Connection"
+            :loading="testConnectionResource.loading"
+            @click="handleTestConnection"
+          />
+          <Button v-if="secretData.enable_rotation" variant="outline" size="sm" icon="lucide-refresh-cw" label="Rotate Now" @click="$emit('open-rotate')" />
         </div>
 
         <!-- Dynamic Fields Array -->
-        <template v-for="field in secretFieldsConfig[secretData.secret_type] || []" :key="field.name">
+        <template v-for="field in visibleFieldsFor(secretData.secret_type, secretData)" :key="field.name">
           <!-- File Attachment View Mode -->
           <div v-if="field.type === 'file'" class="pt-3 space-y-3">
             <div class="flex items-center justify-between">
@@ -295,6 +396,11 @@
               </div>
             </div>
 
+            <!-- Toggle -->
+            <div v-else-if="field.type === 'checkbox'" class="min-w-0 flex-1 flex items-center justify-end gap-1.5">
+              <span class="font-medium text-ink-gray-9">{{ secretData[field.name] ? 'Yes' : 'No' }}</span>
+            </div>
+
             <!-- Standard Text Field -->
             <div v-else class="min-w-0 flex-1 flex items-center justify-end gap-1.5 overflow-hidden">
               <span class="min-w-0 font-medium text-ink-gray-9 truncate" :class="field.mono ? 'font-mono' : ''">
@@ -356,8 +462,9 @@ import {
   useUpdateSecret,
   useFolders,
   useClearZipPassphrase,
+  useTestDbConnection,
 } from '../composables/vault'
-import { secretTypeOptions, ROTATION_UNITS, formatRelativeTime } from '../composables/constants'
+import { secretTypeOptions, ROTATION_UNITS, ROTATABLE_SECRET_TYPES, DATABASE_DEFAULT_PORTS, formatRelativeTime } from '../composables/constants'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 import { validateTotpSecret } from '../utils/secretForm'
 
@@ -376,6 +483,7 @@ const isEditing = ref(false)
 const decryptResource = useDecryptSecret()
 const updateResource = useUpdateSecret()
 const clearPassphraseResource = useClearZipPassphrase()
+const testConnectionResource = useTestDbConnection()
 const folders = useFolders()
 const clipboard = useClipboard()
 
@@ -399,7 +507,7 @@ function getFolderName(folderId) {
   return found ? found.folder_name : folderId
 }
 
-import { secretFieldsConfig } from '../composables/secretFields'
+import { visibleFieldsFor } from '../composables/secretFields'
 
 const copiedField = ref(null)
 const revealedFields = ref({})
@@ -421,9 +529,12 @@ const editForm = reactive({
   card_number: '',
   card_expiry: '',
   card_cvv: '',
+  database_type: '',
   db_host: '',
   db_port: '',
   db_name: '',
+  db_auth_source: '',
+  db_use_ssl: 0,
   db_password: '',
   ssh_private_key: '',
   attachment: '',
@@ -431,6 +542,9 @@ const editForm = reactive({
   rotation_interval: 90,
   rotation_unit: 'Days',
   zip_passphrase: '',
+  apply_rotation_to_target: 0,
+  rotation_admin_username: '',
+  rotation_admin_password: '',
 })
 
 const decryptedData = computed(() => decryptResource.data?.decrypted)
@@ -540,16 +654,23 @@ async function toggleEditMode() {
     editForm.card_number = dd.card_number || ''
     editForm.card_expiry = sd.card_expiry || ''
     editForm.card_cvv = dd.card_cvv || ''
+    editForm.database_type = sd.database_type || ''
     editForm.db_host = sd.db_host || ''
     editForm.db_port = sd.db_port || ''
     editForm.db_name = sd.db_name || ''
+    editForm.db_auth_source = sd.db_auth_source || ''
+    editForm.db_use_ssl = sd.db_use_ssl ? 1 : 0
     editForm.db_password = dd.db_password || ''
     editForm.ssh_private_key = sd.ssh_private_key || ''
     editForm.enable_rotation = sd.enable_rotation ? 1 : 0
     editForm.rotation_interval = sd.rotation_interval || 90
     editForm.rotation_unit = sd.rotation_unit || 'Days'
-    // Never returned by the server (it's encrypted) — always starts blank.
+    editForm.apply_rotation_to_target = sd.apply_rotation_to_target ? 1 : 0
+    editForm.rotation_admin_username = sd.rotation_admin_username || ''
+    // Neither is ever returned by the server (both are encrypted) — a blank
+    // means "keep whatever is stored", so both always start empty.
     editForm.zip_passphrase = ''
+    editForm.rotation_admin_password = ''
 
     editAttachmentList.value = parseAttachments(sd.attachment)
     syncEditAttachmentForm()
@@ -657,11 +778,7 @@ async function handleSave() {
       url: editForm.url,
     }
 
-    if (editForm.secret_type === 'Password') {
-      payload.username = editForm.username
-      payload.password = editForm.password
-      payload.totp_secret = editForm.totp_secret
-      payload.url = editForm.url
+    if (ROTATABLE_SECRET_TYPES.includes(editForm.secret_type)) {
       payload.enable_rotation = editForm.enable_rotation ? 1 : 0
       if (editForm.enable_rotation) {
         payload.rotation_interval = Number(editForm.rotation_interval) || 90
@@ -672,6 +789,13 @@ async function handleSave() {
           payload.zip_passphrase = editForm.zip_passphrase
         }
       }
+    }
+
+    if (editForm.secret_type === 'Password') {
+      payload.username = editForm.username
+      payload.password = editForm.password
+      payload.totp_secret = editForm.totp_secret
+      payload.url = editForm.url
     } else if (editForm.secret_type === 'API Key') {
       payload.api_key = editForm.api_key
       payload.api_secret = editForm.api_secret
@@ -683,11 +807,23 @@ async function handleSave() {
       payload.card_expiry = editForm.card_expiry
       payload.card_cvv = editForm.card_cvv
     } else if (editForm.secret_type === 'Database') {
+      payload.database_type = editForm.database_type
       payload.db_host = editForm.db_host
       payload.db_port = editForm.db_port
       payload.db_name = editForm.db_name
+      payload.db_auth_source = editForm.db_auth_source
+      payload.db_use_ssl = editForm.db_use_ssl ? 1 : 0
       payload.username = editForm.username
       payload.db_password = editForm.db_password
+
+      const applies = editForm.enable_rotation && editForm.apply_rotation_to_target
+      payload.apply_rotation_to_target = applies ? 1 : 0
+      // Clearing the username is how the pair gets removed, so it is always
+      // sent; the password is only sent when freshly typed (blank = keep).
+      payload.rotation_admin_username = applies ? editForm.rotation_admin_username : ''
+      if (applies && editForm.rotation_admin_password) {
+        payload.rotation_admin_password = editForm.rotation_admin_password
+      }
     } else if (editForm.secret_type === 'SSH Key') {
       payload.username = editForm.username
       payload.ssh_private_key = editForm.ssh_private_key
@@ -711,6 +847,23 @@ async function handleSave() {
     } else {
       toast.error(err.message || 'Failed to save changes')
     }
+  }
+}
+
+// Choosing an engine fills in its default port and Mongo's auth source, but
+// never overwrites something already typed.
+watch(() => editForm.database_type, (engine) => {
+  if (!engine) return
+  if (!editForm.db_port) editForm.db_port = DATABASE_DEFAULT_PORTS[engine] || ''
+  if (engine === 'MongoDB' && !editForm.db_auth_source) editForm.db_auth_source = 'admin'
+})
+
+async function handleTestConnection() {
+  try {
+    const result = await testConnectionResource.submit({ name: props.name })
+    toast.success(result.message || 'Connection succeeded')
+  } catch (err) {
+    toast.error(err.messages?.[0] || err.message || 'Could not reach the database')
   }
 }
 

@@ -9,7 +9,7 @@
         <FormControl label="Folder" type="select" v-model="form.folder" :options="folderOptions" />
 
         <div class="grid grid-cols-2 gap-4">
-          <template v-for="field in secretFieldsConfig[form.secret_type] || []" :key="field.name">
+          <template v-for="field in visibleFieldsFor(form.secret_type, form)" :key="field.name">
             <!-- Media Attachment Custom UI -->
             <div v-if="field.type === 'file'" class="col-span-2 space-y-2 pt-1">
               <label class="block text-sm font-medium text-ink-gray-7">Document / Media Attachments</label>
@@ -70,6 +70,21 @@
               </div>
             </div>
 
+            <!-- Engine / option picker -->
+            <FormControl
+              v-else-if="field.type === 'select'"
+              :label="field.label"
+              type="select"
+              v-model="form[field.name]"
+              :options="field.options"
+              :class="(field.colSpan === 2) ? 'col-span-2' : 'col-span-1'"
+            />
+
+            <!-- Toggle -->
+            <div v-else-if="field.type === 'checkbox'" :class="[(field.colSpan === 2) ? 'col-span-2' : 'col-span-1', 'flex items-end pb-2']">
+              <FormControl type="checkbox" :label="field.label" v-model="form[field.name]" />
+            </div>
+
             <!-- Standard Form Control -->
             <FormControl
               v-else
@@ -86,12 +101,17 @@
           </template>
         </div>
 
-        <!-- Automatic rotation (Password secrets only) -->
-        <div v-if="form.secret_type === 'Password'" class="pt-1 space-y-2">
+        <!-- Automatic rotation (Password and Database secrets) -->
+        <div v-if="ROTATABLE_SECRET_TYPES.includes(form.secret_type)" class="pt-1 space-y-2">
           <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="form.enable_rotation" />
           <p class="text-xs text-ink-gray-5 leading-relaxed">
             Generate a new password on a schedule and email it to everyone with access as an encrypted archive.
-            Updates the stored value only &mdash; you must apply it to the target system yourself.
+            <template v-if="form.secret_type === 'Database'">
+              Updates the stored value only, unless you also turn on applying it to the database below.
+            </template>
+            <template v-else>
+              Updates the stored value only &mdash; you must apply it to the target system yourself.
+            </template>
           </p>
           <div v-if="form.enable_rotation" class="grid grid-cols-2 gap-4 pt-1">
             <FormControl label="Rotate Every" type="number" min="1" v-model="form.rotation_interval" />
@@ -109,6 +129,40 @@
             Stored encrypted, the same way as this secret's own password. Used automatically when this
             secret rotates, so its archive opens with your passphrase instead of the shared site one.
           </p>
+
+          <!-- Push the rotated password to the live server -->
+          <template v-if="form.enable_rotation && form.secret_type === 'Database'">
+            <div class="pt-2 border-t border-outline-gray-1 space-y-2">
+              <FormControl
+                type="checkbox"
+                label="Apply New Password to the Database"
+                v-model="form.apply_rotation_to_target"
+              />
+              <p class="text-xs text-ink-gray-5 leading-relaxed">
+                Connect to <strong>{{ form.database_type || 'the database' }}</strong> on every rotation and
+                change the password there too, so Vault and the server stay in sync. If the server cannot be
+                updated the rotation is abandoned and the stored password is left untouched.
+              </p>
+
+              <template v-if="form.apply_rotation_to_target">
+                <FormControl
+                  label="Rotation Admin Username (optional)"
+                  v-model="form.rotation_admin_username"
+                  placeholder="Leave blank to let the user above change its own password"
+                />
+                <FormControl
+                  v-if="form.rotation_admin_username"
+                  label="Rotation Admin Password"
+                  v-model="form.rotation_admin_password"
+                  :type="showSecrets ? 'text' : 'password'"
+                />
+                <p class="text-xs text-ink-gray-5 leading-relaxed">
+                  Only needed when the account above cannot change its own password. Stored encrypted, and
+                  never rotated by Vault.
+                </p>
+              </template>
+            </div>
+          </template>
         </div>
 
         <FormControl label="Notes" type="textarea" v-model="form.notes" :rows="3" />
@@ -124,8 +178,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Dialog, FormControl, Button, FeatherIcon, toast } from 'frappe-ui'
-import { SECRET_TYPES, ROTATION_UNITS } from '../composables/constants'
-import { secretFieldsConfig } from '../composables/secretFields'
+import { SECRET_TYPES, ROTATION_UNITS, ROTATABLE_SECRET_TYPES, DATABASE_DEFAULT_PORTS } from '../composables/constants'
+import { visibleFieldsFor } from '../composables/secretFields'
 import { useFolders, useCreateSecret } from '../composables/vault'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 import { validateTotpSecret } from '../utils/secretForm'
@@ -157,8 +211,10 @@ const folderOptions = computed(() => {
 const defaultForm = () => ({
   title: '', secret_type: 'Password', folder: props.initialFolder || '', url: '', username: '', email: '',
   password: '', totp_secret: '', api_key: '', api_secret: '', ssh_private_key: '', attachment: '', notes: '', card_holder: '', card_number: '',
-  card_expiry: '', card_cvv: '', db_host: '', db_port: '', db_name: '', db_password: '',
+  card_expiry: '', card_cvv: '', database_type: '', db_host: '', db_port: '', db_name: '',
+  db_auth_source: '', db_use_ssl: 0, db_password: '',
   enable_rotation: 0, rotation_interval: 90, rotation_unit: 'Days', zip_passphrase: '',
+  apply_rotation_to_target: 0, rotation_admin_username: '', rotation_admin_password: '',
 })
 
 const form = ref(defaultForm())
@@ -172,6 +228,14 @@ watch(show, (v) => {
     attachmentList.value = []
     showSecrets.value = false
   }
+})
+
+// Choosing an engine fills in its default port and Mongo's auth source, but
+// never overwrites something already typed.
+watch(() => form.value.database_type, (engine) => {
+  if (!engine) return
+  if (!form.value.db_port) form.value.db_port = DATABASE_DEFAULT_PORTS[engine] || ''
+  if (engine === 'MongoDB' && !form.value.db_auth_source) form.value.db_auth_source = 'admin'
 })
 
 function removeAttachment(index) {
@@ -244,9 +308,9 @@ async function handleCreate() {
 
   const payload = { ...form.value }
 
-  // Rotation only applies to Password secrets — the backend rejects it otherwise,
+  // Rotation only applies to some secret types — the backend rejects the rest,
   // and the flag can survive a secret_type switch after the box was ticked.
-  if (payload.secret_type === 'Password' && payload.enable_rotation) {
+  if (ROTATABLE_SECRET_TYPES.includes(payload.secret_type) && payload.enable_rotation) {
     payload.enable_rotation = 1
     payload.rotation_interval = Number(payload.rotation_interval) || 90
     if (!payload.zip_passphrase) delete payload.zip_passphrase
@@ -255,6 +319,19 @@ async function handleCreate() {
     delete payload.rotation_interval
     delete payload.rotation_unit
     delete payload.zip_passphrase
+  }
+
+  // Applying to a live server is Database-only, and meaningless without rotation.
+  if (payload.secret_type === 'Database' && payload.enable_rotation && payload.apply_rotation_to_target) {
+    payload.apply_rotation_to_target = 1
+    if (!payload.rotation_admin_username) {
+      delete payload.rotation_admin_username
+      delete payload.rotation_admin_password
+    }
+  } else {
+    payload.apply_rotation_to_target = 0
+    delete payload.rotation_admin_username
+    delete payload.rotation_admin_password
   }
 
   try {

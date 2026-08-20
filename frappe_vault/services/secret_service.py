@@ -265,6 +265,13 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         # Status flag only — zip_passphrase itself is never sent to the client,
         # same as password/api_secret/db_password never being included here.
         "has_zip_passphrase": doc.has_zip_passphrase,
+        "apply_rotation_to_target": doc.apply_rotation_to_target,
+        "rotation_admin_username": doc.rotation_admin_username,
+        # Status flag only, same reasoning as has_zip_passphrase above.
+        "has_rotation_admin_password": bool(doc.get("rotation_admin_password")),
+        "last_target_apply_status": doc.last_target_apply_status,
+        "last_target_apply_on": str(doc.last_target_apply_on) if doc.last_target_apply_on else None,
+        "last_target_apply_error": doc.last_target_apply_error,
         "owner": doc.owner,
         "shared_by": shared_by,
         "modified": str(doc.modified),
@@ -279,9 +286,12 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         result["card_holder"] = doc.card_holder
         result["card_expiry"] = doc.card_expiry
     elif doc.secret_type == "Database":
+        result["database_type"] = doc.database_type
         result["db_host"] = doc.db_host
         result["db_port"] = doc.db_port
         result["db_name"] = doc.db_name
+        result["db_auth_source"] = doc.db_auth_source
+        result["db_use_ssl"] = doc.db_use_ssl
     elif doc.secret_type == "SSH Key":
         result["ssh_private_key"] = doc.ssh_private_key
 
@@ -516,9 +526,12 @@ def update_secret(name: str, data: dict) -> dict:
         "card_number",
         "card_expiry",
         "card_cvv",
+        "database_type",
         "db_host",
         "db_port",
         "db_name",
+        "db_auth_source",
+        "db_use_ssl",
         "db_password",
         "expires_on",
         "custom_fields_json",
@@ -526,11 +539,20 @@ def update_secret(name: str, data: dict) -> dict:
         "rotation_interval",
         "rotation_unit",
         "zip_passphrase",
+        "apply_rotation_to_target",
+        "rotation_admin_username",
+        "rotation_admin_password",
     ]
 
     for field, value in data.items():
-        if field in allowed_fields:
-            doc.set(field, value)
+        if field not in allowed_fields:
+            continue
+        # A blank rotation admin password means "leave the stored one alone" —
+        # the client never receives it back, so it has nothing to send in.
+        # Clearing `rotation_admin_username` is what removes the pair.
+        if field == "rotation_admin_password" and not value:
+            continue
+        doc.set(field, value)
 
     doc.save()
     _link_attachments(doc)

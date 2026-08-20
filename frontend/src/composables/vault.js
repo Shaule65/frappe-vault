@@ -62,6 +62,12 @@ export function useRotateNow() {
   })
 }
 
+export function useTestDbConnection() {
+  return createResource({
+    url: 'frappe_vault.api.secrets.test_db_connection',
+  })
+}
+
 export function useClearZipPassphrase() {
   return createResource({
     url: 'frappe_vault.api.secrets.clear_zip_passphrase',

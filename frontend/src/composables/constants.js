@@ -18,6 +18,25 @@ export const ROTATION_UNITS = [
   { label: 'Hours', value: 'Hours' },
 ]
 
+// Database engines a 'Database' secret can name. Must match the Vault Secret
+// `database_type` Select options and utils/constants.py DATABASE_TYPES.
+export const DATABASE_TYPES = [
+  { label: 'Select an engine…', value: '' },
+  { label: 'PostgreSQL', value: 'PostgreSQL' },
+  { label: 'MySQL / MariaDB', value: 'MySQL / MariaDB' },
+  { label: 'MongoDB', value: 'MongoDB' },
+]
+
+// Default listening port per engine, used to hint the Port field.
+export const DATABASE_DEFAULT_PORTS = {
+  'PostgreSQL': '5432',
+  'MySQL / MariaDB': '3306',
+  'MongoDB': '27017',
+}
+
+// Secret types whose password the rotation job knows how to regenerate.
+export const ROTATABLE_SECRET_TYPES = ['Password', 'Database']
+
 export const typeIcons = {
   Password: 'key',
   'API Key': 'code',

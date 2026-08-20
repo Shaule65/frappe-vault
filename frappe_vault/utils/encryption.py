@@ -69,11 +69,17 @@ def get_decrypted_secret_data(secret_name: str, ignore_permissions: bool = False
         result["card_holder"] = doc.card_holder
         result["card_expiry"] = doc.card_expiry
     elif doc.secret_type == "Database":
+        result["database_type"] = doc.database_type
         result["db_host"] = doc.db_host
         result["db_port"] = doc.db_port
         result["db_name"] = doc.db_name
+        result["db_auth_source"] = doc.db_auth_source
+        result["db_use_ssl"] = doc.db_use_ssl
         result["username"] = doc.username
         result["db_password"] = decrypt_secret_field("Vault Secret", secret_name, "db_password")
+        # rotation_admin_password is deliberately absent: it is an operational
+        # credential the rotation job retrieves server-side, never something the
+        # UI needs back — exactly like zip_passphrase.
     elif doc.secret_type == "SSH Key":
         result["username"] = doc.username
         result["ssh_private_key"] = doc.ssh_private_key
