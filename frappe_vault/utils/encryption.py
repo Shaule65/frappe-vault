@@ -47,11 +47,27 @@ def get_decrypted_secret_data(secret_name: str, ignore_permissions: bool = False
     Returns:
         dict with decrypted field values
     """
-    # Ensure caller has read access to the secret
-    if not ignore_permissions and not frappe.has_permission("Vault Secret", "read", secret_name):
+    # Reading a secret's *values* is deliberately stricter than reading the
+    # record. `has_permission` lets Vault Admins, System Managers and
+    # Administrator through so they can administer any secret; that bypass must
+    # not extend to the plaintext. Only people actually granted this secret pass
+    # here — see can_reveal_secret_value for what this does and does not
+    # guarantee.
+    if not ignore_permissions:
         from frappe import _
 
-        frappe.throw(_("Not permitted to decrypt this secret"), frappe.PermissionError)
+        from frappe_vault.utils.permissions import can_reveal_secret_value
+
+        if not can_reveal_secret_value(secret_name):
+            frappe.throw(
+                _(
+                    "Only this secret's owner and the people it has been shared with can view its "
+                    "values. Administering the vault does not grant access to what is stored in it."
+                ),
+                frappe.PermissionError,
+            )
+
+        _log_reveal(secret_name)
 
     doc = frappe.get_doc("Vault Secret", secret_name)
     result = {}
@@ -87,3 +103,23 @@ def get_decrypted_secret_data(secret_name: str, ignore_permissions: bool = False
         result["certificate"] = doc.certificate
 
     return result
+
+
+def _log_reveal(secret_name: str):
+    """Record that someone decrypted this secret's values.
+
+    Revealing plaintext is the event worth being able to reconstruct later, so
+    it is logged separately from merely opening the record. A failure to write
+    the audit row must never be the reason a legitimate reveal breaks, but it is
+    logged loudly rather than swallowed.
+    """
+    try:
+        from frappe_vault.services import audit_service
+
+        audit_service._create_log(
+            "Viewed",
+            secret=secret_name,
+            details={"revealed_values": True},
+        )
+    except Exception:
+        frappe.log_error(title=f"Vault Reveal Audit Failed ({secret_name})")

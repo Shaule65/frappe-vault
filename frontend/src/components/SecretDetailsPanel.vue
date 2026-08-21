@@ -222,6 +222,11 @@
 
       <!-- READ ONLY VIEW -->
       <div v-else class="space-y-2.5 py-1">
+        <p v-if="!canReveal" class="text-xs text-ink-gray-6 leading-relaxed bg-surface-gray-2 border border-outline-gray-1 rounded-lg p-2.5">
+          <FeatherIcon name="lock" class="w-3.5 h-3.5 inline -mt-0.5 mr-1" />
+          Only this secret's owner and the people it has been shared with can view its values.
+          Administering the vault does not grant access to what is stored in it.
+        </p>
         <!-- Secret Type -->
         <div class="flex items-center justify-between py-1 text-sm">
           <span class="w-28 shrink-0 text-ink-gray-5 font-normal">Secret Type</span>
@@ -389,11 +394,12 @@
               <span class="font-mono tracking-wider font-medium text-ink-gray-9 truncate">
                 {{ revealedFields[field.name] ? decryptedData?.[field.name] : (field.name === 'card_number' ? '•••• •••• •••• ••••' : (field.name === 'card_cvv' ? '•••' : '••••••••••••')) }}
               </span>
-              <div class="flex items-center gap-0.5 shrink-0">
+              <div v-if="canReveal" class="flex items-center gap-0.5 shrink-0">
                 <Button v-if="field.name === 'totp_secret' && secretData.has_totp" variant="subtle" theme="blue" icon="lucide-clock" class="!p-1.5 h-auto text-ink-blue-5 hover:text-ink-blue-6 focus:outline-none" title="Get TOTP Code" @click="$emit('open-totp')" />
                 <Button variant="ghost" :icon="revealedFields[field.name] ? 'lucide-eye-off' : 'lucide-eye'" class="!p-1 h-auto text-ink-gray-4 hover:text-ink-gray-9 focus:outline-none" :title="'Reveal ' + field.label" @click="toggleField(field.name)" />
                 <Button v-if="canCopy" variant="ghost" :icon="copiedField === field.name ? 'lucide-check' : 'lucide-copy'" :class="copiedField === field.name ? 'text-ink-green-3 hover:text-ink-green-4' : 'text-ink-gray-4 hover:text-ink-gray-9'" class="!p-1 h-auto focus:outline-none" :title="'Copy ' + field.label" @click="copyFieldData(field.name)" />
               </div>
+              <FeatherIcon v-else name="lock" class="w-3.5 h-3.5 text-ink-gray-4 shrink-0" title="Not shared with you" />
             </div>
 
             <!-- Toggle -->
@@ -473,6 +479,9 @@ const props = defineProps({
   secretData: { type: Object, default: () => ({}) },
   canEdit: { type: Boolean, default: false },
   canCopy: { type: Boolean, default: false },
+  // Whether this user may decrypt the stored values at all. Distinct from
+  // canCopy/canEdit: an administrator can manage a secret they may not read.
+  canReveal: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['open-totp', 'open-rotate', 'saved'])

@@ -8,6 +8,7 @@ from frappe import _
 
 from frappe_vault.services.audit_service import log_secret_viewed
 from frappe_vault.utils.constants import LIST_VIEW_FIELDS
+from frappe_vault.utils.permissions import can_reveal_secret_value
 
 # Allowlisted order_by values to prevent SQL injection
 ALLOWED_ORDER_BY = {
@@ -273,6 +274,10 @@ def get_secret(name: str, decrypt: bool = False) -> dict:
         "last_target_apply_on": str(doc.last_target_apply_on) if doc.last_target_apply_on else None,
         "last_target_apply_error": doc.last_target_apply_error,
         "owner": doc.owner,
+        # Viewing values is stricter than viewing the record: the admin bypass
+        # does not apply. Sent so the UI can present that plainly rather than
+        # offering a reveal button that will only fail.
+        "can_reveal": can_reveal_secret_value(doc.name),
         "shared_by": shared_by,
         "modified": str(doc.modified),
         "user_permission": user_permission,

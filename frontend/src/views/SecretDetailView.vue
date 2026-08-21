@@ -46,6 +46,7 @@
               :secret-data="secretData || {}"
               :can-edit="canEdit"
               :can-copy="canCopy"
+              :can-reveal="canReveal"
               @open-totp="showTotpDialog = true"
               @open-rotate="openRotateDialog"
               @saved="handleSecretSaved"
@@ -255,7 +256,16 @@ const currentSessionUser = computed(() => {
 
 const userPermission = computed(() => secretData.value?.user_permission || 'View Only')
 
+// Decided by the server, and deliberately not inferable from roles: the admin
+// bypass that grants every other permission here does not grant sight of a
+// secret's values.
+const canReveal = computed(() => !!secretData.value?.can_reveal)
+
 const canEdit = computed(() => {
+  // The edit form is populated from the decrypted values, so it cannot be
+  // opened by someone who may not see them. Administering a secret — moving,
+  // deleting, managing its shares — does not depend on this.
+  if (!canReveal.value) return false
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
@@ -274,6 +284,8 @@ const canDelete = computed(() => {
 })
 
 const canCopy = computed(() => {
+  // Copying a stored value means decrypting it first.
+  if (!canReveal.value) return false
   if (stats.data?.is_admin) return true
   if (currentSessionUser.value === 'Administrator') return true
   const roles = window.frappe?.user_roles || window.frappe?.boot?.user?.roles || []
