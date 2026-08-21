@@ -98,8 +98,24 @@ class TestDatabaseRotation(FrappeTestCase):
             enable_rotation=1,
             rotation_interval=30,
             rotation_unit="Days",
+            rotation_admin_username="postgres",
+            rotation_admin_password="AdminPassword123!",
         )
         self.assertIsNotNone(doc.next_rotation_on)
+
+    def test_enabling_rotation_forces_the_change_to_reach_the_server(self):
+        # Sync is not optional: a rotation that only changed the stored value
+        # would leave the vault holding a password the server never received.
+        doc = make_db_secret(
+            title="DB Rotation Postgres Secret",
+            enable_rotation=1,
+            rotation_interval=30,
+            rotation_unit="Days",
+            apply_rotation_to_target=0,
+            rotation_admin_username="postgres",
+            rotation_admin_password="AdminPassword123!",
+        )
+        self.assertTrue(doc.apply_rotation_to_target)
 
     def test_due_query_includes_database_secrets(self):
         due = make_db_secret(
@@ -107,6 +123,8 @@ class TestDatabaseRotation(FrappeTestCase):
             enable_rotation=1,
             rotation_interval=1,
             rotation_unit="Hours",
+            rotation_admin_username="postgres",
+            rotation_admin_password="AdminPassword123!",
         )
         frappe.db.set_value(
             "Vault Secret", due.name, "next_rotation_on", add_to_date(now_datetime(), hours=-2)
@@ -223,8 +241,10 @@ class TestDatabaseRotation(FrappeTestCase):
         )
         self.assertTrue(doc.get_password("rotation_admin_password", raise_exception=False))
 
-        # Removing the admin means giving up applying to the server — the two
-        # cannot be separated any more, so the flag has to come off with it.
+        # Removing the admin means giving up rotation for this secret. Rotation
+        # implies reaching the server, and reaching the server needs the admin,
+        # so the three can no longer be separated.
+        doc.enable_rotation = 0
         doc.apply_rotation_to_target = 0
         doc.rotation_admin_username = ""
         doc.save(ignore_permissions=True)

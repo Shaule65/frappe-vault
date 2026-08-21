@@ -46,6 +46,7 @@ from frappe_vault.utils.permissions import get_users_with_secret_access
 from frappe_vault.vault.doctype.vault_secret.vault_secret import (
     MIN_ROTATION_PASSWORD_LENGTH,
     ROTATABLE_FIELD_BY_TYPE,
+    SYNCED_TYPES,
 )
 
 # The reuse policy can reject a generated password. Collisions are vanishingly
@@ -128,7 +129,13 @@ def rotate_secret(secret_name: str) -> dict:
     zip_password = _resolve_delivery(doc)
 
     new_password = _generate_candidate(doc)
-    applied = _apply_to_target(doc, new_password, zip_password) if _applies_to_target(doc) else None
+
+    applied = None
+    if _applies_to_target(doc):
+        if doc.secret_type == "Linux Server":
+            applied = _apply_to_linux(doc, new_password)
+        else:
+            applied = _apply_to_target(doc, new_password, zip_password)
 
     try:
         _store(doc, field, new_password)
@@ -283,8 +290,98 @@ class _Applied:
 
 
 def _applies_to_target(doc) -> bool:
-    """True when this secret asked for its rotation to reach the real server."""
-    return bool(doc.secret_type == "Database" and doc.apply_rotation_to_target)
+    """True when this rotation has to reach the systems the credential lives on."""
+    return bool(doc.secret_type in SYNCED_TYPES and doc.apply_rotation_to_target)
+
+
+def _apply_to_linux(doc, new_password: str) -> "_Applied":
+    """Change the account's password on every host, or leave them all alone.
+
+    A vault entry holds one password, so a run that succeeded on eight of ten
+    machines is not a partial success — it is two machines nobody can log into
+    and a stored value that is wrong for them. Any failure puts the hosts that
+    did accept the change back before this returns.
+    """
+    from frappe_vault.services import linux_rotation_service as linux
+
+    target = linux.build_linux_target(doc)
+    description = target.describe()
+
+    # Reach every host first, while the stored password is still true everywhere.
+    reachable = linux.ping(target)
+    if not reachable.all_ok:
+        _record_host_results(doc, reachable)
+        _record_target_failure(doc.name, description, reachable.summary())
+        frappe.throw(
+            _("Not every host could be reached, so nothing was changed — {0}").format(reachable.summary()),
+            linux.LinuxApplyError,
+        )
+
+    previous_password = doc.get_password(doc.rotating_field, raise_exception=False)
+    applied = linux.apply_password(target, new_password)
+    _record_host_results(doc, applied)
+
+    if not applied.all_ok:
+        _revert_linux_hosts(doc, target, previous_password, applied)
+        _record_target_failure(doc.name, description, applied.summary())
+        frappe.throw(
+            _("The password could not be set on every host — {0}").format(applied.summary()),
+            linux.LinuxApplyError,
+        )
+
+    doc.last_target_apply_status = "Success"
+    doc.last_target_apply_on = now_datetime()
+    doc.last_target_apply_error = None
+
+    return _Applied(target=target, previous_password=previous_password, description=description)
+
+
+def _revert_linux_hosts(doc, target, previous_password: str, applied):
+    """Put back the hosts that accepted a change the others refused."""
+    from frappe_vault.services import linux_rotation_service as linux
+
+    done = [o.hostname for o in applied.succeeded]
+    if not done or not previous_password:
+        return
+
+    try:
+        linux.apply_password_to_hosts(target, previous_password, done)
+    except Exception:
+        frappe.log_error(
+            message=f"{doc.name}: could not restore {', '.join(done)} after a partial rotation.",
+            title=f"Vault Linux Rollback Failed ({doc.name})",
+        )
+
+
+def _record_host_results(doc, result):
+    """Write each host's outcome onto its row, outside the rotation transaction.
+
+    The caller aborts on failure and the transaction is rolled back, so this has
+    to be committed on its own — otherwise the per-host detail that says which
+    machines are out of step would be discarded with everything else.
+    """
+    stamp = now_datetime()
+    by_host = {o.hostname: o for o in result.outcomes}
+
+    try:
+        frappe.db.rollback()
+        for row in doc.get("linux_hosts") or []:
+            outcome = by_host.get((row.hostname or "").strip())
+            if not outcome:
+                continue
+            frappe.db.set_value(
+                "Vault Linux Host",
+                row.name,
+                {
+                    "last_status": "Success" if outcome.ok else "Failed",
+                    "last_applied_on": stamp,
+                    "last_error": outcome.error[:500] if outcome.error else None,
+                },
+                update_modified=False,
+            )
+        frappe.db.commit()  # nosemgrep — per-host results must outlive the rollback
+    except Exception:
+        frappe.log_error(title=f"Vault Linux Host Status Write Failed ({doc.name})")
 
 
 def _apply_to_target(doc, new_password: str, zip_password: str) -> "_Applied":
@@ -329,8 +426,27 @@ def _undo_target_apply(doc, applied: "_Applied", new_password: str, zip_password
     from dataclasses import replace
 
     from frappe_vault.services import db_rotation_service as target_service
+    from frappe_vault.services.linux_rotation_service import LinuxTarget
 
     target = applied.target
+
+    if isinstance(target, LinuxTarget):
+        # Ansible authenticates as its own account, never as the one that just
+        # changed, so putting every host back needs no special handling.
+        from frappe_vault.services import linux_rotation_service as linux
+
+        try:
+            linux.apply_password(target, applied.previous_password)
+        except Exception as e:
+            _escalate_desync(
+                doc,
+                applied.description,
+                _("The vault could not be updated, and the hosts could not be put back — {0}").format(e),
+                new_password,
+                zip_password,
+            )
+        return
+
     if not target.via_admin:
         # Self-service authenticates as the account itself, whose password is now
         # the one we just set — the stored credential no longer opens the door.

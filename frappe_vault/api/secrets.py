@@ -290,6 +290,41 @@ def test_db_connection(name: str) -> dict:
 
 
 @frappe.whitelist()
+def test_linux_connection(name: str) -> dict:
+    """Reach every host of a Linux Server secret without changing anything.
+
+    Runs the same inventory and credentials a rotation would, so an unreachable
+    machine or a sudo problem surfaces now rather than mid-rotation. Reports per
+    host, because "it failed" is not actionable across twenty of them.
+    """
+    if not isinstance(name, str):
+        frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
+
+    from frappe_vault.utils.permissions import has_secret_permission
+
+    if not has_secret_permission(name, ptype="write"):
+        frappe.throw(_("You don't have permission to test this secret"), frappe.PermissionError)
+
+    from frappe_vault.services import linux_rotation_service as linux
+
+    doc = frappe.get_doc("Vault Secret", name)
+    if doc.secret_type != "Linux Server":
+        frappe.throw(_("Only Linux Server secrets can be tested against hosts."), frappe.ValidationError)
+
+    target = linux.build_linux_target(doc)
+    result = linux.ping(target)
+
+    return {
+        "success": result.all_ok,
+        "target": target.describe(),
+        "hosts": [{"hostname": o.hostname, "ok": o.ok, "error": o.error} for o in result.outcomes],
+        "message": _("Reached all {0} host(s).").format(len(result.outcomes))
+        if result.all_ok
+        else result.summary(),
+    }
+
+
+@frappe.whitelist()
 def clear_zip_passphrase(name: str) -> dict:
     """Remove custom passphrase protection from a secret's rotation archive.
 

@@ -22,7 +22,14 @@ MIN_ZIP_PASSPHRASE_LENGTH = 12
 ROTATABLE_FIELD_BY_TYPE = {
     "Password": "password",
     "Database": "db_password",
+    "Linux Server": "password",
 }
+
+# Types whose rotation must reach the real system it belongs to. A rotation that
+# only changed the stored value would leave the vault holding a password the
+# server has never heard of, which is worse than not rotating at all: nobody can
+# log in, and nobody can tell why.
+SYNCED_TYPES = ("Database", "Linux Server")
 
 
 class VaultSecret(Document):
@@ -31,6 +38,7 @@ class VaultSecret(Document):
     def validate(self):
         """Validate the secret before saving."""
         self.validate_title()
+        self.validate_linux_config()
         self.validate_rotation_config()
         self.validate_zip_passphrase()
         self.check_password_reuse()
@@ -274,7 +282,63 @@ class VaultSecret(Document):
         if self.rotation_unit not in ("Days", "Hours"):
             frappe.throw(_("Interval Unit must be either 'Days' or 'Hours'."))
 
-        self.validate_target_apply_config()
+        # Rotating a Database or Linux credential always reaches the real system.
+        # It is not an option to turn off: the whole value of rotating these is
+        # that the vault and the server keep agreeing with each other.
+        if self.secret_type in SYNCED_TYPES:
+            self.apply_rotation_to_target = 1
+
+        if self.secret_type != "Linux Server":
+            self.validate_target_apply_config()
+
+    def validate_linux_config(self):
+        """Reject a Linux setup the rotation job could not act on.
+
+        Runs for every Linux Server secret, not only rotating ones: the hosts and
+        the automation account are what the type *is*, and a secret stored
+        half-configured today becomes a rotation that fails unattended the moment
+        somebody enables it.
+        """
+        if self.secret_type != "Linux Server":
+            return
+
+        hosts = [r for r in (self.get("linux_hosts") or []) if (r.hostname or "").strip()]
+        if not hosts:
+            frappe.throw(
+                _("Add at least one host. A Linux rotation has nowhere to apply the new password without one.")
+            )
+
+        seen = set()
+        for row in hosts:
+            hostname = row.hostname.strip()
+            if hostname in seen:
+                frappe.throw(_("Host '{0}' is listed more than once.").format(hostname))
+            seen.add(hostname)
+
+        if not self.username:
+            frappe.throw(_("Username is required — it names the Linux account whose password is changed."))
+
+        from frappe_vault.services.linux_rotation_service import AUTH_METHODS
+
+        if not (self.ansible_user or "").strip():
+            frappe.throw(_("An Ansible User is required to reach these hosts."))
+
+        if self.ansible_user.strip() == self.username.strip():
+            frappe.throw(
+                _(
+                    "The Ansible User cannot be the account being rotated ('{0}') — changing its password "
+                    "would lock Vault out of these hosts."
+                ).format(self.username)
+            )
+
+        if self.ansible_auth_method not in AUTH_METHODS:
+            frappe.throw(_("Choose how Vault authenticates: {0}.").format(" or ".join(AUTH_METHODS)))
+
+        if self.ansible_auth_method == "SSH Key" and not self.ansible_ssh_private_key:
+            frappe.throw(_("An SSH Private Key is required for key-based access."))
+
+        if self.ansible_auth_method == "Password" and not self.ansible_password:
+            frappe.throw(_("An SSH Password is required for password-based access."))
 
     def validate_target_apply_config(self):
         """Reject an 'apply to the live database' setup the rotation job could not carry out.
