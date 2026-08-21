@@ -125,8 +125,8 @@
         <div v-if="ROTATABLE_SECRET_TYPES.includes(editForm.secret_type)" class="pt-3 border-t border-outline-gray-1 space-y-2">
           <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="editForm.enable_rotation" />
           <p class="text-xs text-ink-gray-5 leading-relaxed">
-            Generate a new password on a schedule and email it to everyone with access as an encrypted
-            archive.
+            Generate a new password on a schedule. Everyone with access is notified and can read the new
+            value here.
             <template v-if="editForm.secret_type === 'Database'">
               Updates the stored value only, unless you also turn on applying it to the database below.
             </template>

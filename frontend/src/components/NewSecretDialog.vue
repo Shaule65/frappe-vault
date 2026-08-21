@@ -37,7 +37,8 @@
               />
               <p class="text-xs text-ink-gray-5 leading-relaxed">
                 Rotates the password on a schedule and changes it on the live server too, so Vault and the
-                database stay in sync. Leave this off to simply store the credential without touching the server.
+                database stay in sync, and the new value stays readable here. Leave this off to simply store
+                the credential without touching the server.
               </p>
             </div>
 
@@ -213,8 +214,8 @@
         <div v-if="form.secret_type === 'Password'" class="pt-1 space-y-2">
           <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="form.enable_rotation" />
           <p class="text-xs text-ink-gray-5 leading-relaxed">
-            Generate a new password on a schedule and email it to everyone with access as an encrypted archive.
-            Updates the stored value only &mdash; you must apply it to the target system yourself.
+            Generate a new password on a schedule. Everyone with access is notified and can read the new
+            value here. Updates the stored value only &mdash; you must apply it to the target system yourself.
           </p>
           <div v-if="form.enable_rotation" class="grid grid-cols-2 gap-4 pt-1">
             <FormControl label="Rotate Every" type="number" min="1" v-model="form.rotation_interval" />

@@ -110,8 +110,8 @@
       <template #body-content>
         <div class="space-y-3">
           <p class="text-sm text-ink-gray-6 leading-normal">
-            Generate a new password now and email it to everyone with access
-            <span v-if="secretData?.has_zip_passphrase">, as an archive opened with this secret's custom passphrase</span>.
+            Generate a new password now. Everyone with access is notified, and can read the new value
+            here on this page.
           </p>
           <p v-if="secretData?.apply_rotation_to_target" class="text-sm text-ink-gray-6 leading-normal">
             The password will also be changed on the live

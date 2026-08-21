@@ -1,8 +1,15 @@
 """Automatic password rotation.
 
 Runs hourly. For every Vault Secret with rotation enabled and a due
-`next_rotation_on`, generates a new policy-compliant password, stores it, and
-emails it to everyone with access as an AES-256 encrypted ZIP attachment.
+`next_rotation_on`, generates a new policy-compliant password and stores it.
+Everyone with access is notified in-app; the value itself is read from the
+record by the people entitled to it.
+
+Emailing the new password as an AES-256 encrypted ZIP is optional and off by
+default — Vault Settings, "Email Rotated Passwords". Rotation never depends on
+it: if mail is disabled, misconfigured, or simply fails, the password is still
+rotated and applied. Getting the credential changed is the job; telling people
+about it is a separate, best-effort step.
 
 Two secret types rotate: `Password` (rotating the `password` field) and
 `Database` (rotating `db_password`). A Database secret may additionally set
@@ -10,7 +17,7 @@ Two secret types rotate: `Password` (rotating the `password` field) and
 live PostgreSQL / MySQL / MariaDB / MongoDB server before it is stored here —
 see services/db_rotation_service.py.
 
-The archive passphrase is normally a standing value in bench config under
+When emailing is enabled, the archive passphrase is normally a standing value in bench config under
 `vault_rotation_zip_password`, distributed to recipients out of band. A
 secret's owner may instead set their own passphrase (Vault Secret.zip_passphrase),
 stored encrypted the same way as the secret's own password — this job decrypts
@@ -80,12 +87,6 @@ def run_password_rotation():
     if not due:
         return
 
-    try:
-        _check_delivery_prereqs()
-    except frappe.ValidationError as e:
-        _abort(str(e) + "\nNo passwords were rotated.")
-        return
-
     rotated, failed = 0, 0
     for secret in due:
         try:
@@ -121,8 +122,10 @@ def rotate_secret(secret_name: str) -> dict:
             )
         )
 
-    zip_password = _resolve_zip_password(doc)
-    _check_delivery_prereqs()
+    # Delivery is resolved up front but never gates the rotation: a missing
+    # passphrase or mail account is a reason to skip the email, not a reason to
+    # leave a credential unrotated. When email is off this is None throughout.
+    zip_password = _resolve_delivery(doc)
 
     new_password = _generate_candidate(doc)
     applied = _apply_to_target(doc, new_password, zip_password) if _applies_to_target(doc) else None
@@ -153,18 +156,49 @@ def rotate_secret(secret_name: str) -> dict:
 
     recipients = get_users_with_secret_access(doc.name)
     if recipients:
-        # The rotation is already committed to the vault at this point. If delivery
-        # fails we surface it loudly, but we do not roll the new password back —
-        # the vault remains the source of truth and anyone with access can read it
-        # through the UI.
-        _deliver(doc, new_password, recipients, zip_password, applied)
+        # The rotation stands at this point. Notifying people is best-effort by
+        # design: a failure here is surfaced loudly but never undoes the new
+        # password, because the vault is the source of truth and everyone
+        # entitled to the secret can read it in the app.
+        try:
+            _deliver(doc, new_password, recipients, zip_password, applied)
+        except Exception:
+            frappe.log_error(title=f"Vault Rotation Delivery Failed ({doc.name})")
 
     return {
         "name": doc.name,
         "recipients": recipients,
         "rotated_on": str(doc.last_rotated_on),
         "applied_to_target": applied.description if applied else None,
+        "emailed": bool(zip_password),
     }
+
+
+def _emailing_enabled() -> bool:
+    """Whether rotated passwords should be emailed at all."""
+    return bool(frappe.db.get_single_value("Vault Settings", "send_rotation_emails"))
+
+
+def _resolve_delivery(doc) -> str | None:
+    """The archive passphrase to deliver this rotation with, or None to skip email.
+
+    Returns None both when emailing is switched off and when it is on but
+    unusable — a missing passphrase or mail account downgrades this rotation to
+    in-app only rather than aborting it. Rotation is the job; the email is how
+    the result used to travel, and it is no longer allowed to hold it up.
+    """
+    if not _emailing_enabled():
+        return None
+
+    try:
+        _check_delivery_prereqs()
+        return _resolve_zip_password(doc)
+    except Exception as e:
+        frappe.log_error(
+            message=f"{doc.name}: {e}\nRotating anyway; the new value is readable in Vault.",
+            title="Vault Rotation Email Skipped",
+        )
+        return None
 
 
 def _resolve_zip_password(doc) -> str:
@@ -204,19 +238,6 @@ def _check_delivery_prereqs():
 # ----------------------------------------------------------------------
 # Internals
 # ----------------------------------------------------------------------
-
-
-def _abort(reason: str):
-    """Log and escalate a pre-flight failure without touching any secret."""
-    frappe.log_error(message=reason, title="Vault Password Rotation Aborted")
-    try:
-        notify_vault_admins(
-            subject=_("Password rotation aborted"),
-            email_content=reason,
-            document_type="Vault Secret",
-        )
-    except Exception:
-        frappe.log_error(title="Vault Rotation Abort Notification Failed")
 
 
 def _generate_candidate(doc) -> str:
@@ -482,12 +503,47 @@ def _generate_password(settings, length: int) -> str:
     )
 
 
-def _deliver(doc, new_password: str, recipients: list, zip_password: str, applied=None):
-    """Queue the encrypted archive to everyone with access, and notify in-app."""
+def _deliver(doc, new_password: str, recipients: list, zip_password: str | None, applied=None):
+    """Tell everyone with access that the password changed.
+
+    The encrypted archive only goes out when emailing is enabled and usable
+    (`zip_password` is not None). Otherwise the in-app notification is the whole
+    delivery, and it points people at the record — where the value is readable
+    by exactly the people entitled to it, and by nobody else.
+    """
+    target = applied.description if applied else None
+
+    if zip_password:
+        _email_archive(doc, new_password, recipients, zip_password, target)
+
+    if target:
+        in_app = _("A new password was generated for '{0}' and applied to {1}.")
+    else:
+        in_app = _("A new password was generated for '{0}'.")
+
+    where = (
+        _("It has been emailed to you as an encrypted archive.")
+        if zip_password
+        else _("Open the secret in Vault to see it.")
+    )
+
+    for user in recipients:
+        send_vault_notification(
+            for_user=user,
+            subject=_("Password rotated: {0}").format(doc.title),
+            email_content=f"{in_app.format(doc.title, target)} {where}",
+            notification_type="Alert",
+            document_type="Vault Secret",
+            document_name=doc.name,
+            from_user="Administrator",
+        )
+
+
+def _email_archive(doc, new_password: str, recipients: list, zip_password: str, target: str | None):
+    """Queue the AES-256 archive carrying the new password."""
     stamp = now_datetime().strftime("%Y%m%d-%H%M")
     filename = f"vault-rotation-{doc.name}-{stamp}.zip"
     custom = bool(doc.has_zip_passphrase)
-    target = applied.description if applied else None
 
     archive = create_encrypted_zip(
         {
@@ -505,23 +561,6 @@ def _deliver(doc, new_password: str, recipients: list, zip_password: str, applie
         reference_doctype="Vault Secret",
         reference_name=doc.name,
     )
-
-    in_app = (
-        _("A new password was generated for '{0}', applied to {1}, and emailed to you as an encrypted archive.")
-        if target
-        else _("A new password was generated for '{0}' and emailed to you as an encrypted archive.")
-    )
-
-    for user in recipients:
-        send_vault_notification(
-            for_user=user,
-            subject=_("Password rotated: {0}").format(doc.title),
-            email_content=in_app.format(doc.title, target),
-            notification_type="Alert",
-            document_type="Vault Secret",
-            document_name=doc.name,
-            from_user="Administrator",
-        )
 
 
 def _secret_payload(doc, new_password: str, target: str | None = None) -> str:

@@ -397,3 +397,66 @@ class TestDatabaseRotation(FrappeTestCase):
         )
 
         self.assertEqual(set(_EXISTENCE_PROBES), set(SUPPORTED_DATABASE_TYPES))
+
+
+class TestRotationWithoutEmail(FrappeTestCase):
+    """Rotation must not depend on email being configured or enabled.
+
+    Emailing a rotated password used to be a precondition: a missing passphrase
+    or outgoing mail account aborted the whole run and left every due credential
+    unrotated. Changing the credential is the job; telling people is a separate,
+    best-effort step.
+    """
+
+    def setUp(self):
+        self.cleanup()
+        self.original = frappe.db.get_single_value("Vault Settings", "send_rotation_emails")
+
+    def tearDown(self):
+        frappe.db.set_single_value("Vault Settings", "send_rotation_emails", self.original)
+        self.cleanup()
+
+    def cleanup(self):
+        names = frappe.get_all("Vault Secret", filters={"title": ["in", TEST_TITLES]}, pluck="name")
+        for name in names:
+            frappe.db.delete("Vault Audit Log", {"secret": name})
+            frappe.delete_doc("Vault Secret", name, force=True, ignore_permissions=True)
+        frappe.db.commit()  # nosemgrep — fixtures must not survive on this site
+
+    def test_delivery_is_skipped_when_emailing_is_disabled(self):
+        from frappe_vault.background_jobs.password_rotation import _resolve_delivery
+
+        frappe.db.set_single_value("Vault Settings", "send_rotation_emails", 0)
+        doc = make_db_secret(title="DB Rotation Postgres Secret")
+
+        self.assertIsNone(_resolve_delivery(doc))
+
+    def test_a_broken_mail_setup_downgrades_instead_of_aborting(self):
+        from frappe_vault.background_jobs import password_rotation
+
+        frappe.db.set_single_value("Vault Settings", "send_rotation_emails", 1)
+        doc = make_db_secret(title="DB Rotation Postgres Secret")
+
+        original = password_rotation._check_delivery_prereqs
+        password_rotation._check_delivery_prereqs = lambda: frappe.throw("no mail account")
+        try:
+            # None means "skip the email", not an exception that stops the rotation.
+            self.assertIsNone(password_rotation._resolve_delivery(doc))
+        finally:
+            password_rotation._check_delivery_prereqs = original
+
+    def test_rotation_still_changes_the_stored_password_with_email_off(self):
+        from frappe_vault.background_jobs.password_rotation import rotate_secret
+
+        frappe.db.set_single_value("Vault Settings", "send_rotation_emails", 0)
+        doc = make_db_secret(title="DB Rotation Postgres Secret")
+        before = doc.get_password("db_password", raise_exception=False)
+
+        result = rotate_secret(doc.name)
+
+        after = frappe.get_doc("Vault Secret", doc.name).get_password(
+            "db_password", raise_exception=False
+        )
+        self.assertNotEqual(before, after)
+        self.assertTrue(after)
+        self.assertFalse(result["emailed"])

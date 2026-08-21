@@ -120,11 +120,11 @@ def decrypt(name: str) -> dict:
 def rotate_now(name: str) -> dict:
     """Rotate a secret's password immediately, off the rotation schedule.
 
-    Generates a new password and emails it to everyone with access, exactly as
-    the scheduled job would — including applying it to the live server when a
-    Database secret is configured to do that. If the secret has its own
-    passphrase set, it is retrieved and used automatically; no need to supply it
-    here. Requires write access to the secret.
+    Generates a new password exactly as the scheduled job would — including
+    applying it to the live server when a Database secret is configured to do
+    that. Everyone with access is notified in-app, and emailed an encrypted
+    archive as well if Vault Settings has 'Email Rotated Passwords' enabled.
+    Requires write access to the secret.
     """
     if not isinstance(name, str):
         frappe.throw(_("Invalid secret identifier"), frappe.ValidationError)
@@ -140,17 +140,21 @@ def rotate_now(name: str) -> dict:
     count = len(result["recipients"])
 
     if result.get("applied_to_target"):
-        message = _("Password rotated on {0} and sent to {1} recipient(s).").format(
-            result["applied_to_target"], count
-        )
+        message = _("Password rotated and applied to {0}.").format(result["applied_to_target"])
     else:
-        message = _("Password rotated and sent to {0} recipient(s).").format(count)
+        message = _("Password rotated.")
+
+    if result.get("emailed"):
+        message += " " + _("Sent to {0} recipient(s) as an encrypted archive.").format(count)
+    else:
+        message += " " + _("{0} person(s) notified; the new value is here in Vault.").format(count)
 
     return {
         "success": True,
         "name": result["name"],
         "recipients": result["recipients"],
         "applied_to_target": result.get("applied_to_target"),
+        "emailed": result.get("emailed"),
         "message": message,
     }
 
