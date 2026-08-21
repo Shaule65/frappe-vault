@@ -166,7 +166,26 @@ class VaultSecret(Document):
         if not value or self.is_dummy_password(value):
             return False
 
-        return bool(self.is_new() or self.has_value_changed(field))
+        if self.is_new():
+            return True
+
+        if not self.has_value_changed(field):
+            return False
+
+        # Re-submitting the value that is already stored is not a change of
+        # password. The edit form is populated with the decrypted value, so
+        # saving any other field sends it back verbatim; against the masked
+        # value held in the row that looks like a brand new password, and the
+        # reuse policy would then reject the save for reusing the password the
+        # secret already has.
+        # Read straight from storage: Document.get_password() short-circuits to
+        # the in-memory value when one is set, which here is the very value being
+        # compared — that would make every password look unchanged and quietly
+        # disable history, the reuse policy and strength scoring alike.
+        from frappe.utils.password import get_decrypted_password
+
+        stored = get_decrypted_password(self.doctype, self.name, field, raise_exception=False)
+        return stored != value
 
     # ------------------------------------------------------------------
     # Custom rotation passphrase

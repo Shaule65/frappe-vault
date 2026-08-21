@@ -460,3 +460,85 @@ class TestRotationWithoutEmail(FrappeTestCase):
         self.assertNotEqual(before, after)
         self.assertTrue(after)
         self.assertFalse(result["emailed"])
+
+
+class TestResavingAnUnchangedPassword(FrappeTestCase):
+    """Saving a secret without touching its password must not look like a change.
+
+    The edit form is populated with the decrypted value, so editing any other
+    field sends the password back verbatim. Against the masked value held in the
+    row that reads as a brand new password — and since a secret's current
+    password is by definition its most recent history entry, the reuse policy
+    then rejects the save for reusing the password it already has. Which made
+    Database secrets uneditable.
+    """
+
+    def setUp(self):
+        self.cleanup()
+
+    def tearDown(self):
+        self.cleanup()
+
+    def cleanup(self):
+        for title in TEST_TITLES + ["Resave Password Secret"]:
+            for name in frappe.get_all("Vault Secret", filters={"title": title}, pluck="name"):
+                frappe.db.delete("Vault Audit Log", {"secret": name})
+                frappe.delete_doc("Vault Secret", name, force=True, ignore_permissions=True)
+        frappe.db.commit()  # nosemgrep — fixtures must not survive on this site
+
+    def test_resubmitting_the_same_db_password_is_not_a_change(self):
+        doc = make_db_secret(title="DB Rotation Postgres Secret")
+        rows_before = len(doc.password_history)
+
+        doc = frappe.get_doc("Vault Secret", doc.name)
+        doc.db_name = "a_different_database"
+        doc.db_password = "InitialDbPassword123!"  # unchanged, as the edit form sends it
+        doc.save(ignore_permissions=True)
+
+        self.assertEqual(doc.db_name, "a_different_database")
+        self.assertEqual(len(doc.password_history), rows_before)
+
+    def test_resubmitting_the_same_password_is_not_a_change(self):
+        # The same bug applied to Password secrets before db_password shared
+        # this code path, so cover both.
+        doc = frappe.get_doc(
+            {
+                "doctype": "Vault Secret",
+                "title": "Resave Password Secret",
+                "secret_type": "Password",
+                "password": "InitialPassword123!",
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        rows_before = len(doc.password_history)
+
+        doc = frappe.get_doc("Vault Secret", doc.name)
+        doc.url = "https://example.test"
+        doc.password = "InitialPassword123!"
+        doc.save(ignore_permissions=True)
+
+        self.assertEqual(len(doc.password_history), rows_before)
+
+    def test_a_genuinely_new_password_is_still_recorded(self):
+        doc = make_db_secret(title="DB Rotation Postgres Secret")
+        rows_before = len(doc.password_history)
+
+        doc = frappe.get_doc("Vault Secret", doc.name)
+        doc.db_password = "AnEntirelyDifferentValue789!"
+        doc.save(ignore_permissions=True)
+
+        self.assertEqual(len(doc.password_history), rows_before + 1)
+
+    def test_going_back_to_a_previous_password_is_still_rejected(self):
+        # The fix must not disarm the reuse policy it was tripping over.
+        original = "InitialDbPassword123!"
+        doc = make_db_secret(title="DB Rotation Postgres Secret")
+
+        doc = frappe.get_doc("Vault Secret", doc.name)
+        doc.db_password = "AnEntirelyDifferentValue789!"
+        doc.save(ignore_permissions=True)
+
+        doc = frappe.get_doc("Vault Secret", doc.name)
+        doc.db_password = original
+        with self.assertRaises(frappe.ValidationError):
+            doc.save(ignore_permissions=True)
