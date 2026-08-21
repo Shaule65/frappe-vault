@@ -182,13 +182,12 @@
 
               <template v-if="editForm.apply_rotation_to_target">
                 <FormControl
-                  label="Rotation Admin Username (optional)"
+                  label="Rotation Admin Username"
                   v-model="editForm.rotation_admin_username"
-                  placeholder="Leave blank to let this secret's user change its own password"
+                  placeholder="postgres / root"
                   class="w-full text-sm"
                 />
                 <FormControl
-                  v-if="editForm.rotation_admin_username"
                   label="Rotation Admin Password"
                   v-model="editForm.rotation_admin_password"
                   :type="editRevealedFields.rotation_admin_password ? 'text' : 'password'"
@@ -200,8 +199,9 @@
                   </template>
                 </FormControl>
                 <p class="text-xs text-ink-gray-5 leading-relaxed">
-                  Only needed when this secret's own account cannot change its own password. Stored
-                  encrypted, and never rotated by Vault. Clear the username to remove it.
+                  The privileged account Vault authenticates as to reset the password. Required, because
+                  an account that cannot change its own password would only fail unattended. Stored
+                  encrypted, and never rotated by Vault. To remove it, untick applying to the database.
                 </p>
               </template>
             </div>
@@ -820,6 +820,9 @@ async function handleSave() {
       payload.apply_rotation_to_target = applies ? 1 : 0
       // Clearing the username is how the pair gets removed, so it is always
       // sent; the password is only sent when freshly typed (blank = keep).
+      // Unticking "apply to database" clears the username, and the controller
+      // drops the orphaned password with it — a blank password on its own means
+      // "keep what is stored", so it cannot do the clearing.
       payload.rotation_admin_username = applies ? editForm.rotation_admin_username : ''
       if (applies && editForm.rotation_admin_password) {
         payload.rotation_admin_password = editForm.rotation_admin_password

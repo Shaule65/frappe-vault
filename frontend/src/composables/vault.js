@@ -62,6 +62,13 @@ export function useRotateNow() {
   })
 }
 
+// Tests a connection from unsaved form values, before any secret exists.
+export function useTestDbConnectionParams() {
+  return createResource({
+    url: 'frappe_vault.api.secrets.test_db_connection_params',
+  })
+}
+
 export function useTestDbConnection() {
   return createResource({
     url: 'frappe_vault.api.secrets.test_db_connection',

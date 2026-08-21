@@ -2,6 +2,7 @@ import builtins
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 
 @frappe.whitelist()
@@ -155,6 +156,85 @@ def rotate_now(name: str) -> dict:
 
 
 @frappe.whitelist()
+@rate_limit(limit=30, seconds=60 * 60)
+def test_db_connection_params(
+    database_type: str,
+    db_host: str,
+    username: str,
+    admin_username: str,
+    admin_password: str,
+    db_port=None,
+    db_name: str | None = None,
+    db_auth_source: str | None = None,
+    db_use_ssl=0,
+) -> dict:
+    """Test a database connection from form values, before any secret exists.
+
+    Backs the Test Connection step in the create dialog: the admin credential is
+    proved to work, and the account it will later reset is checked for existence,
+    so a typo surfaces now instead of at 2am on the first unattended rotation.
+
+    Nothing is written to the server and nothing is stored here — the credentials
+    live only for the duration of this call.
+
+    Rate limited, and restricted to users who could create the secret anyway,
+    because it makes this server open an outbound connection to a host the
+    caller chooses.
+    """
+    if not frappe.has_permission("Vault Secret", "create"):
+        frappe.throw(_("You don't have permission to create secrets"), frappe.PermissionError)
+
+    if not admin_username or not admin_password:
+        frappe.throw(
+            _("An admin username and password are required to test the connection."),
+            frappe.ValidationError,
+        )
+
+    from frappe_vault.services import db_rotation_service
+
+    target = db_rotation_service.make_target(
+        database_type=database_type,
+        host=db_host,
+        port=db_port,
+        database=db_name,
+        username=username,
+        use_ssl=frappe.utils.cint(db_use_ssl),
+        auth_source=db_auth_source,
+        admin_username=admin_username,
+        admin_password=admin_password,
+    )
+
+    db_rotation_service.verify_admin_credentials(target)
+    exists = db_rotation_service.account_exists(target)
+    description = db_rotation_service.describe(target)
+
+    if exists is False:
+        frappe.throw(
+            _("Connected to {0}, but no account named '{1}' exists there.").format(
+                description, target.username
+            ),
+            frappe.ValidationError,
+        )
+
+    if exists is None:
+        message = _(
+            "Connected as {0}. Could not confirm '{1}' exists — the admin account cannot read the "
+            "server's user list, which does not stop rotation from working."
+        ).format(admin_username, target.username)
+    else:
+        message = _("Connected as {0}. The account '{1}' exists and can be rotated.").format(
+            admin_username, target.username
+        )
+
+    return {
+        "success": True,
+        "target": description,
+        "account_exists": exists,
+        "message": message,
+    }
+
+
+@frappe.whitelist()
 def test_db_connection(name: str) -> dict:
     """Check that a Database secret's stored credentials actually reach its server.
 
@@ -182,13 +262,26 @@ def test_db_connection(name: str) -> dict:
     # Prove the stored credential works. When a rotation admin is configured,
     # prove that separately too — it is the account that would run the change.
     db_rotation_service.verify_credentials(target, current_password)
+
+    exists = None
     if target.via_admin:
         db_rotation_service.verify_admin_credentials(target)
+        exists = db_rotation_service.account_exists(target)
+
+    description = db_rotation_service.describe(target)
+    if exists is False:
+        frappe.throw(
+            _("Connected to {0}, but no account named '{1}' exists there.").format(
+                description, target.username
+            ),
+            frappe.ValidationError,
+        )
 
     return {
         "success": True,
-        "target": db_rotation_service.describe(target),
-        "message": _("Connected to {0}.").format(db_rotation_service.describe(target)),
+        "target": description,
+        "account_exists": exists,
+        "message": _("Connected to {0}.").format(description),
     }
 
 

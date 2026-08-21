@@ -77,18 +77,29 @@ class Target:
 # ----------------------------------------------------------------------
 
 
-def build_target(doc, current_password: str) -> Target:
-    """Resolve a Vault Secret into a connectable Target.
+def make_target(
+    *,
+    database_type: str,
+    host: str,
+    username: str,
+    port=None,
+    database: str | None = None,
+    use_ssl: bool = False,
+    auth_source: str | None = None,
+    admin_username: str | None = None,
+    admin_password: str | None = None,
+    current_password: str | None = None,
+) -> Target:
+    """Build a Target from plain values, validating each one.
 
-    `current_password` is the secret's password as it stands *before* rotation;
-    it authenticates the self-service path.
+    Kept separate from `build_target` so the same rules apply to a secret that
+    has not been saved yet — the create dialog tests a connection from form
+    values, before there is any document to read.
+
+    `admin_username`/`admin_password` authenticate when given; otherwise the
+    account authenticates as itself using `current_password`.
     """
-    if doc.secret_type != "Database":
-        frappe.throw(
-            _("Only secrets of type 'Database' can be applied to a database server."), TargetApplyError
-        )
-
-    database_type = (doc.database_type or "").strip()
+    database_type = (database_type or "").strip()
     if database_type not in SUPPORTED_DATABASE_TYPES:
         frappe.throw(
             _("Set a supported Database Type ({0}) before applying a password to the server.").format(
@@ -97,17 +108,18 @@ def build_target(doc, current_password: str) -> Target:
             TargetApplyError,
         )
 
-    if not doc.db_host:
+    host = (host or "").strip()
+    if not host:
         frappe.throw(_("Host is required to apply a password to the database server."), TargetApplyError)
 
-    if not doc.username:
+    username = (username or "").strip()
+    if not username:
         frappe.throw(
             _("Username is required — it names the account whose password is changed."), TargetApplyError
         )
 
-    admin_username = (doc.rotation_admin_username or "").strip()
+    admin_username = (admin_username or "").strip()
     if admin_username:
-        admin_password = doc.get_password("rotation_admin_password", raise_exception=False)
         if not admin_password:
             frappe.throw(
                 _("A Rotation Admin Username is set but its password could not be retrieved."),
@@ -123,19 +135,44 @@ def build_target(doc, current_password: str) -> Target:
                 ),
                 TargetApplyError,
             )
-        auth_username, auth_password = doc.username, current_password
+        auth_username, auth_password = username, current_password
 
     return Target(
         database_type=database_type,
-        host=doc.db_host.strip(),
-        port=frappe.utils.cint(doc.db_port) or DEFAULT_PORTS[database_type],
-        database=(doc.db_name or "").strip() or None,
-        username=doc.username.strip(),
-        use_ssl=bool(doc.db_use_ssl),
-        auth_source=(doc.db_auth_source or "").strip() or "admin",
+        host=host,
+        port=frappe.utils.cint(port) or DEFAULT_PORTS[database_type],
+        database=(database or "").strip() or None,
+        username=username,
+        use_ssl=bool(use_ssl),
+        auth_source=(auth_source or "").strip() or "admin",
         auth_username=auth_username,
         auth_password=auth_password,
         via_admin=bool(admin_username),
+    )
+
+
+def build_target(doc, current_password: str) -> Target:
+    """Resolve a saved Vault Secret into a connectable Target.
+
+    `current_password` is the secret's password as it stands *before* rotation;
+    it authenticates the self-service path.
+    """
+    if doc.secret_type != "Database":
+        frappe.throw(
+            _("Only secrets of type 'Database' can be applied to a database server."), TargetApplyError
+        )
+
+    return make_target(
+        database_type=doc.database_type,
+        host=doc.db_host,
+        port=doc.db_port,
+        database=doc.db_name,
+        username=doc.username,
+        use_ssl=doc.db_use_ssl,
+        auth_source=doc.db_auth_source,
+        admin_username=doc.rotation_admin_username,
+        admin_password=doc.get_password("rotation_admin_password", raise_exception=False),
+        current_password=current_password,
     )
 
 
@@ -173,6 +210,19 @@ def verify_admin_credentials(target: Target) -> None:
         return
 
     _verifier_for(target.database_type)(target)
+
+
+def account_exists(target: Target) -> bool | None:
+    """Whether `target.username` exists on the server, as far as we can tell.
+
+    Returns None when the connecting account lacks the privilege to look —
+    "cannot tell" is a genuinely different answer from "does not exist", and
+    only the latter is worth blocking a save over.
+
+    Connects as whoever `target` authenticates as, so in practice this runs as
+    the rotation admin during the pre-save check.
+    """
+    return _EXISTENCE_PROBES[target.database_type](target)
 
 
 def describe(target: Target) -> str:
@@ -241,6 +291,18 @@ def _postgres_apply(target: Target, new_password: str):
 
 def _postgres_verify(target: Target):
     _close(_postgres_connect(target, target.auth_username, target.auth_password))
+
+
+def _postgres_account_exists(target: Target) -> bool | None:
+    conn = _postgres_connect(target, target.auth_username, target.auth_password)
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (target.username,))
+            return cursor.fetchone() is not None
+    except Exception:
+        return None
+    finally:
+        _close(conn)
 
 
 # ----------------------------------------------------------------------
@@ -373,6 +435,19 @@ def _mysql_verify(target: Target):
     _close(_mysql_connect(target, target.auth_username, target.auth_password))
 
 
+def _mysql_account_exists(target: Target) -> bool | None:
+    conn = _mysql_connect(target, target.auth_username, target.auth_password)
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM mysql.user WHERE User = %s", (target.username,))
+            return bool(cursor.fetchone()[0])
+    except Exception:
+        # Reading mysql.user needs privilege the connecting account may not have.
+        return None
+    finally:
+        _close(conn)
+
+
 # ----------------------------------------------------------------------
 # MongoDB
 # ----------------------------------------------------------------------
@@ -431,6 +506,19 @@ def _mongo_verify(target: Target):
         _close(client)
 
 
+def _mongo_account_exists(target: Target) -> bool | None:
+    client = _mongo_client(target, target.auth_username, target.auth_password)
+    try:
+        info = client[target.auth_source].command(
+            "usersInfo", {"user": target.username, "db": target.auth_source}
+        )
+        return bool(info.get("users"))
+    except Exception:
+        return None
+    finally:
+        _close(client)
+
+
 # ----------------------------------------------------------------------
 # Internals
 # ----------------------------------------------------------------------
@@ -445,6 +533,12 @@ _VERIFIERS = {
     POSTGRESQL: _postgres_verify,
     MYSQL: _mysql_verify,
     MONGODB: _mongo_verify,
+}
+
+_EXISTENCE_PROBES = {
+    POSTGRESQL: _postgres_account_exists,
+    MYSQL: _mysql_account_exists,
+    MONGODB: _mongo_account_exists,
 }
 
 

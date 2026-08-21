@@ -289,7 +289,20 @@ class VaultSecret(Document):
                 _("Username is required — it names the database account whose password gets changed.")
             )
 
-        if self.rotation_admin_username and not self.rotation_admin_password:
+        # An admin credential is required rather than optional: relying on the
+        # account to change its own password fails on any server that withholds
+        # that privilege, and it fails unattended, hours after the setup that
+        # caused it. Requiring it here means the Test Connection step can prove
+        # the whole path works before anything is saved.
+        if not (self.rotation_admin_username or "").strip():
+            frappe.throw(
+                _(
+                    "A Rotation Admin Username is required to apply a rotated password to the database. "
+                    "It is the account Vault authenticates as to reset '{0}'."
+                ).format(self.username or "this account")
+            )
+
+        if not self.rotation_admin_password:
             frappe.throw(_("A Rotation Admin Password is required alongside a Rotation Admin Username."))
 
     def check_password_reuse(self):

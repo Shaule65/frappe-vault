@@ -8,7 +8,113 @@
 
         <FormControl label="Folder" type="select" v-model="form.folder" :options="folderOptions" />
 
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Guided Database flow: server -> admin -> test -> stored credential.
+             Every other secret type keeps the plain generic field grid below. -->
+        <template v-if="form.secret_type === 'Database'">
+          <div class="space-y-4">
+            <!-- 1. Where the database lives -->
+            <div class="space-y-3">
+              <p class="text-xs font-semibold text-ink-gray-5 uppercase tracking-wider">Server</p>
+              <div class="grid grid-cols-2 gap-4">
+                <FormControl label="Database Type" type="select" v-model="form.database_type" :options="DATABASE_TYPES" class="col-span-2" />
+                <FormControl label="Host" v-model="form.db_host" placeholder="localhost or IP" />
+                <FormControl label="Port" v-model="form.db_port" placeholder="Engine default" />
+                <FormControl label="Database Name" v-model="form.db_name" />
+                <FormControl v-if="form.database_type === 'MongoDB'" label="Auth Source" v-model="form.db_auth_source" placeholder="admin" />
+                <FormControl label="URL (optional)" v-model="form.url" class="col-span-2" />
+                <div class="col-span-2">
+                  <FormControl type="checkbox" label="Use TLS / SSL" v-model="form.db_use_ssl" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Should Vault reset this password on the server? -->
+            <div class="pt-2 border-t border-outline-gray-1 space-y-2">
+              <FormControl
+                type="checkbox"
+                label="Let Vault reset this password on the database"
+                v-model="form.apply_rotation_to_target"
+              />
+              <p class="text-xs text-ink-gray-5 leading-relaxed">
+                Rotates the password on a schedule and changes it on the live server too, so Vault and the
+                database stay in sync. Leave this off to simply store the credential without touching the server.
+              </p>
+            </div>
+
+            <!-- 3. Admin credential + connection test -->
+            <template v-if="form.apply_rotation_to_target">
+              <div class="space-y-3">
+                <p class="text-xs font-semibold text-ink-gray-5 uppercase tracking-wider">Admin Credential</p>
+                <p class="text-xs text-ink-gray-5 leading-relaxed">
+                  The privileged account Vault authenticates as to reset the password. Stored encrypted, and
+                  never rotated by Vault.
+                </p>
+                <div class="grid grid-cols-2 gap-4">
+                  <FormControl label="Account to Rotate" v-model="form.username" placeholder="the DB user Vault will reset" class="col-span-2" />
+                  <FormControl label="Admin Username" v-model="form.rotation_admin_username" placeholder="postgres / root" />
+                  <FormControl label="Admin Password" v-model="form.rotation_admin_password" :type="showSecrets ? 'text' : 'password'" />
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <Button
+                    variant="subtle"
+                    icon-left="lucide-plug"
+                    label="Test Connection"
+                    :loading="testResource.loading"
+                    @click="handleTestConnection"
+                  />
+                  <span v-if="testState === 'passed'" class="text-xs font-medium text-ink-green-3">
+                    <FeatherIcon name="check-circle" class="w-3.5 h-3.5 inline -mt-0.5 mr-1" />Connection confirmed
+                  </span>
+                  <span v-else-if="testState === 'failed'" class="text-xs font-medium text-ink-red-3">
+                    <FeatherIcon name="x-circle" class="w-3.5 h-3.5 inline -mt-0.5 mr-1" />Not connected
+                  </span>
+                </div>
+
+                <p v-if="testMessage" class="text-xs leading-relaxed" :class="testState === 'passed' ? 'text-ink-gray-6' : 'text-ink-red-3'">
+                  {{ testMessage }}
+                </p>
+              </div>
+
+              <!-- 4. Rotation schedule -->
+              <div class="grid grid-cols-2 gap-4">
+                <FormControl label="Rotate Every" type="number" min="1" v-model="form.rotation_interval" />
+                <FormControl label="Interval Unit" type="select" v-model="form.rotation_unit" :options="ROTATION_UNITS" />
+              </div>
+            </template>
+
+            <!-- 5. The credential that gets stored and rotated -->
+            <div class="pt-2 border-t border-outline-gray-1 space-y-3">
+              <p class="text-xs font-semibold text-ink-gray-5 uppercase tracking-wider">Stored Credential</p>
+              <div class="grid grid-cols-2 gap-4">
+                <FormControl
+                  v-if="!form.apply_rotation_to_target"
+                  label="Username"
+                  v-model="form.username"
+                  class="col-span-2"
+                />
+                <FormControl
+                  label="Password"
+                  v-model="form.db_password"
+                  :type="showSecrets ? 'text' : 'password'"
+                  :disabled="credentialLocked"
+                  class="col-span-2"
+                >
+                  <template #suffix>
+                    <Button variant="ghost" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-gray-9" :icon="showSecrets ? 'lucide-eye-off' : 'lucide-eye'" @click="showSecrets = !showSecrets" />
+                  </template>
+                </FormControl>
+              </div>
+              <p v-if="credentialLocked" class="text-xs text-ink-gray-5 leading-relaxed">
+                <FeatherIcon name="lock" class="w-3.5 h-3.5 inline -mt-0.5 mr-1" />
+                Confirm the connection above first — that way the password you store is one Vault has proven
+                it can actually reset.
+              </p>
+            </div>
+          </div>
+        </template>
+
+        <div v-else class="grid grid-cols-2 gap-4">
           <template v-for="field in visibleFieldsFor(form.secret_type, form)" :key="field.name">
             <!-- Media Attachment Custom UI -->
             <div v-if="field.type === 'file'" class="col-span-2 space-y-2 pt-1">
@@ -101,17 +207,14 @@
           </template>
         </div>
 
-        <!-- Automatic rotation (Password and Database secrets) -->
-        <div v-if="ROTATABLE_SECRET_TYPES.includes(form.secret_type)" class="pt-1 space-y-2">
+        <!-- Automatic rotation. Database secrets configure theirs inside the guided
+             flow above; the full model (vault-only rotation, custom archive
+             passphrase) stays available for them in the edit panel. -->
+        <div v-if="form.secret_type === 'Password'" class="pt-1 space-y-2">
           <FormControl type="checkbox" label="Enable Automatic Rotation" v-model="form.enable_rotation" />
           <p class="text-xs text-ink-gray-5 leading-relaxed">
             Generate a new password on a schedule and email it to everyone with access as an encrypted archive.
-            <template v-if="form.secret_type === 'Database'">
-              Updates the stored value only, unless you also turn on applying it to the database below.
-            </template>
-            <template v-else>
-              Updates the stored value only &mdash; you must apply it to the target system yourself.
-            </template>
+            Updates the stored value only &mdash; you must apply it to the target system yourself.
           </p>
           <div v-if="form.enable_rotation" class="grid grid-cols-2 gap-4 pt-1">
             <FormControl label="Rotate Every" type="number" min="1" v-model="form.rotation_interval" />
@@ -130,39 +233,6 @@
             secret rotates, so its archive opens with your passphrase instead of the shared site one.
           </p>
 
-          <!-- Push the rotated password to the live server -->
-          <template v-if="form.enable_rotation && form.secret_type === 'Database'">
-            <div class="pt-2 border-t border-outline-gray-1 space-y-2">
-              <FormControl
-                type="checkbox"
-                label="Apply New Password to the Database"
-                v-model="form.apply_rotation_to_target"
-              />
-              <p class="text-xs text-ink-gray-5 leading-relaxed">
-                Connect to <strong>{{ form.database_type || 'the database' }}</strong> on every rotation and
-                change the password there too, so Vault and the server stay in sync. If the server cannot be
-                updated the rotation is abandoned and the stored password is left untouched.
-              </p>
-
-              <template v-if="form.apply_rotation_to_target">
-                <FormControl
-                  label="Rotation Admin Username (optional)"
-                  v-model="form.rotation_admin_username"
-                  placeholder="Leave blank to let the user above change its own password"
-                />
-                <FormControl
-                  v-if="form.rotation_admin_username"
-                  label="Rotation Admin Password"
-                  v-model="form.rotation_admin_password"
-                  :type="showSecrets ? 'text' : 'password'"
-                />
-                <p class="text-xs text-ink-gray-5 leading-relaxed">
-                  Only needed when the account above cannot change its own password. Stored encrypted, and
-                  never rotated by Vault.
-                </p>
-              </template>
-            </div>
-          </template>
         </div>
 
         <FormControl label="Notes" type="textarea" v-model="form.notes" :rows="3" />
@@ -178,9 +248,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Dialog, FormControl, Button, FeatherIcon, toast } from 'frappe-ui'
-import { SECRET_TYPES, ROTATION_UNITS, ROTATABLE_SECRET_TYPES, DATABASE_DEFAULT_PORTS } from '../composables/constants'
+import { SECRET_TYPES, ROTATION_UNITS, DATABASE_TYPES, DATABASE_DEFAULT_PORTS } from '../composables/constants'
 import { visibleFieldsFor } from '../composables/secretFields'
-import { useFolders, useCreateSecret } from '../composables/vault'
+import { useFolders, useCreateSecret, useTestDbConnectionParams } from '../composables/vault'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 import { validateTotpSecret } from '../utils/secretForm'
 
@@ -222,11 +292,62 @@ const attachmentList = ref([])
 const showSecrets = ref(false)
 const uploadingFiles = ref(false)
 
+const testResource = useTestDbConnectionParams()
+const testState = ref('untested')   // 'untested' | 'passed' | 'failed'
+const testMessage = ref('')
+
+// The stored password stays locked until Vault has proven it can reach the
+// server and reset the account — otherwise you would be storing a credential
+// for a rotation that was never going to work.
+const credentialLocked = computed(
+  () => form.value.secret_type === 'Database'
+    && !!form.value.apply_rotation_to_target
+    && testState.value !== 'passed'
+)
+
+// Any change to what the test proved invalidates the result.
+watch(
+  () => [
+    form.value.database_type, form.value.db_host, form.value.db_port, form.value.db_name,
+    form.value.db_auth_source, form.value.db_use_ssl, form.value.username,
+    form.value.rotation_admin_username, form.value.rotation_admin_password,
+  ],
+  () => {
+    testState.value = 'untested'
+    testMessage.value = ''
+  }
+)
+
+async function handleTestConnection() {
+  testState.value = 'untested'
+  testMessage.value = ''
+  try {
+    const result = await testResource.submit({
+      database_type: form.value.database_type,
+      db_host: form.value.db_host,
+      db_port: form.value.db_port,
+      db_name: form.value.db_name,
+      db_auth_source: form.value.db_auth_source,
+      db_use_ssl: form.value.db_use_ssl ? 1 : 0,
+      username: form.value.username,
+      admin_username: form.value.rotation_admin_username,
+      admin_password: form.value.rotation_admin_password,
+    })
+    testState.value = 'passed'
+    testMessage.value = result.message || ''
+  } catch (err) {
+    testState.value = 'failed'
+    testMessage.value = err.messages?.[0] || err.message || 'Could not reach the database'
+  }
+}
+
 watch(show, (v) => {
   if (v) {
     form.value = defaultForm()
     attachmentList.value = []
     showSecrets.value = false
+    testState.value = 'untested'
+    testMessage.value = ''
   }
 })
 
@@ -298,6 +419,11 @@ function triggerFileInput(fieldname) {
 }
 
 async function handleCreate() {
+  if (credentialLocked.value) {
+    toast.error('Confirm the database connection before saving this secret')
+    return
+  }
+
   if (['Password', 'API Key'].includes(form.value.secret_type) && form.value.totp_secret) {
     const validation = validateTotpSecret(form.value.totp_secret)
     if (!validation.ok) {
@@ -308,28 +434,34 @@ async function handleCreate() {
 
   const payload = { ...form.value }
 
-  // Rotation only applies to some secret types — the backend rejects the rest,
-  // and the flag can survive a secret_type switch after the box was ticked.
-  if (ROTATABLE_SECRET_TYPES.includes(payload.secret_type) && payload.enable_rotation) {
-    payload.enable_rotation = 1
-    payload.rotation_interval = Number(payload.rotation_interval) || 90
-    if (!payload.zip_passphrase) delete payload.zip_passphrase
-  } else {
-    payload.enable_rotation = 0
-    delete payload.rotation_interval
-    delete payload.rotation_unit
-    delete payload.zip_passphrase
-  }
-
-  // Applying to a live server is Database-only, and meaningless without rotation.
-  if (payload.secret_type === 'Database' && payload.enable_rotation && payload.apply_rotation_to_target) {
-    payload.apply_rotation_to_target = 1
-    if (!payload.rotation_admin_username) {
+  // For a Database secret, letting Vault reset the password on the server is
+  // what turns rotation on — the two are one decision in this dialog.
+  if (payload.secret_type === 'Database') {
+    if (payload.apply_rotation_to_target) {
+      payload.apply_rotation_to_target = 1
+      payload.enable_rotation = 1
+      payload.rotation_interval = Number(payload.rotation_interval) || 90
+      payload.rotation_unit = payload.rotation_unit || 'Days'
+    } else {
+      payload.apply_rotation_to_target = 0
+      payload.enable_rotation = 0
+      delete payload.rotation_interval
+      delete payload.rotation_unit
       delete payload.rotation_admin_username
       delete payload.rotation_admin_password
     }
-  } else {
+    delete payload.zip_passphrase
+  } else if (payload.secret_type === 'Password' && payload.enable_rotation) {
+    payload.enable_rotation = 1
+    payload.rotation_interval = Number(payload.rotation_interval) || 90
+    if (!payload.zip_passphrase) delete payload.zip_passphrase
     payload.apply_rotation_to_target = 0
+  } else {
+    payload.enable_rotation = 0
+    payload.apply_rotation_to_target = 0
+    delete payload.rotation_interval
+    delete payload.rotation_unit
+    delete payload.zip_passphrase
     delete payload.rotation_admin_username
     delete payload.rotation_admin_password
   }

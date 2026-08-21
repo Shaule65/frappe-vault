@@ -19,6 +19,7 @@ from frappe_vault.services.db_rotation_service import (
     TargetApplyError,
     build_target,
     describe,
+    make_target,
 )
 from frappe_vault.vault.doctype.vault_secret.vault_secret import ROTATABLE_FIELD_BY_TYPE
 
@@ -155,6 +156,8 @@ class TestDatabaseRotation(FrappeTestCase):
                 rotation_interval=30,
                 rotation_unit="Days",
                 apply_rotation_to_target=1,
+                rotation_admin_username="postgres",
+                rotation_admin_password="AdminPassword123!",
             )
 
     def test_apply_to_target_requires_a_username(self):
@@ -162,6 +165,21 @@ class TestDatabaseRotation(FrappeTestCase):
             make_db_secret(
                 title="DB Rotation Invalid Secret",
                 username=None,
+                enable_rotation=1,
+                rotation_interval=30,
+                rotation_unit="Days",
+                apply_rotation_to_target=1,
+                rotation_admin_username="postgres",
+                rotation_admin_password="AdminPassword123!",
+            )
+
+    def test_apply_to_target_requires_an_admin_username(self):
+        # Self-service is no longer an option once a rotation reaches a live
+        # server: an account that cannot change its own password would fail
+        # unattended, hours after the setup that caused it.
+        with self.assertRaises(frappe.ValidationError):
+            make_db_secret(
+                title="DB Rotation Invalid Secret",
                 enable_rotation=1,
                 rotation_interval=30,
                 rotation_unit="Days",
@@ -186,6 +204,8 @@ class TestDatabaseRotation(FrappeTestCase):
             rotation_interval=30,
             rotation_unit="Days",
             apply_rotation_to_target=1,
+            rotation_admin_username="postgres",
+            rotation_admin_password="AdminPassword123!",
         )
         doc.enable_rotation = 0
         doc.save(ignore_permissions=True)
@@ -203,11 +223,29 @@ class TestDatabaseRotation(FrappeTestCase):
         )
         self.assertTrue(doc.get_password("rotation_admin_password", raise_exception=False))
 
+        # Removing the admin means giving up applying to the server — the two
+        # cannot be separated any more, so the flag has to come off with it.
+        doc.apply_rotation_to_target = 0
         doc.rotation_admin_username = ""
         doc.save(ignore_permissions=True)
 
         self.assertFalse(doc.rotation_admin_username)
         self.assertFalse(doc.get_password("rotation_admin_password", raise_exception=False))
+
+    def test_admin_cannot_be_dropped_while_still_applying_to_the_server(self):
+        doc = make_db_secret(
+            title="DB Rotation Admin Secret",
+            enable_rotation=1,
+            rotation_interval=30,
+            rotation_unit="Days",
+            apply_rotation_to_target=1,
+            rotation_admin_username="postgres",
+            rotation_admin_password="AdminPassword123!",
+        )
+
+        doc.rotation_admin_username = ""
+        with self.assertRaises(frappe.ValidationError):
+            doc.save(ignore_permissions=True)
 
     # ------------------------------------------------------------------
     # Resolving a secret into a connection target
@@ -286,3 +324,76 @@ class TestDatabaseRotation(FrappeTestCase):
         self.assertIn("db.internal.example:3306", description)
         self.assertIn("app_user", description)
         self.assertNotIn("InitialDbPassword123!", description)
+
+    # ------------------------------------------------------------------
+    # Building a target from unsaved form values
+    # ------------------------------------------------------------------
+
+    def test_make_target_builds_from_plain_values(self):
+        target = make_target(
+            database_type=POSTGRESQL,
+            host="  db.example  ",
+            username="  app_user  ",
+            admin_username="postgres",
+            admin_password="AdminPassword123!",
+        )
+
+        self.assertEqual(target.host, "db.example")
+        self.assertEqual(target.username, "app_user")
+        self.assertEqual(target.port, DEFAULT_PORTS[POSTGRESQL])
+        self.assertTrue(target.via_admin)
+        self.assertEqual(target.auth_username, "postgres")
+
+    def test_make_target_falls_back_to_self_service(self):
+        target = make_target(
+            database_type=MYSQL,
+            host="db.example",
+            username="app_user",
+            current_password="CurrentPassword123!",
+        )
+
+        self.assertFalse(target.via_admin)
+        self.assertEqual(target.auth_username, "app_user")
+        self.assertEqual(target.auth_password, "CurrentPassword123!")
+
+    def test_make_target_rejects_an_admin_without_a_password(self):
+        with self.assertRaises(TargetApplyError):
+            make_target(
+                database_type=POSTGRESQL,
+                host="db.example",
+                username="app_user",
+                admin_username="postgres",
+                admin_password="",
+            )
+
+    def test_make_target_rejects_a_missing_host(self):
+        with self.assertRaises(TargetApplyError):
+            make_target(
+                database_type=POSTGRESQL,
+                host="   ",
+                username="app_user",
+                admin_username="postgres",
+                admin_password="AdminPassword123!",
+            )
+
+    def test_make_target_rejects_an_unsupported_engine(self):
+        with self.assertRaises(TargetApplyError):
+            make_target(
+                database_type="Cassandra",
+                host="db.example",
+                username="app_user",
+                admin_username="postgres",
+                admin_password="AdminPassword123!",
+            )
+
+    def test_make_target_rejects_no_credential_at_all(self):
+        with self.assertRaises(TargetApplyError):
+            make_target(database_type=POSTGRESQL, host="db.example", username="app_user")
+
+    def test_every_engine_has_an_existence_probe(self):
+        from frappe_vault.services.db_rotation_service import (
+            _EXISTENCE_PROBES,
+            SUPPORTED_DATABASE_TYPES,
+        )
+
+        self.assertEqual(set(_EXISTENCE_PROBES), set(SUPPORTED_DATABASE_TYPES))
