@@ -77,6 +77,29 @@ export function useFingerprintSshKey() {
   })
 }
 
+// Whether the inventory_management app is installed and the current user can
+// read its VM records — the "pick hosts from inventory" option only appears
+// when this is true, rather than showing and then failing.
+export function useVmInventoryAvailable() {
+  return createResource({
+    url: 'frappe_vault.api.inventory.is_available',
+  })
+}
+
+// Server roles in the VM inventory, each with how many VMs carry it.
+export function useVmServerRoles() {
+  return createResource({
+    url: 'frappe_vault.api.inventory.list_server_roles',
+  })
+}
+
+// VMs carrying a given server role, each with its best usable IPv4 address.
+export function useVmsForRole() {
+  return createResource({
+    url: 'frappe_vault.api.inventory.list_vms_for_role',
+  })
+}
+
 // Reaches Linux hosts from unsaved form values, before any secret exists.
 export function useTestLinuxConnectionParams() {
   return createResource({

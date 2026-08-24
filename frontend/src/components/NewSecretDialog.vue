@@ -20,6 +20,7 @@
                   Servers <span class="text-ink-gray-4 normal-case font-normal">({{ form.linux_hosts.length }})</span>
                 </p>
                 <div class="flex items-center gap-2">
+                  <Button v-if="inventoryAvailable" variant="ghost" size="sm" label="From inventory" @click="showInventoryPicker = true" />
                   <Button variant="ghost" size="sm" label="Paste list" @click="showBulkHosts = !showBulkHosts" />
                   <Button variant="subtle" size="sm" icon-left="plus" label="Add host" @click="addHost()" />
                 </div>
@@ -38,13 +39,16 @@
               </div>
 
               <div v-if="form.linux_hosts.length" class="space-y-2">
-                <div v-for="(host, hIdx) in form.linux_hosts" :key="hIdx" class="flex items-center gap-2">
-                  <FormControl class="flex-1" v-model="host.hostname" placeholder="hostname or IP" />
-                  <FormControl class="w-24" v-model="host.ssh_port" placeholder="22" />
-                  <Button
-                    variant="ghost" icon="x" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-red-3"
-                    title="Remove host" @click="form.linux_hosts.splice(hIdx, 1)"
-                  />
+                <div v-for="(host, hIdx) in form.linux_hosts" :key="hIdx">
+                  <p v-if="host.label" class="text-xs text-ink-gray-5 mb-1 pl-1">{{ host.label }}</p>
+                  <div class="flex items-center gap-2">
+                    <FormControl class="flex-1" v-model="host.hostname" placeholder="hostname or IP" />
+                    <FormControl class="w-24" v-model="host.ssh_port" placeholder="22" />
+                    <Button
+                      variant="ghost" icon="x" class="!p-1 h-auto text-ink-gray-5 hover:text-ink-red-3"
+                      title="Remove host" @click="form.linux_hosts.splice(hIdx, 1)"
+                    />
+                  </div>
                 </div>
               </div>
               <p v-else class="text-xs text-ink-gray-5">
@@ -394,16 +398,26 @@
       <Button variant="solid" @click="handleCreate" :loading="createResource.loading">Create</Button>
     </template>
   </Dialog>
+
+  <VmInventoryPicker
+    v-model="showInventoryPicker"
+    :existing-hosts="form.linux_hosts.map(h => h.hostname)"
+    @add="handleAddFromInventory"
+  />
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Dialog, FormControl, Button, FeatherIcon, toast } from 'frappe-ui'
 import { SECRET_TYPES, ROTATION_UNITS, DATABASE_TYPES, DATABASE_DEFAULT_PORTS } from '../composables/constants'
 import { visibleFieldsFor } from '../composables/secretFields'
-import { useFolders, useCreateSecret, useTestDbConnectionParams, useTestLinuxConnectionParams, useFingerprintSshKey } from '../composables/vault'
+import {
+  useFolders, useCreateSecret, useTestDbConnectionParams, useTestLinuxConnectionParams,
+  useFingerprintSshKey, useVmInventoryAvailable,
+} from '../composables/vault'
 import { cleanUrl, parseAttachments, isImageUrl, getFileName } from '../utils/attachments'
 import { validateTotpSecret } from '../utils/secretForm'
+import VmInventoryPicker from './VmInventoryPicker.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -479,6 +493,31 @@ watch(() => form.value.ansible_ssh_private_key, (key) => {
 
 function addHost(hostname = '', ssh_port = '') {
   form.value.linux_hosts.push({ hostname, ssh_port })
+}
+
+// "From inventory" only appears once we know there's something to pick from —
+// showing it and then failing (no inventory app installed, or no Inventory
+// role) would be worse than not offering it.
+const inventoryAvailableResource = useVmInventoryAvailable()
+const inventoryAvailable = ref(false)
+const showInventoryPicker = ref(false)
+
+onMounted(async () => {
+  try {
+    const result = await inventoryAvailableResource.submit()
+    inventoryAvailable.value = !!result?.available
+  } catch {
+    inventoryAvailable.value = false
+  }
+})
+
+function handleAddFromInventory(hosts) {
+  const existing = new Set(form.value.linux_hosts.map(h => (h.hostname || '').trim()).filter(Boolean))
+  for (const host of hosts) {
+    if (existing.has(host.hostname)) continue
+    existing.add(host.hostname)
+    form.value.linux_hosts.push(host)
+  }
 }
 
 // Bulk entry: one host per line, `host:port` accepted. Existing hosts are kept
@@ -687,7 +726,11 @@ async function handleCreate() {
   if (payload.secret_type === 'Linux Server') {
     payload.linux_hosts = payload.linux_hosts
       .filter(h => (h.hostname || '').trim())
-      .map(h => ({ hostname: h.hostname.trim(), ssh_port: Number(h.ssh_port) || 0 }))
+      .map(h => ({
+        hostname: h.hostname.trim(),
+        ssh_port: Number(h.ssh_port) || 0,
+        ...(h.label ? { label: h.label } : {}),
+      }))
     payload.ssh_port = Number(payload.ssh_port) || 22
     payload.ansible_use_become = payload.ansible_use_become ? 1 : 0
     payload.strict_host_key_checking = payload.strict_host_key_checking ? 1 : 0
